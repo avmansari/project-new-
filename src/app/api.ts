@@ -839,18 +839,32 @@ export function createApp(opts: AppOptions): { server: Server; close(): Promise<
     if (method === "GET" && seg.length === 3 && seg[1] === "wallet") {
       const addr = seg[2];
       if (addr.length > 100 || !isAddressForNetwork(addr, cfg.network)) throw err(400, "BAD_ADDRESS", "address galat hai");
+      // Har token ki "price": active listing ho to listing price, warna aakhri resale price, warna mint price.
+      // Default order: sabse naye pehle (saari collections mixed); sorting/filter frontend karta hai.
       const r = await db.query<any>(
-        `SELECT c.id AS collection_id, c.slug, c.name AS cname, t.token_number FROM tokens t JOIN collections c ON c.id = t.collection_id
-         WHERE t.owner_address = $1 AND t.voided_at IS NULL ORDER BY c.id, t.token_number LIMIT 500`,
+        `SELECT c.id AS collection_id, c.slug, c.name AS cname, t.token_number, t.minted_at,
+                c.price_zats::text AS mint_price,
+                (SELECT l.price_zats::text FROM listings l WHERE l.collection_id = t.collection_id AND l.token_number = t.token_number
+                   AND l.status IN ('active','pending') LIMIT 1) AS listed_price,
+                (SELECT l.price_zats::text FROM listings l WHERE l.collection_id = t.collection_id AND l.token_number = t.token_number
+                   AND l.status = 'sold' ORDER BY l.updated_at DESC, l.id DESC LIMIT 1) AS last_sale_price
+         FROM tokens t JOIN collections c ON c.id = t.collection_id
+         WHERE t.owner_address = $1 AND t.voided_at IS NULL ORDER BY t.minted_at DESC, c.id, t.token_number LIMIT 500`,
         [addr]
       );
       const items = await describeTokens(r.rows);
       return sendJson(res, 200, {
         address: addr,
-        tokens: items.map((x) => ({
-          collection: x.collection, collectionName: x.collectionName, tokenNumber: x.tokenNumber, name: x.name,
-          imageUrl: x.imageUrl, thumbUrl: x.thumbUrl, revealed: x.revealed, blocked: x.blocked, blockedReason: x.blockedReason,
-        })),
+        tokens: items.map((x, i) => {
+          const row = r.rows[i];
+          const priceSource = row.listed_price ? "listed" : row.last_sale_price ? "last_sale" : "mint";
+          const priceZats = BigInt(row.listed_price ?? row.last_sale_price ?? row.mint_price);
+          return {
+            collection: x.collection, collectionName: x.collectionName, tokenNumber: x.tokenNumber, name: x.name,
+            imageUrl: x.imageUrl, thumbUrl: x.thumbUrl, revealed: x.revealed, blocked: x.blocked, blockedReason: x.blockedReason,
+            priceZats: priceZats.toString(), priceZec: formatZec(priceZats), priceSource,
+          };
+        }),
       });
     }
 

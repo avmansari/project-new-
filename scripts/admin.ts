@@ -1,9 +1,10 @@
+import { resolve } from "node:path";
 import { loadConfig } from "../src/config.js";
 import { openDb } from "../src/db/index.js";
 import { formatZec } from "../src/money.js";
 import { cancelPayoutRequest, collectionStats, listPayoutRequests, markPayoutSent, runReleases } from "../src/services/ledger.js";
 import { blockToken, cancelCollection, endCollection, freezeCollection, reportCollection, unblockToken, unfreezeCollection } from "../src/services/moderation.js";
-import { approveSubmission, listPendingReview, rejectSubmission } from "../src/services/creator-submit.js";
+import { approveSubmission, listPendingReview, rejectSubmission, setCollectionMedia } from "../src/services/creator-submit.js";
 import { airdrop } from "../src/services/mint.js";
 import { setSetting } from "../src/services/settings.js";
 import { promptLine } from "../src/util/prompt.js";
@@ -28,6 +29,8 @@ import { promptLine } from "../src/util/prompt.js";
  *   npm run admin -- verify <slug> true|false|auto    (blue-tick override)
  *   npm run admin -- set-rate usd|inr <rate>           (multi-currency display rate)
  *   npm run admin -- airdrop <slug> <address> [count]  (free mint, payment ke bina)
+ *   npm run admin -- set-banner <slug> <image>         (collection ka banner lagao/badlo, mint ke baad bhi)
+ *   npm run admin -- set-profile <slug> <image>        (collection ka PFP lagao/badlo)
  */
 const [cmd, a1, a2, a3, a4] = process.argv.slice(2).filter((x) => x !== "--yes");
 const yes = process.argv.includes("--yes");
@@ -117,6 +120,14 @@ try {
       const pend = await listPendingReview(db);
       if (!pend.length) console.log("Koi pending submission nahi.");
       for (const p of pend) console.log(`${p.slug}  "${p.name}"  supply=${p.supply}  creator=${p.creatorAddress ?? "-"}  submitted=${p.submittedAt?.toISOString() ?? "-"}`);
+      break;
+    }
+    case "set-banner":
+    case "set-profile": {
+      const kind = cmd === "set-banner" ? "banner" : "profile";
+      const m = await setCollectionMedia(db, { slug: need(a1, "slug"), kind, file: resolve(need(a2, "image file")), assetsRoot: cfg.assetsDir });
+      console.log(`${kind === "banner" ? "Banner" : "PFP"} lag gaya: ${m.file} (${m.width}x${m.height}). Page refresh karo.`);
+      if (kind === "banner" && m.width < m.height * 2) console.log("(!) Tip: banner chauda (wide) hona chahiye, jaise 1500x500, warna kat ke dikhega.");
       break;
     }
     case "approve":

@@ -1,12 +1,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, existsSync } from "node:fs";
+import { mkdtempSync, existsSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { openDb } from "../src/db/index.js";
 import { parseZec } from "../src/money.js";
 import { getCollectionBySlug } from "../src/services/collections.js";
-import { approveSubmission, listPendingReview, rejectSubmission, SubmissionError, submitCollection } from "../src/services/creator-submit.js";
+import { approveSubmission, listPendingReview, rejectSubmission, setCollectionMedia, SubmissionError, submitCollection } from "../src/services/creator-submit.js";
 import { bufEntry } from "../src/services/assets.js";
 import { sampleArt } from "../src/assets/sample.js";
 import { accountXpubFromMnemonic, deriveReceiveAddress } from "../src/zcash/address.js";
@@ -220,4 +220,23 @@ test("launchAt: galat date => reject, koi collection nahi banti", async () => {
     /valid date/
   );
   assert.equal((await db.query<{ n: number }>(`SELECT count(*)::int AS n FROM collections`)).rows[0].n, 0);
+});
+
+test("setCollectionMedia: CLI-wali collection pe bhi banner lagta hai, dobara lagane pe replace hota hai; galat file reject", async () => {
+  const db = await openDb();
+  const root = tmp();
+  const r = await submitCollection(db, { ...base, name: "No Banner", entries: [img("1.png", 1)], assetsRoot: root });
+  const dir = tmp();
+  writeFileSync(join(dir, "b1.png"), sampleArt(5, 8));
+  writeFileSync(join(dir, "b2.png"), sampleArt(6, 8));
+  writeFileSync(join(dir, "fake.png"), "not an image");
+  const m1 = await setCollectionMedia(db, { slug: r.slug, kind: "banner", file: join(dir, "b1.png"), assetsRoot: root });
+  assert.ok(existsSync(join(root, m1.file)));
+  const m2 = await setCollectionMedia(db, { slug: r.slug, kind: "banner", file: join(dir, "b2.png"), assetsRoot: root });
+  assert.notEqual(m1.file, m2.file);
+  const rows = await db.query<{ file: string }>(`SELECT file FROM collection_media WHERE kind = 'banner'`);
+  assert.deepEqual(rows.rows.map((x) => x.file), [m2.file]); // ek hi banner, naya wala
+  await assert.rejects(setCollectionMedia(db, { slug: r.slug, kind: "banner", file: join(dir, "fake.png"), assetsRoot: root }), SubmissionError);
+  await assert.rejects(setCollectionMedia(db, { slug: "nahi-hai", kind: "banner", file: join(dir, "b1.png"), assetsRoot: root }), SubmissionError);
+  await db.close();
 });

@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { basename, extname, join, resolve } from "node:path";
 import type { Network } from "../config.js";
 import type { Db } from "../db/index.js";
@@ -181,6 +181,32 @@ export async function submitCollection(db: Db, input: SubmitInput): Promise<Subm
     await db.query(`DELETE FROM collections WHERE slug = $1`, [slug]);
     throw new SubmissionError((e as Error).message);
   }
+}
+
+/**
+ * Kisi bhi collection ka banner/PFP lagao ya badlo (CLI se bani collection ke liye bhi).
+ * Branding NFT art nahi hai, isliye mint shuru hone ke baad bhi badal sakte hain.
+ */
+export async function setCollectionMedia(
+  db: Db,
+  opts: { slug: string; kind: "profile" | "banner"; file: string; assetsRoot: string }
+): Promise<{ file: string; width: number; height: number }> {
+  const col = await db.query<{ id: number }>(`SELECT id FROM collections WHERE slug = $1`, [opts.slug]);
+  if (!col.rows[0]) throw new SubmissionError(`collection '${opts.slug}' nahi mili`);
+  if (!existsSync(opts.file) || !statSync(opts.file).isFile()) throw new SubmissionError(`image file nahi mili: ${opts.file}`);
+  const media = validateCollectionMedia({ name: basename(opts.file), size: statSync(opts.file).size, read: () => readFileSync(opts.file) }, opts.kind);
+  const root = resolve(opts.assetsRoot);
+  mkdirSync(resolve(root, opts.slug), { recursive: true });
+  const file = `${opts.slug}/${media.kind}-${media.sha256.slice(0, 16)}.${media.ext}`;
+  writeFileSync(join(root, file), media.bytes);
+  await db.query(
+    `INSERT INTO collection_media (collection_id, kind, file, mime, sha256, bytes, width, height)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+     ON CONFLICT (collection_id, kind) DO UPDATE SET file = EXCLUDED.file, mime = EXCLUDED.mime, sha256 = EXCLUDED.sha256,
+       bytes = EXCLUDED.bytes, width = EXCLUDED.width, height = EXCLUDED.height`,
+    [col.rows[0].id, media.kind, file, media.mime, media.sha256, media.bytes.length, media.width, media.height]
+  );
+  return { file, width: media.width, height: media.height };
 }
 
 export async function listPendingReview(db: Db): Promise<{ slug: string; name: string; supply: number; submittedAt: Date | null; creatorAddress: string | null }[]> {

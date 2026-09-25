@@ -80,10 +80,17 @@ test("marketplace HTTP: list -> GET listings -> buy -> pay -> tick -> token owne
     const owner = buyer(1);
     const token = await mintDirect(db, chain, "art", owner);
 
+    let w0 = await (await get(base, `/api/wallet/${owner}`)).json();
+    assert.equal(w0.tokens[0].priceZec, "1"); // abhi sirf mint price
+    assert.equal(w0.tokens[0].priceSource, "mint");
+
     const lr = await post(base, "/api/marketplace/listings", { collection: "art", tokenNumber: token, sellerAddress: owner, priceZec: "2" });
     assert.equal(lr.status, 201);
     const { listing } = await lr.json();
     assert.equal(listing.priceZec, "2");
+    w0 = await (await get(base, `/api/wallet/${owner}`)).json();
+    assert.equal(w0.tokens[0].priceZec, "2"); // list hote hi listing price
+    assert.equal(w0.tokens[0].priceSource, "listed");
 
     let g = await (await get(base, "/api/marketplace/listings?collection=art")).json();
     assert.equal(g.total, 1);
@@ -102,6 +109,8 @@ test("marketplace HTTP: list -> GET listings -> buy -> pay -> tick -> token owne
     assert.equal(g.total, 0);
     const w = await (await get(base, `/api/wallet/${buyerAddr}`)).json();
     assert.equal(w.tokens[0].tokenNumber, token);
+    assert.equal(w.tokens[0].priceZec, "2"); // naye owner ke liye aakhri resale price
+    assert.equal(w.tokens[0].priceSource, "last_sale");
   });
 });
 

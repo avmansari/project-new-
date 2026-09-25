@@ -35,9 +35,16 @@ import { connectWallet, disconnectWallet, getConnectedAddress, getNoirProvider, 
   function picture(url, alt, cls) {
     return el("img", { class: cls || "art", src: safeSrc(url), alt: alt || "", loading: "lazy", decoding: "async" });
   }
+  // Banner na ho to PFP/cover ka blur kiya hua backdrop dikhao (khaali gradient se behtar); dono na hon to gradient.
+  function bannerOrFallback(c, cls) {
+    if (c.bannerUrl) return picture(c.bannerUrl, c.name + " banner", cls);
+    const src = c.profileUrl || c.coverUrl;
+    if (!src) return el("div", { class: cls + " collection-banner-placeholder" });
+    return el("div", { class: cls + " collection-banner-placeholder banner-fallback" }, picture(src, "", "banner-fallback-art"));
+  }
   function collectionCardArtwork(c, link) {
     return el("a", { class: "collection-card-artwork", href: link },
-      c.bannerUrl ? picture(c.bannerUrl, c.name + " banner", "collection-card-banner") : el("div", { class: "collection-card-banner collection-banner-placeholder" }),
+      bannerOrFallback(c, "collection-card-banner"),
       picture(c.profileUrl || c.coverUrl, c.name + " profile", "collection-card-avatar"));
   }
   function notStarted(c) { return c.startsAt && new Date(c.startsAt) > new Date(); }
@@ -140,7 +147,7 @@ import { connectWallet, disconnectWallet, getConnectedAddress, getNoirProvider, 
     const canMint = c.status === "live" && !c.frozen && c.available > 0 && !notStarted(c);
     show(
       el("section", { class: "collection-profile" },
-        c.bannerUrl ? picture(c.bannerUrl, c.name + " banner", "collection-banner-image") : el("div", { class: "collection-banner-image collection-banner-placeholder" }),
+        bannerOrFallback(c, "collection-banner-image"),
         el("div", { class: "collection-identity" },
           picture(c.profileUrl || c.coverUrl, c.name + " profile", "collection-avatar"),
           el("div", { class: "collection-identity-copy" },
@@ -507,9 +514,47 @@ import { connectWallet, disconnectWallet, getConnectedAddress, getNoirProvider, 
           el("div", { class: "stat-chip" }, el("span", { class: "dim", text: "Collections" }), el("strong", { text: String(collections) })),
           el("div", { class: "stat-chip" }, el("span", { class: "dim", text: "Wallet status" }), el("strong", { text: "Connected" })),
           el("div", { class: "stat-chip" }, el("span", { class: "dim", text: "Network" }), el("strong", { text: siteNetwork }))));
-        out.append(el("div", { class: "section-heading" }, el("h2", { text: "Collected NFTs" }), el("span", { class: "dim", text: total + " items" })));
-        if (!tokens.length) out.append(el("div", { class: "empty-state card" }, el("div", { class: "empty-icon", text: "✦" }), el("h3", { text: "Your collection starts here" }), el("p", { class: "dim", text: "Mint or buy an NFT and it will appear in this wallet profile." }), el("a", { class: "btn", href: "/", text: "Explore drops" })));
-        else out.append(el("div", { class: "grid nfts" }, tokens.map((t) => nftCard(t))));
+        const countLabel = el("span", { class: "dim", text: total + " items" });
+        out.append(el("div", { class: "section-heading" }, el("h2", { text: "Collected NFTs" }), countLabel));
+        if (!tokens.length) { out.append(el("div", { class: "empty-state card" }, el("div", { class: "empty-icon", text: "✦" }), el("h3", { text: "Your collection starts here" }), el("p", { class: "dim", text: "Mint or buy an NFT and it will appear in this wallet profile." }), el("a", { class: "btn", href: "/", text: "Explore drops" }))); return; }
+
+        // Collection filter (All = saari collections mixed) + price sort
+        let selected = "", sortBy = "default";
+        const byCollection = new Map();
+        for (const t of tokens) byCollection.set(t.collection, { name: t.collectionName, count: (byCollection.get(t.collection)?.count ?? 0) + 1 });
+        const chips = el("div", { class: "filter-chips" });
+        const sortSel = el("select", { class: "sort-select", "aria-label": "Sort NFTs" },
+          el("option", { value: "default", text: "Recently added" }),
+          el("option", { value: "price_desc", text: "Price: High to Low" }),
+          el("option", { value: "price_asc", text: "Price: Low to High" }));
+        const grid = el("div", { class: "grid nfts" });
+        const priceLabel = { listed: "Listed", last_sale: "Last sale", mint: "Mint price" };
+        function card(t) {
+          const c = nftCard(t);
+          c.append(el("div", { class: "nft-price" }, el("strong", { text: t.priceZec + " ZEC" }), el("span", { class: "dim", text: priceLabel[t.priceSource] || "" })));
+          return c;
+        }
+        function render() {
+          clear(chips);
+          const chip = (value, label, count) => {
+            const b = el("button", { type: "button", class: "chip" + (selected === value ? " active" : ""), text: label + " (" + count + ")" });
+            b.addEventListener("click", () => { selected = value; render(); });
+            return b;
+          };
+          chips.append(chip("", "All", total));
+          for (const [slug, c] of byCollection) chips.append(chip(slug, c.name, c.count));
+          let list = selected ? tokens.filter((t) => t.collection === selected) : tokens.slice();
+          if (sortBy !== "default") {
+            const dir = sortBy === "price_desc" ? -1 : 1;
+            list.sort((a, b) => { const x = BigInt(a.priceZats), y = BigInt(b.priceZats); return x === y ? 0 : (x < y ? -dir : dir); });
+          }
+          countLabel.textContent = list.length + " items";
+          clear(grid);
+          for (const t of list) grid.append(card(t));
+        }
+        sortSel.addEventListener("change", () => { sortBy = sortSel.value; render(); });
+        out.append(el("div", { class: "wallet-toolbar" }, chips, sortSel), grid);
+        render();
       } catch (ex) { err.textContent = ex.message; }
     }
     const connected = getConnectedAddress(), qsAddr = qs.get("address") || "";
