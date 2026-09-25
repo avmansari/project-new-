@@ -390,7 +390,7 @@ export function createApp(opts: AppOptions): { server: Server; close(): Promise<
           blocked: tk.rows[0].blocked, blockedReason: tk.rows[0].blocked_reason ?? null,
           ownerAddress: tk.rows[0].owner_address,
           listing: activeListing ? { id: activeListing.id, priceZats: activeListing.price_zats, priceZec: formatZec(BigInt(activeListing.price_zats)), sellerAddress: activeListing.seller_address } : null,
-          offers: offers.map((o) => ({ id: o.id, buyerAddress: o.buyerAddress, priceZec: formatZec(o.priceZats) })),
+          offers: offers.map((o) => ({ id: o.id, buyerAddress: o.buyerAddress, priceZec: formatZec(o.priceZats), validUntil: o.validUntil?.toISOString() ?? null })),
         },
       });
     }
@@ -502,7 +502,7 @@ export function createApp(opts: AppOptions): { server: Server; close(): Promise<
       const n = parseToken(seg[4]);
       const list = await listOffersForToken(db, col.slug, n);
       return sendJson(res, 200, {
-        items: list.map((o) => ({ id: o.id, tokenNumber: o.tokenNumber, buyerAddress: o.buyerAddress, priceZec: formatZec(o.priceZats), status: o.status })),
+        items: list.map((o) => ({ id: o.id, tokenNumber: o.tokenNumber, buyerAddress: o.buyerAddress, priceZec: formatZec(o.priceZats), status: o.status, validUntil: o.validUntil?.toISOString() ?? null })),
       });
     }
 
@@ -511,11 +511,12 @@ export function createApp(opts: AppOptions): { server: Server; close(): Promise<
       limited(orderHour.check(ip));
       const b = (await readJson(req)) as Record<string, unknown> | null;
       if (!b || typeof b !== "object") throw err(400, "BAD_BODY", "JSON object chahiye");
-      const { collection, tokenNumber, buyerAddress, priceZec } = b;
+      const { collection, tokenNumber, buyerAddress, priceZec, durationDays } = b;
       if (typeof collection !== "string" || !SLUG.test(collection)) throw err(400, "BAD_COLLECTION", "collection galat hai");
       if (typeof tokenNumber !== "number" || !Number.isInteger(tokenNumber) || tokenNumber < 1) throw err(400, "BAD_TOKEN", "tokenNumber galat hai");
       if (typeof buyerAddress !== "string" || buyerAddress.length > 100) throw err(400, "BAD_ADDRESS", "buyerAddress galat hai");
       if (typeof priceZec !== "string" || priceZec.length > 30) throw err(400, "BAD_PRICE", "priceZec (string) chahiye");
+      if (durationDays !== undefined && (typeof durationDays !== "number" || !Number.isInteger(durationDays))) throw err(400, "INVALID_DURATION", "durationDays integer hona chahiye");
       let priceZats: bigint;
       try {
         priceZats = parseZec(priceZec);
@@ -531,14 +532,14 @@ export function createApp(opts: AppOptions): { server: Server; close(): Promise<
         }
       }
       try {
-        const o = await createOffer(db, cfg, { slug: collection, tokenNumber, buyerAddress, priceZats, now: now(), tipHeight });
+        const o = await createOffer(db, cfg, { slug: collection, tokenNumber, buyerAddress, priceZats, durationDays: durationDays as number | undefined, now: now(), tipHeight });
         return sendJson(res, 201, {
-          offer: { id: o.id, tokenNumber: o.tokenNumber, priceZec: formatZec(o.priceZats), status: o.status }, orderId: o.orderId,
+          offer: { id: o.id, tokenNumber: o.tokenNumber, priceZec: formatZec(o.priceZats), status: o.status, validUntil: o.validUntil?.toISOString() ?? null }, orderId: o.orderId,
           payAddress: o.payAddress, amountZec: formatZec(o.priceZats), expiresAt: o.expiresAt.toISOString(),
         });
       } catch (e) {
         if (e instanceof OfferError) {
-          const status = e.code === "COLLECTION_NOT_FOUND" ? 404 : e.code === "INVALID_PRICE" || e.code === "INVALID_ADDRESS" ? 400 : 409;
+          const status = e.code === "COLLECTION_NOT_FOUND" ? 404 : e.code === "INVALID_PRICE" || e.code === "INVALID_ADDRESS" || e.code === "INVALID_DURATION" ? 400 : 409;
           throw err(status, e.code, e.message);
         }
         throw e;
@@ -552,7 +553,7 @@ export function createApp(opts: AppOptions): { server: Server; close(): Promise<
       const address = b && typeof b.address === "string" ? b.address : "";
       if (!address) throw err(400, "BAD_ADDRESS", "address chahiye");
       try {
-        if (seg[3] === "accept") await acceptOffer(db, id, address);
+        if (seg[3] === "accept") await acceptOffer(db, id, address, now());
         else if (seg[3] === "reject") await rejectOffer(db, id, address);
         else await cancelOffer(db, id, address);
         return sendJson(res, 200, { ok: true });
@@ -833,7 +834,12 @@ export function createApp(opts: AppOptions): { server: Server; close(): Promise<
         [o.id]
       );
       const items = await describeTokens(tk.rows.map((x) => ({ collection_id: o.collectionId, slug: c.rows[0].slug, cname: c.rows[0].name, token_number: x.token_number })));
-      return sendJson(res, 200, { order: { ...publicOrder(o, c.rows[0], now(), tk.rows.map((x) => x.token_number)), items } });
+      // Offer order: payment ke baad asli deadline offer ki validity hai, 30-min payment window nahi
+      const of = (await db.query<{ id: number; status: string; token_number: number; valid_until: Date | null }>(
+        `SELECT id, status, token_number, valid_until FROM offers WHERE order_id = $1`, [o.id]
+      )).rows[0];
+      const offer = of ? { id: of.id, status: of.status, tokenNumber: of.token_number, validUntil: of.valid_until ? new Date(of.valid_until).toISOString() : null } : null;
+      return sendJson(res, 200, { order: { ...publicOrder(o, c.rows[0], now(), tk.rows.map((x) => x.token_number)), items, offer } });
     }
 
     if (method === "GET" && seg.length === 3 && seg[1] === "wallet") {

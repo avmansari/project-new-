@@ -220,3 +220,52 @@ test("activity feed: offer_made aur offer_accepted log hote hain", async () => {
   assert.ok(kinds.includes("offer_made"));
   assert.ok(kinds.includes("offer_accepted"));
 });
+
+test("offer validity: buyer din chunta hai (1/3/7/30), galat value reject; default 7 din", async () => {
+  const db = await openDb();
+  const chain = new MemChain();
+  const { slug, token } = await seller(db, chain);
+  const t0 = new Date("2026-01-01T00:00:00Z");
+  const def = await createOffer(db, ofcfg, { slug, tokenNumber: token, buyerAddress: buyer(2), priceZats: parseZec("0.5"), now: t0 });
+  assert.equal(def.validUntil!.toISOString(), "2026-01-08T00:00:00.000Z");
+  const three = await createOffer(db, ofcfg, { slug, tokenNumber: token, buyerAddress: buyer(3), priceZats: parseZec("0.5"), durationDays: 3, now: t0 });
+  assert.equal(three.validUntil!.toISOString(), "2026-01-04T00:00:00.000Z");
+  await assert.rejects(
+    createOffer(db, ofcfg, { slug, tokenNumber: token, buyerAddress: buyer(4), priceZats: parseZec("0.5"), durationDays: 2, now: t0 }),
+    (e: unknown) => e instanceof OfferError && e.code === "INVALID_DURATION"
+  );
+  await db.close();
+});
+
+test("offer validity: time khatam => offer expired + escrow refund_needed; usse pehle active rehta hai; expire ke baad accept nahi", async () => {
+  const db = await openDb();
+  const chain = new MemChain();
+  const { owner, slug, token } = await seller(db, chain);
+  const t0 = new Date();
+  const off = await createOffer(db, ofcfg, { slug, tokenNumber: token, buyerAddress: buyer(2), priceZats: parseZec("0.5"), durationDays: 1, now: t0 });
+  chain.pay(off.payAddress, "0.5", 10);
+  await scanOnce(db, chain, scfg);
+  await activatePaidOffers(db);
+
+  // 23 ghante baad: abhi bhi active, list mein dikhta hai
+  await expireStaleOffers(db, new Date(t0.getTime() + 23 * 3600_000));
+  assert.equal((await getOffer(db, off.id))!.status, "active");
+  assert.equal((await listOffersForToken(db, slug, token)).length, 1);
+
+  // Worker ke chalne se pehle bhi deadline ke baad accept nahi ho sakta
+  const late = new Date(t0.getTime() + 25 * 3600_000);
+  await assert.rejects(acceptOffer(db, off.id, owner, late), (e: unknown) => e instanceof OfferError && e.code === "NOT_ACTIVE");
+
+  // 25 ghante baad worker: expired + poora paisa refund
+  assert.equal(await expireStaleOffers(db, late), 1);
+  assert.equal((await getOffer(db, off.id))!.status, "expired");
+  const ord = await getOrder(db, off.orderId!);
+  assert.equal(ord!.status, "refund_needed");
+  assert.equal(ord!.refundDueZats, parseZec("0.5"));
+  // token ka owner nahi badla
+  const own = await db.query<{ owner_address: string }>(`SELECT owner_address FROM tokens WHERE token_number = $1`, [token]);
+  assert.equal(own.rows[0].owner_address, owner);
+  // dobara chalane pe kuch nahi badalta (idempotent)
+  assert.equal(await expireStaleOffers(db, late), 0);
+  await db.close();
+});

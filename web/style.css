@@ -331,3 +331,15 @@ details summary { color: var(--accent-strong); font-weight: 700; }
 .nft-price { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 6px; font-size: 13px; }
 .nft-price .dim { font-size: 11px; }
 @media (max-width: 520px) { .payment-row { grid-template-columns: 1fr auto; } .payment-row > div { grid-column: 1 / -1; grid-row: 2; } .sort-select { width: 100%; } }
+
+/* Offers: validity countdown + duration picker */
+.offer-row { align-items: center; gap: 12px; flex-wrap: wrap; }
+.offer-who { display: grid; gap: 4px; min-width: 0; flex: 1 1 260px; }
+.offer-who .mono { overflow-wrap: anywhere; }
+.offer-price { font-weight: 700; white-space: nowrap; }
+.countdown { color: var(--accent-strong); font-size: 12px; font-variant-numeric: tabular-nums; }
+.countdown.expired { color: var(--bad); }
+.offer-live .countdown { font-size: 15px; font-weight: 700; }
+.offer-form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(150px, auto) auto; gap: 10px; align-items: center; margin-top: 10px; }
+.offer-note { margin: 8px 0 0; font-size: 12px; }
+@media (max-width: 520px) { .offer-form { grid-template-columns: 1fr; } }

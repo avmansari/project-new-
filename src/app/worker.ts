@@ -31,7 +31,7 @@ export async function runTick(db: Db, chain: ChainClient, cfg: WorkerCfg, now: D
   const purchases = await settlePaidPurchases(db);
   const listingsReleased = await releaseStaleListings(db);
   const offersActivated = await activatePaidOffers(db);
-  const offersExpired = await expireStaleOffers(db);
+  const offersExpired = await expireStaleOffers(db, now);
   let track: TrackSummary | null = null;
   try {
     track = await trackRefunds(db, chain, cfg, now);

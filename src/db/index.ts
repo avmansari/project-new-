@@ -326,6 +326,8 @@ CREATE TABLE IF NOT EXISTS offers (
 );
 CREATE INDEX IF NOT EXISTS offers_token_idx ON offers(collection_id, token_number, status);
 CREATE INDEX IF NOT EXISTS offers_buyer_idx ON offers(buyer_address, status);
+-- Offer kitne din valid hai (buyer chunta hai). NULL = purane offers, koi expiry nahi.
+ALTER TABLE offers ADD COLUMN IF NOT EXISTS valid_until TIMESTAMPTZ;
 
 -- Watchlist (per-wallet). Chhota hai, server-side isliye rakha taaki dusre device se bhi dikhe.
 CREATE TABLE IF NOT EXISTS watchlist (

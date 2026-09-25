@@ -19,6 +19,30 @@ import { connectWallet, disconnectWallet, getConnectedAddress, getNoirProvider, 
     return n;
   }
   const clear = (n) => { while (n.firstChild) n.removeChild(n.firstChild); };
+
+  // ---- Live countdown: "Offer expiring in 6d 23h 59m 58s · Fri, 3 Oct 2026, 17:00:00" (har second update) ----
+  const pad2 = (n) => String(n).padStart(2, "0");
+  function fmtLeft(ms) {
+    const t = Math.max(0, Math.floor(ms / 1000));
+    const d = Math.floor(t / 86400), h = Math.floor((t % 86400) / 3600), m = Math.floor((t % 3600) / 60), sec = t % 60;
+    return (d ? d + "d " : "") + ((d || h) ? pad2(h) + "h " : "") + pad2(m) + "m " + pad2(sec) + "s";
+  }
+  function fmtWhen(iso) {
+    return new Date(iso).toLocaleString(undefined, { weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  }
+  function renderCountdown(n) {
+    const left = new Date(n.dataset.until) - Date.now();
+    n.textContent = left > 0 ? n.dataset.prefix + " " + fmtLeft(left) + (n.dataset.showDate ? " · " + fmtWhen(n.dataset.until) : "") : n.dataset.done;
+    n.classList.toggle("expired", left <= 0);
+  }
+  function countdown(untilIso, prefix, doneText, showDate = true) {
+    const n = el("span", { class: "countdown", "data-until": untilIso, "data-prefix": prefix, "data-done": doneText });
+    if (showDate) n.dataset.showDate = "1";
+    renderCountdown(n);
+    return n;
+  }
+  setInterval(() => { for (const n of document.querySelectorAll(".countdown[data-until]")) renderCountdown(n); }, 1000);
+  const OFFER_DAYS = [1, 3, 7, 30], DEFAULT_OFFER_DAYS = 7;
   const show = (...kids) => { clear(main); main.append(...kids.flat().filter(Boolean)); };
 
   async function api(path, opts) {
@@ -264,7 +288,10 @@ import { connectWallet, disconnectWallet, getConnectedAddress, getNoirProvider, 
       const list = el("div", {});
       if (!t.offers.length) list.append(el("p", { class: "dim", text: "Abhi koi offer nahi." }));
       for (const o of t.offers) {
-        const row = el("div", { class: "row" }, el("span", { class: "mono dim", text: o.buyerAddress }), el("span", { text: o.priceZec + " ZEC" }));
+        const row = el("div", { class: "row offer-row" },
+          el("div", { class: "offer-who" }, el("span", { class: "mono dim", text: o.buyerAddress }),
+            o.validUntil ? countdown(o.validUntil, "Offer expiring in", "Offer expired · refund ho raha hai") : null),
+          el("span", { class: "offer-price", text: o.priceZec + " ZEC" }));
         if (isOwner) {
           const acc = el("button", { class: "btn", type: "button", text: "Accept" });
           const rej = el("button", { class: "btn ghost", type: "button", text: "Reject" });
@@ -294,9 +321,11 @@ import { connectWallet, disconnectWallet, getConnectedAddress, getNoirProvider, 
       const parts = [el("h3", { text: "Offers" }), list];
       if (!isOwner && !t.blocked) {
         const price = el("input", { type: "text", placeholder: "Offer amount (ZEC)", autocomplete: "off" });
+        const days = el("select", { class: "offer-duration", "aria-label": "Offer validity" },
+          OFFER_DAYS.map((d) => { const op = el("option", { value: String(d), text: "Valid for " + d + (d === 1 ? " day" : " days") }); if (d === DEFAULT_OFFER_DAYS) op.selected = true; return op; }));
         const btn = el("button", { class: "btn", type: "button", text: "Make an offer" });
         btn.addEventListener("click", async () => {
-          oerr.textContent = ""; btn.disabled = true; price.disabled = true;
+          oerr.textContent = ""; btn.disabled = true; price.disabled = true; days.disabled = true;
           let created = null;
           try {
             const addr = connected;
@@ -305,7 +334,7 @@ import { connectWallet, disconnectWallet, getConnectedAddress, getNoirProvider, 
             if (!provider) throw new Error("Noir Wallet nahi mila");
             if (!/^(?:0|[1-9]\d*)(?:\.\d{1,8})?$/.test(price.value.trim()) || Number(price.value) <= 0) throw new Error("Offer amount valid ZEC amount hona chahiye.");
             oerr.textContent = "Offer order ban raha hai...";
-            const r = await api("/api/offers", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ collection: slug, tokenNumber: Number(n), buyerAddress: addr, priceZec: price.value.trim() }) });
+            const r = await api("/api/offers", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ collection: slug, tokenNumber: Number(n), buyerAddress: addr, priceZec: price.value.trim(), durationDays: Number(days.value) }) });
             created = r;
             oerr.textContent = "Wallet mein " + r.amountZec + " ZEC approve karo...";
             await sendPayment(provider, { to: r.payAddress, amount: r.amountZec });
@@ -314,10 +343,11 @@ import { connectWallet, disconnectWallet, getConnectedAddress, getNoirProvider, 
           } catch (ex) {
             if (created?.offer?.id) await api("/api/offers/" + encodeURIComponent(created.offer.id) + "/cancel", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ address: connected }) }).catch(() => {});
             oerr.textContent = explainError(ex).message;
-            btn.disabled = false; price.disabled = false;
+            btn.disabled = false; price.disabled = false; days.disabled = false;
           }
         });
-        parts.push(el("div", { style: "margin-top:10px" }, price, " ", btn));
+        parts.push(el("div", { class: "offer-form" }, price, days, btn),
+          el("p", { class: "dim offer-note", text: "Offer amount abhi escrow mein jayega. Owner accept kare to NFT aapka; time khatam ho jaye ya aap cancel karo to poora paisa automatic refund." }));
       }
       parts.push(oerr);
       offersBox.append(...parts);
@@ -471,14 +501,39 @@ import { connectWallet, disconnectWallet, getConnectedAddress, getNoirProvider, 
         parts.push(el("div", { class: "msg", text: "Aapki wallet ne payment bhej di hai. Blockchain pe dikhne mein 1-2 minute lagte hain (yahan page apne aap update hota rahega)." }),
           el("div", { class: "dim mono", text: "tx: " + txParam }));
       } else if (o.stage === "awaiting_payment") {
-        const left = Math.max(0, Math.floor((new Date(o.expiresAt) - Date.now()) / 1000));
-        parts.push(el("div", { class: "pay" },
+          parts.push(el("div", { class: "pay" },
           el("div", { class: "dim", text: "Send exactly" }),
           el("div", { class: "big", text: o.amountZec + " ZEC" }),
           el("div", { class: "dim", style: "margin-top:10px", text: "to this address" }),
           el("div", { class: "mono", text: o.payAddress }),
           el("div", { style: "margin-top:10px" }, copyBtn(o.amountZec, "Copy amount"), " ", copyBtn(o.payAddress, "Copy address")),
-          el("div", { class: "dim", style: "margin-top:10px", text: "Time left: " + Math.floor(left / 60) + "m " + (left % 60) + "s. Network fee alag se lagti hai, wo amount ke upar se jaani chahiye." })));
+          el("div", { class: "dim", style: "margin-top:10px" }, countdown(o.expiresAt, "Payment time left:", "Payment ka time khatam", false), ". Network fee alag se lagti hai, wo amount ke upar se jaani chahiye."),
+          o.offer && o.offer.validUntil ? el("div", { class: "dim", style: "margin-top:6px", text: "Payment milte hi offer " + fmtWhen(o.offer.validUntil) + " tak valid rahega." }) : null));
+      }
+      const of = o.offer;
+      if (of && of.status !== "awaiting_payment") {
+        // Offer order: paisa escrow mein aa chuka hai -- ab offer ki apni state dikhao (mint wale steps nahi)
+        parts[1] = el("h1", { text: "Offer · " + o.collectionName + " #" + of.tokenNumber });
+        parts[2] = el("p", { class: "lead", text: "Aapka offer escrow ke saath. Owner accept kare to NFT aapka; warna time khatam hone pe poora paisa wapas." });
+        const tokenLink = el("a", { href: "/token.html?c=" + encodeURIComponent(o.collection) + "&n=" + of.tokenNumber, text: "NFT dekho" });
+        const summary = el("div", { class: "card payment-summary" }, el("div", { class: "dim", text: "Offer amount (escrow)" }), el("div", { class: "payment-amount", text: o.amountZec + " ZEC" }), el("div", { class: "dim", text: "Network: " + siteNetwork }));
+        if (of.status === "active") {
+          parts.push(summary, el("div", { class: "msg ok offer-live" },
+            el("strong", { text: "Offer active ✓" }), el("br"),
+            of.validUntil ? countdown(of.validUntil, "Offer expiring in", "Offer expire ho gaya · refund ho raha hai") : el("span", { text: "Is offer ki koi expiry nahi hai." })),
+            el("p", {}, tokenLink));
+        } else if (of.status === "accepted") {
+          parts.push(summary, el("div", { class: "msg ok", text: "Offer accept ho gaya! NFT #" + of.tokenNumber + " ab aapka hai." }),
+            el("p", {}, tokenLink, " · ", el("a", { href: "/wallet.html?address=" + encodeURIComponent(o.buyerAddress), text: "My NFTs dekho" })));
+        } else {
+          const why = of.status === "expired" ? "Offer ka time khatam ho gaya." : of.status === "rejected" ? "Owner ne offer reject kar diya." : "Aapne offer cancel kar diya.";
+          const refundLine = o.stage === "refunded" ? "Refund bhej diya gaya hai." : "Aapka poora paisa (" + o.amountZec + " ZEC) wapas kiya ja raha hai.";
+          parts.push(summary, el("div", { class: "msg bad", text: why + " " + refundLine }), el("p", {}, tokenLink));
+        }
+        show(parts);
+        if (!["active"].includes(of.status) && o.stage === "refunded") { clearInterval(timer); timer = null; }
+        if (of.status === "accepted") { clearInterval(timer); timer = null; }
+        return;
       }
       if (["awaiting_payment", "payment_seen", "minting", "done"].includes(o.stage)) {
         parts.push(el("div", { class: "payment-layout" }, el("div", { class: "card payment-summary" }, el("div", { class: "dim", text: "Order amount" }), el("div", { class: "payment-amount", text: o.amountZec + " ZEC" }), el("div", { class: "dim", text: "Quantity: " + o.quantity + " · Network: " + siteNetwork })), el("ul", { class: "steps" }, STEPS.map((s, i) => el("li", { class: i < idx ? "done" : i === idx ? "now" : "", text: s })))));

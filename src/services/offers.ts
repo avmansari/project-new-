@@ -19,7 +19,8 @@ export class OfferError extends Error {
       | "NOT_BUYER"
       | "INVALID_PRICE"
       | "INVALID_ADDRESS"
-      | "COLLECTION_FROZEN",
+      | "COLLECTION_FROZEN"
+      | "INVALID_DURATION",
     message: string
   ) {
     super(message);
@@ -38,16 +39,23 @@ export interface Offer {
   feeBps: number;
   status: OfferStatus;
   orderId: string | null;
+  /** Is waqt ke baad offer apne aap expire + refund. null = purana offer (koi expiry nahi). */
+  validUntil: Date | null;
 }
 
+/** Buyer inme se chunta hai ki offer kitne din valid rahe. */
+export const OFFER_DURATION_DAYS = [1, 3, 7, 30] as const;
+export const DEFAULT_OFFER_DAYS = 7;
+
 const OFFER_COLS = `o.id, o.collection_id, c.slug, c.name AS collection_name, o.token_number, o.buyer_address,
-  o.price_zats::text AS price_zats, o.fee_bps, o.status, o.order_id`;
+  o.price_zats::text AS price_zats, o.fee_bps, o.status, o.order_id, o.valid_until`;
 
 function mapOffer(r: any): Offer {
   return {
     id: r.id, collectionId: r.collection_id, slug: r.slug, collectionName: r.collection_name,
     tokenNumber: r.token_number, buyerAddress: r.buyer_address, priceZats: BigInt(r.price_zats),
     feeBps: r.fee_bps, status: r.status, orderId: r.order_id ?? null,
+    validUntil: r.valid_until ? new Date(r.valid_until) : null,
   };
 }
 
@@ -57,11 +65,16 @@ type OfCfg = Pick<AppConfig, "network" | "walletXpub" | "orderTtlMinutes" | "mar
 export async function createOffer(
   db: Db,
   cfg: OfCfg,
-  input: { slug: string; tokenNumber: number; buyerAddress: string; priceZats: bigint; now?: Date; tipHeight?: number }
+  input: { slug: string; tokenNumber: number; buyerAddress: string; priceZats: bigint; durationDays?: number; now?: Date; tipHeight?: number }
 ): Promise<Offer & { payAddress: string; expiresAt: Date }> {
   const now = input.now ?? new Date();
   if (!isAddressForNetwork(input.buyerAddress, cfg.network)) throw new OfferError("INVALID_ADDRESS", "buyer address galat hai");
   if (input.priceZats <= 0n) throw new OfferError("INVALID_PRICE", "price > 0 honi chahiye");
+  const days = input.durationDays ?? DEFAULT_OFFER_DAYS;
+  if (!(OFFER_DURATION_DAYS as readonly number[]).includes(days)) {
+    throw new OfferError("INVALID_DURATION", `offer ki validity ${OFFER_DURATION_DAYS.join("/")} din mein se honi chahiye`);
+  }
+  const validUntil = new Date(now.getTime() + days * 86_400_000);
 
   return db.transaction(async (tx) => {
     const c = await tx.query<{ id: number; status: string; payout_frozen: boolean }>(`SELECT id, status, payout_frozen FROM collections WHERE slug = $1`, [input.slug]);
@@ -88,9 +101,9 @@ export async function createOffer(
       [orderId, colId, input.buyerAddress, payAddress, idx, input.priceZats.toString(), expiresAt.toISOString(), now.toISOString()]
     );
     const ins = await tx.query<{ id: number }>(
-      `INSERT INTO offers (collection_id, token_number, buyer_address, price_zats, fee_bps, order_id)
-       VALUES ($1,$2,$3,$4::bigint,$5,$6) RETURNING id`,
-      [colId, input.tokenNumber, input.buyerAddress, input.priceZats.toString(), cfg.marketplaceFeeBps, orderId]
+      `INSERT INTO offers (collection_id, token_number, buyer_address, price_zats, fee_bps, order_id, valid_until)
+       VALUES ($1,$2,$3,$4::bigint,$5,$6,$7::timestamptz) RETURNING id`,
+      [colId, input.tokenNumber, input.buyerAddress, input.priceZats.toString(), cfg.marketplaceFeeBps, orderId, validUntil.toISOString()]
     );
     await tx.query(`INSERT INTO order_events (order_id, event, detail) VALUES ($1,'created',$2)`, [orderId, `offer#${ins.rows[0].id} pay=${payAddress}`]);
     await logActivity(tx as unknown as Db, colId, "offer_made", { tokenNumber: input.tokenNumber, amountZats: input.priceZats, address: input.buyerAddress });
@@ -110,23 +123,41 @@ export async function activatePaidOffers(db: Db): Promise<number> {
   return r.rows.length;
 }
 
-/** Payment order expire/refund ho gaya to offer bhi khatam maano (paisa kabhi mila hi nahi). */
-export async function expireStaleOffers(db: Db): Promise<number> {
+/**
+ * Do tarah ke offers khatam karta hai:
+ *  1. Payment order expire/refund ho gaya (paisa kabhi mila hi nahi).
+ *  2. Active offer ki validity (valid_until) nikal gayi -- escrow ka paisa buyer ko refund.
+ */
+export async function expireStaleOffers(db: Db, now: Date = new Date()): Promise<number> {
   const r = await db.query(
     `UPDATE offers o SET status = 'expired', updated_at = now()
      FROM orders ord WHERE o.order_id = ord.id AND o.status = 'awaiting_payment' AND ord.status IN ('expired','refund_needed','refunded')
      RETURNING o.id`
   );
-  return r.rows.length;
+  const timedOut = await db.transaction(async (tx) => {
+    const due = await tx.query<{ id: number; order_id: string; collection_id: number; token_number: number; buyer_address: string }>(
+      `SELECT id, order_id, collection_id, token_number, buyer_address FROM offers
+       WHERE status = 'active' AND valid_until IS NOT NULL AND valid_until <= $1::timestamptz FOR UPDATE`,
+      [now.toISOString()]
+    );
+    for (const o of due.rows) {
+      await tx.query(`UPDATE offers SET status = 'expired', updated_at = now() WHERE id = $1`, [o.id]);
+      await tx.query(`UPDATE orders SET status = 'refund_needed', refund_due_zats = received_zats WHERE id = $1 AND status = 'paid'`, [o.order_id]);
+      await logActivity(tx as unknown as Db, o.collection_id, "offer_rejected", { tokenNumber: o.token_number, address: o.buyer_address, detail: "expired" });
+    }
+    return due.rows.length;
+  });
+  return r.rows.length + timedOut;
 }
 
 /** Owner offer accept karta hai: ownership BADALTI hai, seller ko payout, baaki active offers reject+refund. */
-export async function acceptOffer(db: Db, offerId: number, ownerAddress: string): Promise<{ tokenNumber: number }> {
+export async function acceptOffer(db: Db, offerId: number, ownerAddress: string, now: Date = new Date()): Promise<{ tokenNumber: number }> {
   return db.transaction(async (tx) => {
     const o = await tx.query<any>(`SELECT ${OFFER_COLS}, o.order_id FROM offers o JOIN collections c ON c.id = o.collection_id WHERE o.id = $1 FOR UPDATE`, [offerId]);
     if (!o.rows[0]) throw new OfferError("OFFER_NOT_FOUND", "offer nahi mili");
     const offer = mapOffer(o.rows[0]);
     if (offer.status !== "active") throw new OfferError("NOT_ACTIVE", `offer '${offer.status}' hai, accept nahi ho sakti`);
+    if (offer.validUntil && offer.validUntil <= now) throw new OfferError("NOT_ACTIVE", "offer ki validity khatam ho chuki hai, buyer ko refund ho raha hai");
 
     const tk = await tx.query<{ owner_address: string; blocked: boolean }>(
       `SELECT owner_address, blocked FROM tokens WHERE collection_id = $1 AND token_number = $2 AND voided_at IS NULL FOR UPDATE`,
@@ -197,7 +228,8 @@ export const cancelOffer = (db: Db, offerId: number, buyerAddress: string) => cl
 export async function listOffersForToken(db: Db, slug: string, tokenNumber: number): Promise<Offer[]> {
   const r = await db.query(
     `SELECT ${OFFER_COLS} FROM offers o JOIN collections c ON c.id = o.collection_id
-     WHERE c.slug = $1 AND o.token_number = $2 AND o.status = 'active' ORDER BY o.price_zats DESC`,
+     WHERE c.slug = $1 AND o.token_number = $2 AND o.status = 'active' AND (o.valid_until IS NULL OR o.valid_until > now())
+     ORDER BY o.price_zats DESC`,
     [slug, tokenNumber]
   );
   return r.rows.map(mapOffer);
