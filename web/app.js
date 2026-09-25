@@ -64,7 +64,8 @@ import { connectWallet, disconnectWallet, getConnectedAddress, getNoirProvider, 
   }
 
   const recent = {
-    get() { try { return JSON.parse(localStorage.getItem("recentOrders") || "[]"); } catch { return []; } },
+    // Sirf valid entries (order id string) -- purane build ne offer ka number id save kar diya tha, us se page crash hota tha
+    get() { try { const l = JSON.parse(localStorage.getItem("recentOrders") || "[]"); return Array.isArray(l) ? l.filter((o) => o && typeof o.id === "string" && o.id) : []; } catch { return []; } },
     add(o) { try { const l = [o, ...this.get().filter((x) => x.id !== o.id)].slice(0, 10); localStorage.setItem("recentOrders", JSON.stringify(l)); } catch { /* ignore */ } },
   };
 
@@ -308,7 +309,7 @@ import { connectWallet, disconnectWallet, getConnectedAddress, getNoirProvider, 
             created = r;
             oerr.textContent = "Wallet mein " + r.amountZec + " ZEC approve karo...";
             await sendPayment(provider, { to: r.payAddress, amount: r.amountZec });
-            recent.add({ id: r.offer.id, name: "Offer · " + t.name, quantity: 1 });
+            recent.add({ id: r.orderId, name: "Offer · " + t.name, quantity: 1 });
             location.href = "/order.html?id=" + encodeURIComponent(r.orderId);
           } catch (ex) {
             if (created?.offer?.id) await api("/api/offers/" + encodeURIComponent(created.offer.id) + "/cancel", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ address: connected }) }).catch(() => {});
