@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <rect width="400" height="400" fill="#171b22"/>
+  <rect x="8" y="8" width="384" height="384" rx="16" fill="none" stroke="#262c36" stroke-width="2" stroke-dasharray="8 8"/>
+  <text x="200" y="215" text-anchor="middle" font-family="system-ui, sans-serif" font-size="96" fill="#f5b83d">?</text>
+  <text x="200" y="265" text-anchor="middle" font-family="system-ui, sans-serif" font-size="18" fill="#8b93a3">Hidden until reveal</text>
+</svg>
