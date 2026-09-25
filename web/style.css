@@ -1,3 +1,6 @@
+/* `hidden` attribute hamesha jeete (.btn jaise display rules ise override na karein) */
+[hidden] { display: none !important; }
+
 :root {
   --bg: #080b12;
   --bg-soft: #0d111a;
@@ -116,6 +119,8 @@ h3 { letter-spacing: -.02em; }
 
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px; }
 .grid.nfts { grid-template-columns: repeat(auto-fill, minmax(178px, 1fr)); }
+/* Khaali grid ka message poori width le, ek column mein na tootey */
+.grid > p { grid-column: 1 / -1; }
 .card, .nft {
   background: linear-gradient(145deg, rgba(24,31,46,.92), rgba(15,20,31,.92));
   border: 1px solid var(--line);
