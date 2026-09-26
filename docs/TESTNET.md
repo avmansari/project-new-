@@ -13,11 +13,20 @@ Pehle testnet → sab theek chala → phir mainnet.
 
 (Official source: https://docs.robinhood.com/chain/connecting — deploy se pehle ek baar match kar lena.)
 
-## Step 1: Wallet ready karo
-1. MetaMask mein **naya alag wallet/account** banao, sirf testnet ke liye. Asli paise wala wallet use mat karna.
-2. Faucet page pe "Add chain" se Robinhood Chain Testnet add karo.
-3. Faucet se testnet ETH lo (deploy ke liye thoda sa kaafi hai).
-4. MetaMask → Account details → **Show private key** → copy.
+## Step 1: Wallet ready karo (private key)
+
+**Option A (sabse aasaan): naya wallet command se banao**
+```bash
+npm run new-wallet
+```
+Yeh ek naya wallet banata hai, key seedha `contracts/.env` mein save kar deta hai, aur address print karta hai. Us address pe faucet se testnet ETH le lo. Bas.
+
+**Option B: MetaMask se key nikaalo**
+1. MetaMask mein **naya alag account** banao, sirf testnet ke liye. Asli paise wala account kabhi use mat karna.
+2. Account ke aage ⋮ → **Account details** → **Show private key** → password daalo → copy.
+3. `contracts/.env` mein `PRIVATE_KEY=0x...` ke aage paste karo (`0x` se shuru honi chahiye; nahi hai toh aage `0x` laga do).
+
+Dono case mein faucet se ETH lo: https://faucet.testnet.chain.robinhood.com
 
 ## Step 2: Deploy
 ```bash
@@ -26,7 +35,7 @@ npm install                                  # agar pehle nahi kiya
 copy contracts\.env.example contracts\.env   # Windows
 # cp contracts/.env.example contracts/.env   # Mac/Linux
 ```
-`contracts/.env` kholo aur bharo:
+`contracts/.env` kholo aur bharo (Option A use kiya toh PRIVATE_KEY already bhari hogi):
 ```
 PRIVATE_KEY=0x<tera testnet private key>
 TOKEN_NAME=Robin PoW
