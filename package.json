@@ -1,0 +1,12 @@
+{
+  "name": "robinhood-pow-inscription",
+  "private": true,
+  "workspaces": ["contracts", "miner-cli", "web", "shared"],
+  "scripts": {
+    "test": "npm run test -w contracts && npm run test -w shared",
+    "compile": "npm run compile -w contracts",
+    "deploy:testnet": "npm run deploy:rh-testnet -w contracts",
+    "web": "npm run dev -w web",
+    "mine": "npm start -w miner-cli"
+  }
+}

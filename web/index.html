@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0b0f0c" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <title>PoW Miner · Robinhood Chain</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>⛏️ <span id="sym">XYZ</span> PoW Miner</h1>
+      <p class="sub">Mine blocks with your CPU / GPU / phone. First to solve the block mints the inscription.</p>
+    </header>
+
+    <main>
+      <section class="card" id="network">
+        <h2>Network</h2>
+        <div class="grid">
+          <div><label>Block height</label><b id="height">–</b></div>
+          <div><label>Difficulty</label><b id="difficulty">–</b></div>
+          <div><label>Required zero bits</label><b id="bits">–</b></div>
+          <div><label>Block reward</label><b id="reward">–</b></div>
+          <div><label>Minted supply</label><b id="supply">–</b></div>
+          <div><label>Last block</label><b id="lastBlock">–</b></div>
+        </div>
+        <p class="mono small" id="challenge">challenge: –</p>
+      </section>
+
+      <section class="card" id="walletCard">
+        <h2>Wallet</h2>
+        <div class="row">
+          <button id="btnInjected">Connect wallet</button>
+          <button id="btnBurner" class="secondary">Use burner (auto-mint)</button>
+        </div>
+        <div id="walletInfo" class="hidden">
+          <p>Miner address: <span class="mono" id="minerAddr"></span> <span class="tag" id="walletKind"></span></p>
+          <p id="burnerNote" class="small hidden">
+            Burner wallet lives in this browser. Send it a little ETH for gas: <span class="mono" id="burnerGas"></span> ETH now.
+            <button id="btnExport" class="link">export key</button>
+          </p>
+          <label for="payout">Send minted tokens to</label>
+          <input id="payout" class="mono" placeholder="0x… (defaults to miner address)" />
+          <p>Balance: <b id="balance">–</b></p>
+        </div>
+      </section>
+
+      <section class="card" id="minerCard">
+        <h2>Miner</h2>
+        <div class="row">
+          <label>CPU threads <input type="range" id="threads" min="0" max="16" value="2" /> <b id="threadsVal">2</b></label>
+        </div>
+        <div class="row">
+          <label><input type="checkbox" id="useGpu" /> Use GPU (WebGPU) <span id="gpuStatus" class="small"></span></label>
+        </div>
+        <div class="row">
+          <label><input type="checkbox" id="autoMint" /> Auto-mint as soon as a block is solved</label>
+        </div>
+        <div class="row">
+          <button id="btnStart" disabled>Start mining</button>
+          <button id="btnStop" class="secondary" disabled>Stop</button>
+        </div>
+        <div class="grid">
+          <div><label>Hashrate</label><b id="hashrate">0 H/s</b></div>
+          <div><label>Total hashes</label><b id="totalHashes">0</b></div>
+          <div><label>Expected time / block</label><b id="eta">–</b></div>
+          <div><label>Status</label><b id="status">idle</b></div>
+        </div>
+      </section>
+
+      <section class="card hidden" id="solutionCard">
+        <h2>🎉 Block solved!</h2>
+        <p>You solved block <b id="solHeight"></b>. Your hash has <b id="solBits"></b> leading zero bits (required <b id="solReq"></b>).</p>
+        <p class="big">You can mint <b id="solReward"></b></p>
+        <p class="mono small" id="solDigest"></p>
+        <div class="row">
+          <button id="btnMint">Mint now</button>
+          <button id="btnDiscard" class="secondary">Discard</button>
+        </div>
+        <p class="small">Hurry — if someone else submits this block first, your solution expires and mining restarts on the next block.</p>
+      </section>
+
+      <section class="card">
+        <h2>My blocks</h2>
+        <ul id="myBlocks" class="list"><li class="muted">None yet</li></ul>
+      </section>
+
+      <section class="card">
+        <h2>Recent blocks</h2>
+        <ul id="recent" class="list"><li class="muted">Loading…</li></ul>
+      </section>
+    </main>
+    <footer class="small muted">Contract: <span class="mono" id="contractAddr"></span></footer>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

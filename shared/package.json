@@ -1,0 +1,10 @@
+{
+  "name": "@pow/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "pow-core.js",
+  "exports": { ".": "./pow-core.js", "./keccak-wgsl": "./keccak-wgsl.js" },
+  "scripts": { "test": "node --test" },
+  "dependencies": { "@noble/hashes": "^1.8.0" }
+}
