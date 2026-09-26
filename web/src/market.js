@@ -1,11 +1,12 @@
-// Marketplace tab: on-chain order book, traded ONLY in whole lots (1 lot = 5,000 tokens), price per lot in ETH.
-import { parseEther } from "viem";
+// Marketplace tab: on-chain order book, traded ONLY in whole lots (1 lot = 5,000 tokens).
+// Prices are shown and entered in US dollars; on-chain they are ETH (converted at the current ETH/USD price).
 import * as chain from "./chain.js";
-import { $, store, on, emit, fmtAmt, fmtEth, short, errMsg } from "./store.js";
+import { $, store, on, emit, fmtAmt, short, errMsg } from "./store.js";
 import { indexer } from "./indexer.js";
 import { candleChart, onResize } from "./charts.js";
-import { usdOf, ethUsd } from "./price.js";
+import { usd, usdToWei, ethUsd, ethUsdCached } from "./price.js";
 import { initSwap } from "./swap.js";
+import { track } from "./analytics.js";
 
 let swapUi = { refresh() {} };
 
@@ -35,13 +36,6 @@ const parseLots = (v) => {
   const s = String(v).trim();
   return /^\d+$/.test(s) ? BigInt(s) : -1n;
 };
-const parsePrice = (v) => {
-  try {
-    return parseEther(String(v).trim() || "0");
-  } catch {
-    return -1n;
-  }
-};
 
 // ---------------- data ----------------
 async function refresh() {
@@ -70,12 +64,9 @@ function render() {
   const bids = open.filter((o) => o.isBid).sort((a, b) => cmp(b.pricePerLot, a.pricePerLot));
 
   // stats
-  $("mkFloor").textContent = asks.length ? fmtEth(asks[0].pricePerLot) : "–";
-  $("mkFloorUsd").textContent = asks.length ? usdOf(asks[0].pricePerLot) : "";
-  $("mkBestBid").textContent = bids.length ? fmtEth(bids[0].pricePerLot) : "–";
-  $("mkBestBidUsd").textContent = bids.length ? usdOf(bids[0].pricePerLot) : "";
-  $("mkLast").textContent = state.trades.length ? fmtEth(state.trades[0].pricePerLot) : "–";
-  $("mkLastUsd").textContent = state.trades.length ? usdOf(state.trades[0].pricePerLot) : "";
+  $("mkFloor").textContent = asks.length ? usd(asks[0].pricePerLot) : "–";
+  $("mkBestBid").textContent = bids.length ? usd(bids[0].pricePerLot) : "–";
+  $("mkLast").textContent = state.trades.length ? usd(state.trades[0].pricePerLot) : "–";
   $("mkFee").textContent = `${Number(state.feeBps) / 100}%`;
   state.asks = asks;
   updateQuickBuy();
@@ -83,14 +74,14 @@ function render() {
 
   const row = (o, action) => `
     <tr class="${state.selected?.id === o.id ? "sel" : ""}">
-      <td class="${o.isBid ? "up" : "down"}">${fmtAmt(o.pricePerLot, 6)}</td>
+      <td class="${o.isBid ? "up" : "down"}">${usd(o.pricePerLot)}</td>
       <td>${o.lots}</td>
-      <td>${fmtAmt(chain.costOf(o.lots, o.pricePerLot), 6)}</td>
+      <td>${usd(chain.costOf(o.lots, o.pricePerLot))}</td>
       <td class="mono small">${mine(o) ? "you" : short(o.maker)}</td>
       <td class="small muted">${timeLeft(o)}</td>
       <td>${mine(o) ? `<button class="mini secondary" data-cancel="${o.id}">Cancel</button>` : `<button class="mini" data-pick="${o.id}">${action}</button>`}</td>
     </tr>`;
-  const head = `<tr><th>Price / lot (ETH)</th><th>Lots</th><th>Total ETH</th><th>By</th><th>Expires</th><th></th></tr>`;
+  const head = `<tr><th>Price / lot</th><th>Lots</th><th>Total</th><th>By</th><th>Expires</th><th></th></tr>`;
   $("mkAsks").innerHTML = head + (asks.map((o) => row(o, "Buy")).join("") || `<tr><td colspan="6" class="muted">No sell orders</td></tr>`);
   $("mkBids").innerHTML = head + (bids.map((o) => row(o, "Sell")).join("") || `<tr><td colspan="6" class="muted">No buy orders</td></tr>`);
 
@@ -100,7 +91,7 @@ function render() {
     ? my
         .map((o) => {
           const exp = isExpired(o);
-          return `<li>${o.isBid ? "🟢 Buying" : "🔴 Selling"} ${lotsLabel(o.lots)} @ ${fmtEth(o.pricePerLot)} / lot · <span class="muted">${exp ? "expired" : `expires: ${timeLeft(o)}`}</span> <button class="mini secondary" data-cancel="${o.id}">${exp ? "Reclaim" : "Cancel"}</button></li>`;
+          return `<li>${o.isBid ? "🟢 Buying" : "🔴 Selling"} ${lotsLabel(o.lots)} @ ${usd(o.pricePerLot)} / lot · <span class="muted">${exp ? "expired" : `expires: ${timeLeft(o)}`}</span> <button class="mini secondary" data-cancel="${o.id}">${exp ? "Reclaim" : "Cancel"}</button></li>`;
         })
         .join("")
     : `<li class="muted">${store.wallet ? "No open orders" : "Connect your wallet"}</li>`;
@@ -118,7 +109,7 @@ function render() {
           const l = byId.get(BigInt(f.listingId));
           const value = chain.costOf(f.lots, f.pricePerLot);
           const fee = (value * state.feeBps) / 10_000n;
-          return `<li>${lotsLabel(f.lots)} @ <b>${fmtEth(f.pricePerLot)}</b> / lot (you ask ${fmtEth(l.pricePerLot)}) · you get ${fmtEth(value - fee)} · by <span class="mono small">${short(f.buyer)}</span> · <span class="muted">${timeLeft(f)}</span> <button class="mini" data-accept="${f.id}"${f.lots > l.lots ? " disabled title=\"listing has fewer lots now\"" : ""}>Accept</button></li>`;
+          return `<li>${lotsLabel(f.lots)} @ <b>${usd(f.pricePerLot)}</b> / lot (you ask ${usd(l.pricePerLot)}) · you get ${usd(value - fee)} · by <span class="mono small">${short(f.buyer)}</span> · <span class="muted">${timeLeft(f)}</span> <button class="mini" data-accept="${f.id}"${f.lots > l.lots ? " disabled title=\"listing has fewer lots now\"" : ""}>Accept</button></li>`;
         })
         .join("")
     : `<li class="muted">No offers on your listings</li>`;
@@ -127,7 +118,7 @@ function render() {
     ? myOffers
         .map((f) => {
           const exp = isExpired(f);
-          return `<li>Offer on listing #${f.listingId}: ${lotsLabel(f.lots)} @ ${fmtEth(f.pricePerLot)} / lot · <span class="muted">${exp ? "expired" : `expires: ${timeLeft(f)}`}</span> <button class="mini secondary" data-${exp ? "reclaim-offer" : "cancel-offer"}="${f.id}">${exp ? "Reclaim" : "Cancel"}</button></li>`;
+          return `<li>Offer on listing #${f.listingId}: ${lotsLabel(f.lots)} @ ${usd(f.pricePerLot)} / lot · <span class="muted">${exp ? "expired" : `expires: ${timeLeft(f)}`}</span> <button class="mini secondary" data-${exp ? "reclaim-offer" : "cancel-offer"}="${f.id}">${exp ? "Reclaim" : "Cancel"}</button></li>`;
         })
         .join("")
     : `<li class="muted">${store.wallet ? "You have no open offers" : "Connect your wallet"}</li>`;
@@ -138,7 +129,7 @@ function render() {
         .map((t) => {
           const url = chain.explorerTx(t.tx);
           const who = t.src === "dex" ? `DEX ${t.buyer === chain.POOL_CONTRACT?.address ? "sell" : "buy"} by ${short(t.buyer === chain.POOL_CONTRACT?.address ? t.seller : t.buyer)}` : `${short(t.seller)} → ${short(t.buyer)}`;
-          return `<li>${lotsLabel(t.lots)} @ ${fmtEth(t.pricePerLot)} / lot · <span class="mono small">${who}</span> ${url ? `· <a href="${url}" target="_blank" rel="noopener">tx</a>` : ""}</li>`;
+          return `<li>${lotsLabel(t.lots)} @ ${usd(t.pricePerLot)} / lot · <span class="mono small">${who}</span> ${url ? `· <a href="${url}" target="_blank" rel="noopener">tx</a>` : ""}</li>`;
         })
         .join("")
     : `<li class="muted">No trades yet</li>`;
@@ -159,7 +150,7 @@ function pickOrder(id) {
   state.selected = o;
   $("mkTrade").classList.remove("hidden");
   $("mkTradeTitle").textContent = o.isBid ? `Sell lots into buy order #${o.id}` : `Buy lots from sell order #${o.id}`;
-  $("mkTradeInfo").textContent = `${fmtEth(o.pricePerLot)} per lot · ${lotsLabel(o.lots)} available`;
+  $("mkTradeInfo").textContent = `${usd(o.pricePerLot)} per lot · ${lotsLabel(o.lots)} available`;
   $("mkTradeLots").value = "1";
   $("mkTradeGo").textContent = o.isBid ? "Sell lots" : "Buy lots";
   // offers are only for sell listings
@@ -191,8 +182,8 @@ function updateTradeCost() {
   const fee = (eth * state.feeBps) / 10_000n;
   const tokens = `${fmtAmt(lots * state.lotSize, 0)} ${store.symbol}`;
   $("mkTradeCost").textContent = o.isBid
-    ? `Sell ${lotsLabel(lots)} (${tokens}) → you receive ${fmtEth(eth - fee)} ${usdOf(eth - fee)} (fee ${fmtEth(fee)})`
-    : `Buy ${lotsLabel(lots)} (${tokens}) → you pay ${fmtEth(eth)} ${usdOf(eth)}`;
+    ? `Sell ${lotsLabel(lots)} (${tokens}) → you receive ${usd(eth - fee)} (fee ${usd(fee)})`
+    : `Buy ${lotsLabel(lots)} (${tokens}) → you pay ${usd(eth)}`;
 }
 
 async function doTrade() {
@@ -210,6 +201,7 @@ async function doTrade() {
     if (o.isBid) await chain.sellIntoBid(store.wallet, o.id, lots, setStatus);
     else await chain.buyFromListing(store.wallet, o.id, lots, o.pricePerLot);
     closeTrade(`✓ Trade done: ${lotsLabel(lots)}`);
+    track("Trade", { side: o.isBid ? "sell" : "buy", lots: String(lots) });
   });
 }
 
@@ -228,10 +220,10 @@ function setSide(side) {
 
 function updateCreateTotal() {
   const lots = parseLots($("mkLots").value);
-  const price = parsePrice($("mkPrice").value);
+  const price = usdToWei($("mkPrice").value);
   $("mkTotal").textContent =
     lots > 0n && price > 0n
-      ? `${fmtEth(chain.costOf(lots, price))} ${usdOf(chain.costOf(lots, price))} for ${lotsLabel(lots)} (${fmtAmt(lots * state.lotSize, 0)} ${store.symbol})`
+      ? `${usd(chain.costOf(lots, price))} for ${lotsLabel(lots)} (${fmtAmt(lots * state.lotSize, 0)} ${store.symbol})`
       : "–";
   if (state.side === "sell") $("mkLotsHint").textContent = store.wallet ? `You have ${lotsLabel(myLots())}` : "";
   else $("mkLotsHint").textContent = "";
@@ -241,9 +233,9 @@ async function createOrder() {
   if (state.busy) return;
   if (!store.wallet) return alert("Please click 'Connect wallet' at the top first.");
   const lots = parseLots($("mkLots").value);
-  const price = parsePrice($("mkPrice").value);
+  const price = usdToWei($("mkPrice").value);
   if (lots <= 0n) return setStatus("Enter whole lots (1, 2, 3…)");
-  if (price <= 0n) return setStatus("Enter a price per lot (ETH)");
+  if (price === null) return setStatus(ethUsdCached() ? "Enter a price per lot in $" : "Dollar price not available right now, try again in a moment");
   if (state.side === "sell" && lots > myLots()) return setStatus(`You only have ${lotsLabel(myLots())}`);
   if (state.side === "buy" && chain.costOf(lots, price) > store.ethBalance) return setStatus("Not enough ETH");
 
@@ -254,6 +246,7 @@ async function createOrder() {
     else await chain.placeBid(store.wallet, lots, price, expiry);
     $("mkLots").value = "1";
     setStatus(state.side === "sell" ? "✓ Sell order is live" : "✓ Buy order is live");
+    track("Order created", { side: state.side });
   });
 }
 
@@ -301,14 +294,15 @@ async function makeOffer() {
   if (!o || o.isBid || state.busy) return;
   if (!store.wallet) return alert("Please click 'Connect wallet' at the top first.");
   const lots = parseLots($("mkTradeLots").value);
-  const price = parsePrice($("mkOfferPrice").value);
+  const price = usdToWei($("mkOfferPrice").value);
   if (lots <= 0n || lots > o.lots) return setStatus(`Enter 1–${o.lots} whole lots`);
-  if (price <= 0n) return setStatus("Enter your offer price per lot (ETH)");
+  if (price === null) return setStatus(ethUsdCached() ? "Enter your offer price per lot in $" : "Dollar price not available right now, try again in a moment");
   if (chain.costOf(lots, price) > store.ethBalance) return setStatus("Not enough ETH");
   await busy(async () => {
     setStatus("Confirm in your wallet…");
     await chain.makeOffer(store.wallet, o.id, lots, price, expiryFrom($("mkOfferExpiry").value));
-    closeTrade(`✓ Offer sent: ${lotsLabel(lots)} @ ${fmtEth(price)} / lot. The seller can accept it; your ETH is locked until then.`);
+    track("Offer made");
+    closeTrade(`✓ Offer sent: ${lotsLabel(lots)} @ ${usd(price)} / lot. The seller can accept it; your payment is locked until then.`);
   });
 }
 
@@ -371,8 +365,7 @@ function renderHistory() {
   const now = Date.now();
   const day = state.trades.filter((t) => t.t >= now - 86400_000);
   const vol = day.reduce((s, t) => s + t.ethPaid, 0n);
-  $("mk24Vol").textContent = fmtEth(vol, 4);
-  $("mk24VolUsd").textContent = usdOf(vol);
+  $("mk24Vol").textContent = usd(vol);
   if (day.length) {
     const prices = day.map((t) => t.pricePerLot);
     const hi = prices.reduce((a, b) => (b > a ? b : a));
@@ -409,9 +402,11 @@ function renderChart() {
     }
   }
   const candles = [...map.values()];
-  const fmt = (v) => `${+v.toPrecision(4)} ETH`;
-  candleChart($("chPrice"), candles, { yFmt: fmt, volFmt: (v) => `${+v.toPrecision(4)} ETH`, empty: "No trades in this range yet" });
-  $("chPriceNote").textContent = candles.length ? `${list.length} trade(s) · ${bucket >= 86400 ? "1 day" : bucket / 3600 + "h"} candles · blue = up, red = down` : "";
+  // candles are kept in ETH on-chain; shown in $ at today's ETH price
+  const p = ethUsdCached();
+  const fmt = p ? (v) => `$${(v * p).toLocaleString("en", { maximumFractionDigits: v * p < 1 ? 4 : 2 })}` : (v) => `${+v.toPrecision(4)} ETH`;
+  candleChart($("chPrice"), candles, { yFmt: fmt, volFmt: fmt, empty: "No trades in this range yet" });
+  $("chPriceNote").textContent = candles.length ? `${list.length} trade(s) · ${bucket >= 86400 ? "1 day" : bucket / 3600 + "h"} candles · blue = up, red = down${p ? " · $ at today's ETH price" : ""}` : "";
 }
 
 // ---------------- quick buy ----------------
@@ -438,7 +433,7 @@ function updateQuickBuy() {
   const got = want - missing;
   const avg = total / got;
   $("qbPreview").textContent =
-    `${lotsLabel(got)} from ${plan.length} listing(s) · avg ${fmtEth(avg)} / lot · total ${fmtEth(total)} ${usdOf(total)}` +
+    `${lotsLabel(got)} from ${plan.length} listing(s) · avg ${usd(avg)} / lot · total ${usd(total)}` +
     (missing > 0n ? ` · only ${lotsLabel(got)} available` : "");
 }
 
@@ -502,7 +497,7 @@ export function initMarket() {
   on("wallet", render);
   on("balances:updated", () => {
     $("mkBal").textContent = store.wallet ? lotsLabel(myLots()) : "–";
-    $("mkBalEth").textContent = store.wallet ? fmtAmt(store.ethBalance, 5) : "–";
+    $("mkBalEth").textContent = store.wallet ? usd(store.ethBalance) : "–";
     updateCreateTotal();
   });
   setSide("sell");

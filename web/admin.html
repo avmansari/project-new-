@@ -12,7 +12,7 @@
     <header class="top">
       <div class="brand">⛏️ <span class="sym">XYZ</span> · Owner dashboard</div>
       <div class="wallet">
-        <a href="/" class="small">← back to app</a>
+        <a href="/app.html" class="small">← back to app</a>
         <button id="btnConnect">Connect wallet</button>
       </div>
     </header>
@@ -50,6 +50,37 @@
           <div id="chRevenue" class="chart"></div>
         </section>
 
+        <section class="card hidden warn-card" id="adOwed">
+          <h2>⚠️ Fees waiting to be delivered</h2>
+          <p class="small" id="adOwedText"></p>
+          <button id="adOwedGo">Send them to the fee wallet</button>
+        </section>
+
+        <section class="card">
+          <div class="card-head">
+            <h2>Alerts</h2>
+            <label class="small"><input type="checkbox" id="alNotify" /> Browser notification for new alerts</label>
+          </div>
+          <div class="row alert-controls">
+            <div class="seg small-seg" id="alType">
+              <button data-al="all" class="active">All</button>
+              <button data-al="big">Big trades</button>
+              <button data-al="fee">Fee income</button>
+              <button data-al="claim">Claims</button>
+              <button data-al="offer">Offers</button>
+            </div>
+            <label class="small">Sort
+              <select id="alSort" class="field select inline">
+                <option value="new">Newest first</option>
+                <option value="amount">Largest first</option>
+              </select>
+            </label>
+            <label class="small">Big trade ≥ $ <input id="alMin" class="field inline" inputmode="decimal" value="100" /></label>
+          </div>
+          <ul id="alList" class="list alerts"></ul>
+          <p class="small muted" id="alCount"></p>
+        </section>
+
         <section class="card">
           <h2>Users & volume</h2>
           <div class="grid">
@@ -79,6 +110,7 @@
           <label for="adRecipient">Fee wallet (all contracts)</label>
           <div class="row nowrap"><input id="adRecipient" class="field mono" placeholder="0x…" /><button id="adRecipientGo" class="secondary">Update</button></div>
           <p class="small" id="adStatus"></p>
+          <p class="small" id="adAnalytics"></p>
         </section>
       </div>
     </main>

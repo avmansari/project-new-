@@ -295,7 +295,13 @@ web/src/indexer.js                       ← in-browser event indexer (cached, i
 web/src/stats.js                         ← Stats tab: tiles, leaderboard, charts
 web/src/swap.js                          ← DEX swap + liquidity UI
 web/src/share.js                         ← share card image + Share on X
-web/src/admin.js, web/admin.html         ← owner dashboard
+web/src/admin.js, web/admin.html         ← owner dashboard (revenue, alerts, settings)
+web/index.html, src/landing.*            ← landing page + FAQ
+web/app.html                             ← the app
+web/terms.html, src/terms-gate.js        ← terms page + I-agree gate
+web/src/leaderboard.js                   ← top 100 holders
+web/src/analytics.js                     ← Plausible events
+contracts/test/Security.test.js          ← regressions for the security review (docs/AUDIT.md)
 indexer/                                 ← hosted Ponder indexer (events API + GraphQL)
 web/src/charts.js                        ← SVG line + candlestick charts
 web/src/price.js                         ← ETH/USD price for USD estimates
@@ -303,3 +309,15 @@ contracts/scripts/set-fee.js             ← `npm run set-fee`: keep the claim f
 contracts/scripts/eth-price.js           ← ETH/USD helper for fee scripts
 miner-cli/index.js, worker.js            ← headless miner
 ```
+
+---
+
+## 14. Pages, onboarding and admin extras
+
+- **Landing page (`/`):** hero, live network numbers, how it works, tokenomics, fees up front, FAQ, "Launch app".
+- **Terms gate (`/app.html`):** on the first visit a short risk summary appears; the user must tick "I have read and agree" and click **I agree** to continue. Acceptance is stored per browser; bump `TERMS_VERSION` in `web/src/terms-gate.js` when `terms.html` changes to ask again. `terms.html` is a template: have it checked by a lawyer.
+- **Marketplace in US dollars:** all prices, totals, stats and the chart are shown in $, and users enter prices in $. On-chain prices stay in ETH: the $ price is converted with the live ETH/USD rate (Coinbase, then CoinGecko) when the order is created, and the wallet shows the exact ETH before signing. If the rate can't be loaded, the UI falls back to ETH.
+- **Benchmark (Mine tab):** 10-second test with the selected CPU threads / GPU → hashrate, expected time per block at today's difficulty, and share of the network.
+- **Leaderboard tab:** top 100 holders (wallet balance + lots they have listed), with your rank.
+- **Owner dashboard alerts:** big trades (threshold in $), fee income (claims / marketplace / DEX), claims and offers; filter, sort by newest or largest, optional browser notifications while the dashboard is open. A warning box appears if any fees could not be delivered to the fee wallet (see AUDIT H-1) with a button to deliver them.
+- **Analytics:** Plausible (privacy-friendly, no cookies) when `VITE_PLAUSIBLE_DOMAIN` is set. Custom events: Wallet connected, Mining started, Block claimed, Order created, Trade, Offer made, Benchmark run. The owner dashboard links to the Plausible dashboard.

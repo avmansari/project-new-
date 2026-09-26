@@ -69,7 +69,7 @@ wrote ../miner-cli/deployment.json
 
 ## Step 3: Test on your PC
 ```bash
-npm run web          # http://localhost:5173
+npm run web          # http://localhost:5173 (landing) → Launch app → http://localhost:5173/app.html
 ```
 - **Connect wallet** (on the testnet, with a little testnet ETH).
 - **Start mining** → block solved → **Claim tokens** → confirm in wallet → 5,000 tokens in your wallet; the tx shows on the explorer.
@@ -97,7 +97,10 @@ CLI too: put `PRIVATE_KEY=...` in `miner-cli/.env`, then `npm run mine`.
 - [ ] Stats tab: leaderboard and charts fill in; Marketplace: price chart, 24h stats, quick buy; Transfer: your activity
 - [ ] Order expiry (list with 24h, check it disappears after 24h, Reclaim) and Make offer → Accept
 - [ ] Share card after a claim: Share on X / Download work on phone + desktop
-- [ ] Owner dashboard `/admin.html` shows revenue; hosted indexer (`indexer/README.md`) running and `VITE_INDEXER_URL` set
+- [ ] Terms popup appears on the first visit and only once after I agree
+- [ ] Marketplace shows $ prices; a $ listing is paid correctly in ETH (check the wallet popup)
+- [ ] Benchmark and Leaderboard (top 100 holders) work
+- [ ] Owner dashboard `/admin.html` shows revenue and alerts; hosted indexer (`indexer/README.md`) running and `VITE_INDEXER_URL` set
 - [ ] Note the gas cost per claim and per trade (how much ETH users need)
 - [ ] Tokens show up in wallets ("Add token to wallet" button, or import the contract address)
 - [ ] GPU names show correctly on different machines

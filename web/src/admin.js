@@ -5,7 +5,9 @@ import { indexer } from "./indexer.js";
 import { lineChart, onResize } from "./charts.js";
 import { ethUsd, usdOf } from "./price.js";
 import { pickWallet, restoreWallet, rememberWallet } from "./wallets.js";
-import { $, fmtEth, fmtAmt, short, errMsg } from "./store.js";
+import { $, fmtEth, fmtAmt, fmtDur, short, errMsg, escapeHtml } from "./store.js";
+import { usd, ethUsdCached } from "./price.js";
+import { analyticsUrl } from "./analytics.js";
 
 const DAY = 86400_000;
 let rangeDays = 1;
@@ -79,8 +81,84 @@ async function render() {
   const pts = [...days.entries()].sort((a, b) => a[0] - b[0]).map(([d, v]) => ({ t: d, y: Number(v) / 1e18 }));
   lineChart($("chRevenue"), pts, { label: "Revenue", yFmt: (v) => `${+v.toPrecision(4)} ETH`, empty: "Needs revenue on at least 2 different days" });
 
+  renderAlerts();
   $("adWallet").textContent = fmtEth(await chain.ethBalanceWei(info.feeRecipient), 5);
   $("adWalletAddr").textContent = short(info.feeRecipient);
+}
+
+// ---------------- alerts ----------------
+const AL_KEY = "pow-admin-alerts";
+const alPrefs = (() => {
+  try {
+    return JSON.parse(localStorage.getItem(AL_KEY)) || {};
+  } catch {
+    return {};
+  }
+})();
+const saveAl = () => {
+  try {
+    localStorage.setItem(AL_KEY, JSON.stringify(alPrefs));
+  } catch {}
+};
+let alType = "all";
+let seen = null; // alert ids already shown (for new-alert notifications)
+
+function alerts() {
+  const out = [];
+  const p = ethUsdCached();
+  const minUsd = Number(alPrefs.min ?? 100);
+  const mk = (e, type, amount, text) => ({ id: `${e.block}-${e.logIndex}-${type}`, type, amount, text, tx: e.tx, block: e.block, logIndex: e.logIndex, t: e.args.timestamp ? Number(e.args.timestamp) * 1000 : null });
+  for (const e of indexer.events("token", "BlockMined")) {
+    out.push(mk(e, "claim", e.args.feePaid ?? 0n, `⛏️ Block #${e.args.height} claimed by ${short(e.args.miner)}`));
+    if (e.args.feePaid > 0n) out.push(mk(e, "fee", e.args.feePaid, `💰 Claim fee +${usd(e.args.feePaid)} (block #${e.args.height})`));
+  }
+  for (const e of indexer.events("market", "Trade")) {
+    const a = e.args;
+    const valueUsd = p ? (Number(a.ethPaid) / 1e18) * p : null;
+    if (valueUsd !== null && valueUsd >= minUsd)
+      out.push(mk(e, "big", a.ethPaid, `🐳 Big trade ${usd(a.ethPaid)}: ${a.lots} lot(s) @ ${usd(a.pricePerLot)} · ${short(a.seller)} → ${short(a.buyer)}`));
+    if (a.fee > 0n) out.push(mk(e, "fee", a.fee, `💰 Marketplace fee +${usd(a.fee)} (trade ${usd(a.ethPaid)})`));
+  }
+  for (const e of indexer.events("market", "OfferMade")) {
+    const a = e.args;
+    const total = a.lots * a.pricePerLot;
+    out.push(mk(e, "offer", total, `💬 Offer ${usd(total)}: ${a.lots} lot(s) @ ${usd(a.pricePerLot)} on listing #${a.listingId} by ${short(a.buyer)}`));
+  }
+  for (const e of indexer.events("pool", "Swap")) {
+    if (e.args.protocolFee > 0n) out.push(mk(e, "fee", e.args.protocolFee, `💰 DEX fee +${usd(e.args.protocolFee)}`));
+  }
+  return out;
+}
+
+function renderAlerts() {
+  const all = alerts();
+  const list = all.filter((a) => alType === "all" || a.type === alType);
+  if ($("alSort").value === "amount") list.sort((a, b) => (a.amount === b.amount ? 0 : a.amount < b.amount ? 1 : -1));
+  else list.sort((a, b) => (a.block === b.block ? b.logIndex - a.logIndex : a.block < b.block ? 1 : -1));
+  const tag = { big: "big trade", fee: "fee", claim: "claim", offer: "offer" };
+  $("alList").innerHTML = list.length
+    ? list
+        .slice(0, 200)
+        .map((a) => {
+          const url = chain.explorerTx(a.tx);
+          const when = a.t ? `${fmtDur(Math.max(0, (Date.now() - a.t) / 1000))} ago` : `block ${a.block}`;
+          return `<li><span class="al-tag">${tag[a.type]}</span><span>${escapeHtml(a.text)}</span><span class="al-when">${when}${url ? ` · <a href="${url}" target="_blank" rel="noopener">tx</a>` : ""}</span></li>`;
+        })
+        .join("")
+    : `<li class="muted">No alerts${alType === "big" && !ethUsdCached() ? " (big trades need the live $ price)" : ""}</li>`;
+  $("alCount").textContent = `${list.length} alert(s)${list.length > 200 ? " · showing 200" : ""}`;
+
+  // browser notification for alerts that arrived while the dashboard is open
+  const ids = new Set(all.map((a) => a.id));
+  if (seen && alPrefs.notify && "Notification" in window && Notification.permission === "granted") {
+    const fresh = all.filter((a) => !seen.has(a.id) && a.type !== "claim");
+    for (const a of fresh.slice(0, 3)) {
+      try {
+        new Notification("Owner alert", { body: a.text, tag: a.id });
+      } catch {}
+    }
+  }
+  seen = ids;
 }
 
 async function loadInfo() {
@@ -89,6 +167,14 @@ async function loadInfo() {
     `Claim fee: ${fmtEth(info.mintFee, 8)} ${usdOf(info.mintFee)} · marketplace fee: ${Number(info.marketFee ?? 0) / 100}% · ` +
     (chain.hasPool ? `DEX fee: ${Number(info.poolFee ?? 0) / 100}% (+0.3% LPs) · ` : "") +
     `fee wallet: ${short(info.feeRecipient)} · owner: ${short(info.tokenOwner)}`;
+  // H-1 safety net: fees that could not be pushed to the fee wallet
+  const owed = info.feesOwed;
+  const totalOwed = owed.token + owed.market + owed.pool;
+  $("adOwed").classList.toggle("hidden", totalOwed === 0n);
+  if (totalOwed > 0n)
+    $("adOwedText").textContent = `${fmtEth(totalOwed, 6)} of fees could not be sent to the fee wallet (it rejected ETH). Make sure the fee wallet can receive ETH, then click below.`;
+  const a = analyticsUrl();
+  $("adAnalytics").innerHTML = a ? `📈 Visitors & mining analytics: <a href="${a}" target="_blank" rel="noopener">open Plausible dashboard</a>` : "📈 Analytics is off (set VITE_PLAUSIBLE_DOMAIN to turn it on).";
 }
 
 function allowed(addr) {
@@ -118,14 +204,45 @@ async function act(label, fn) {
   try {
     status(`${label}: confirm in your wallet…`);
     await fn();
+    await loadInfo(); // refresh numbers first, then report
     status(`✓ ${label} done`);
-    await loadInfo();
   } catch (e) {
     status(`${label} failed: ${errMsg(e)}`);
   }
 }
 
 const pctToBps = (v) => BigInt(Math.round(Number(v) * 100));
+
+// alerts controls
+document.querySelectorAll("[data-al]").forEach((b) => {
+  b.onclick = () => {
+    alType = b.dataset.al;
+    document.querySelectorAll("[data-al]").forEach((x) => x.classList.toggle("active", x === b));
+    renderAlerts();
+  };
+});
+$("alSort").value = alPrefs.sort ?? "new";
+$("alMin").value = alPrefs.min ?? 100;
+$("alNotify").checked = !!alPrefs.notify && "Notification" in window && Notification.permission === "granted";
+$("alSort").onchange = () => {
+  alPrefs.sort = $("alSort").value;
+  saveAl();
+  renderAlerts();
+};
+$("alMin").onchange = () => {
+  alPrefs.min = Number($("alMin").value) || 0;
+  saveAl();
+  renderAlerts();
+};
+$("alNotify").onchange = async () => {
+  if ($("alNotify").checked && "Notification" in window) $("alNotify").checked = (await Notification.requestPermission()) === "granted";
+  alPrefs.notify = $("alNotify").checked;
+  saveAl();
+};
+$("adOwedGo").onclick = () =>
+  act("Fee delivery", async () => {
+    for (const c of ["token", "market", "pool"]) if (info.feesOwed[c] > 0n) await chain.adminCall(wallet, c, "withdrawFees", []);
+  });
 
 $("btnConnect").onclick = async () => {
   const picked = await pickWallet();

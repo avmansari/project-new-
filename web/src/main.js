@@ -7,8 +7,13 @@ import { initTransfer } from "./transfer.js";
 import { initMarket } from "./market.js";
 import { pickWallet, restoreWallet, rememberWallet } from "./wallets.js";
 import { initStats } from "./stats.js";
+import { initLeaderboard } from "./leaderboard.js";
 import { indexer } from "./indexer.js";
 import { ethUsd } from "./price.js";
+import { track } from "./analytics.js";
+import { requireTerms } from "./terms-gate.js";
+
+requireTerms();
 
 // ---------- balances ----------
 async function loadBalances() {
@@ -43,6 +48,7 @@ async function useProvider(picked, silent = false) {
     setWallet({ ...store.wallet, address: addr });
   });
   setWallet(w);
+  if (!silent) track("Wallet connected", { wallet: picked.name || "unknown" });
 }
 
 function disconnect() {
@@ -68,7 +74,8 @@ $("btnConnect").onclick = async () => {
 restoreWallet().then((picked) => picked && useProvider(picked, true).catch(() => {}));
 
 // ---------- tabs ----------
-const TABS = ["mine", "transfer", "market", "stats"];
+const TABS = ["mine", "transfer", "market", "leaderboard", "stats"];
+let leaderboard;
 let market;
 function showTab(name) {
   if (!TABS.includes(name)) name = "mine";
@@ -76,6 +83,7 @@ function showTab(name) {
     $(`tab-${t}`).classList.toggle("hidden", t !== name);
     document.querySelector(`[data-tab="${t}"]`).classList.toggle("active", t === name);
   }
+  if (name === "leaderboard") leaderboard.show();
   if (name === "market") market.show();
   else market.hide();
   if (location.hash !== `#${name}`) history.replaceState(null, "", `#${name}`);
@@ -88,6 +96,7 @@ const refreshMine = initMine();
 initTransfer();
 market = initMarket();
 initStats();
+leaderboard = initLeaderboard();
 indexer.start();
 ethUsd().then(() => emit("balances:updated"));
 setInterval(ethUsd, 60_000);

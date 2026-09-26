@@ -6,6 +6,12 @@ contract MockPriceFeed {
     int256 public answer;
     uint256 public updatedAt;
 
+    uint8 public decimals = 8;
+
+    function setDecimals(uint8 d) external {
+        decimals = d;
+    }
+
     function set(int256 _answer, uint256 _updatedAt) external {
         answer = _answer;
         updatedAt = _updatedAt;

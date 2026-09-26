@@ -46,6 +46,8 @@ contract TokenPool {
     address public owner;
     address public feeRecipient;
     uint256 public protocolFeeBps;
+    uint256 public feesOwed; // protocol fees that could not be pushed to feeRecipient
+    uint256 private constant FEE_PUSH_GAS = 100_000;
 
     event Swap(
         address indexed trader,
@@ -60,6 +62,9 @@ contract TokenPool {
     event LiquidityAdded(address indexed provider, uint256 ethAmount, uint256 tokenAmount, uint256 liquidity);
     event LiquidityRemoved(address indexed provider, uint256 ethAmount, uint256 tokenAmount, uint256 liquidity);
     event FeeUpdated(uint256 protocolFeeBps, address feeRecipient);
+    event FeeDeferred(uint256 amount);
+    event FeesWithdrawn(address to, uint256 amount);
+    event OwnershipTransferred(address previousOwner, address newOwner);
 
     error BadParams();
     error Expired();
@@ -137,7 +142,7 @@ contract TokenPool {
         reserveToken -= out;
 
         if (!token.transfer(msg.sender, out)) revert TokenTransferFailed();
-        if (fee > 0) _sendEth(feeRecipient, fee);
+        if (fee > 0) _payFee(fee);
         if (msg.value > total) _sendEth(msg.sender, msg.value - total);
         emit Swap(msg.sender, true, lots, total, fee, reserveToken, reserveEth, block.timestamp);
     }
@@ -153,7 +158,7 @@ contract TokenPool {
         reserveEth -= net + fee;
 
         _sendEth(msg.sender, net);
-        if (fee > 0) _sendEth(feeRecipient, fee);
+        if (fee > 0) _payFee(fee);
         emit Swap(msg.sender, false, lots, net, fee, reserveToken, reserveEth, block.timestamp);
     }
 
@@ -226,7 +231,16 @@ contract TokenPool {
     function transferOwnership(address newOwner) external {
         if (msg.sender != owner) revert NotOwner();
         if (newOwner == address(0)) revert BadParams();
+        emit OwnershipTransferred(owner, newOwner);
         owner = newOwner;
+    }
+
+    /// @notice Send any deferred protocol fees to feeRecipient (anyone can call).
+    function withdrawFees() external nonReentrant {
+        uint256 amount = feesOwed;
+        feesOwed = 0;
+        _sendEth(feeRecipient, amount);
+        emit FeesWithdrawn(feeRecipient, amount);
     }
 
     // ------------------------------------------------------------------
@@ -286,6 +300,14 @@ contract TokenPool {
         balanceOf[from] -= value;
         balanceOf[to] += value;
         emit Transfer(from, to, value);
+    }
+
+    function _payFee(uint256 amount) internal {
+        (bool ok, ) = feeRecipient.call{value: amount, gas: FEE_PUSH_GAS}("");
+        if (!ok) {
+            feesOwed += amount;
+            emit FeeDeferred(amount);
+        }
     }
 
     function _sendEth(address to, uint256 value) internal {

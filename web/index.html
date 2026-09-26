@@ -4,345 +4,100 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0b0f0c" />
+    <meta name="description" content="Mine the XYZ inscription token with your CPU, GPU or phone, straight from the browser. Proof-of-Work on Robinhood Chain." />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <title>PoW Miner · Robinhood Chain</title>
+    <title>PoW Miner · Mine from your browser</title>
     <link rel="stylesheet" href="/src/style.css" />
+    <link rel="stylesheet" href="/src/landing.css" />
   </head>
-  <body>
+  <body class="landing">
     <header class="top">
-      <div class="brand">⛏️ <span class="sym">XYZ</span></div>
-      <nav class="tabs">
-        <button data-tab="mine" class="active">Mine</button>
-        <button data-tab="transfer">Transfer</button>
-        <button data-tab="market">Marketplace</button>
-        <button data-tab="stats">Stats</button>
+      <a class="brand" href="/">⛏️ <span class="sym">XYZ</span></a>
+      <nav class="lnav small">
+        <a href="#how">How it works</a>
+        <a href="#tokenomics">Tokenomics</a>
+        <a href="#faq">FAQ</a>
       </nav>
-      <div class="wallet">
-        <span id="hdrBal" class="small muted hidden"></span>
-        <button id="btnConnect">Connect wallet</button>
-      </div>
+      <div class="wallet"><a class="btn" href="/app.html">Launch app</a></div>
     </header>
 
     <main>
-      <!-- ===================== MINE ===================== -->
-      <div id="tab-mine">
-        <p class="sub">Mine blocks with your CPU / GPU / phone. The first to solve a block claims <b>5,000 <span class="sym">XYZ</span></b>.</p>
-
-        <section class="card">
-          <h2>Your device</h2>
-          <div class="grid">
-            <div><label>GPU</label><b id="gpuName">detecting…</b> <button id="gpuEdit" class="link small">change</button></div>
-            <div><label>CPU</label><b id="cpuName">–</b></div>
-          </div>
-          <p class="small muted" id="gpuApi"></p>
-          <details class="small muted"><summary>GPU details</summary><pre class="mono" id="gpuRaw"></pre></details>
-        </section>
-
-        <section class="card">
-          <h2>Network</h2>
-          <div class="grid">
-            <div><label>Block height</label><b id="height">–</b></div>
-            <div><label>Difficulty</label><b id="difficulty">–</b></div>
-            <div><label>Required zero bits</label><b id="bits">–</b></div>
-            <div><label>Block reward</label><b id="reward">–</b></div>
-            <div><label>Minted supply</label><b id="supply">–</b></div>
-            <div><label>Last block</label><b id="lastBlock">–</b></div>
-          </div>
-        </section>
-
-        <section class="card">
-          <h2>Miner</h2>
-          <div class="row">
-            <label>CPU threads <input type="range" id="threads" min="0" max="16" value="2" /> <b id="threadsVal">2</b></label>
-          </div>
-          <div class="row">
-            <label><input type="checkbox" id="useGpu" /> Use GPU (WebGPU) <span id="gpuStatus" class="small"></span></label>
-          </div>
-          <div class="row">
-            <label><input type="checkbox" id="autoClaim" /> Auto-claim (wallet opens as soon as a block is found)</label>
-          </div>
-          <div class="row">
-            <label><input type="checkbox" id="soundOn" /> Sound</label>
-            <label><input type="checkbox" id="notifyOn" /> Notification (when the tab is in the background)</label>
-          </div>
-          <div class="row">
-            <button id="btnStart">Start mining</button>
-            <button id="btnStop" class="secondary" disabled>Stop</button>
-          </div>
-          <div class="grid">
-            <div><label>Hashrate</label><b id="hashrate">0 H/s</b></div>
-            <div><label>Total hashes</label><b id="totalHashes">0</b></div>
-            <div><label>Expected time / block</label><b id="eta">–</b></div>
-            <div><label>Status</label><b id="status">idle</b></div>
-          </div>
-        </section>
-
-        <section class="card hidden" id="solutionCard">
-          <h2>🎉 Block solved!</h2>
-          <p>You mined block <b id="solHeight"></b>. Difficulty: <b id="solReq"></b> zero bits required, your hash has <b id="solBits"></b>.</p>
-          <p class="big">You can claim: <b id="solReward"></b></p>
-          <p class="mono small" id="solDigest"></p>
-          <div class="row">
-            <button id="btnClaim">Claim tokens</button>
-            <button id="btnDiscard" class="secondary">Discard</button>
-          </div>
-          <p class="small">Click Claim → approve in your wallet → tokens go straight to your wallet. Be quick: if someone else claims this block first, your solution expires.</p>
-        </section>
-
-        <section class="card hidden share-card" id="shareCard">
-          <div class="card-head"><h2>Share your block 🎉</h2><button id="shareClose" class="mini secondary">✕</button></div>
-          <img id="shareImg" alt="Share card: the block you mined" />
-          <div class="row">
-            <button id="shareX">Share on X</button>
-            <button id="shareNative" class="secondary hidden">Share…</button>
-            <button id="shareDownload" class="secondary">Download image</button>
-          </div>
-          <p class="small muted">On desktop, "Share on X" opens the post and saves the image: attach it to your post. On phones, "Share…" sends the image straight to the X app.</p>
-        </section>
-
-        <section class="card">
-          <h2>My blocks</h2>
-          <ul id="myBlocks" class="list"><li class="muted">None yet</li></ul>
-        </section>
-
-        <section class="card">
-          <h2>Recent blocks</h2>
-          <ul id="recent" class="list"><li class="muted">Loading…</li></ul>
-        </section>
-      </div>
-
-      <!-- ===================== TRANSFER ===================== -->
-      <div id="tab-transfer" class="hidden">
-        <section class="card">
-          <h2>Send <span class="sym">XYZ</span></h2>
-          <p>Balance: <b id="txBalance">–</b></p>
-          <label for="txTo">To address</label>
-          <input id="txTo" class="field mono" placeholder="0x…" autocomplete="off" />
-          <label for="txAmount">Amount</label>
-          <div class="row nowrap">
-            <input id="txAmount" class="field" inputmode="decimal" placeholder="0.0" />
-            <button id="txMax" class="secondary">Max</button>
-          </div>
-          <div class="row">
-            <button id="txSend">Send</button>
-            <button id="txWatch" class="secondary">Add token to wallet</button>
-          </div>
-          <p class="small" id="txStatus"></p>
-        </section>
-        <section class="card">
-          <h2>Your activity</h2>
-          <div class="seg small-seg" id="actFilter">
-            <button data-act="all" class="active">All</button>
-            <button data-act="claim">Claims</button>
-            <button data-act="transfer">Transfers</button>
-            <button data-act="trade">Trades</button>
-          </div>
-          <ul id="activity" class="list"><li class="muted">Connect your wallet to see your history</li></ul>
-        </section>
-      </div>
-
-      <!-- ===================== MARKETPLACE ===================== -->
-      <div id="tab-market" class="hidden">
-        <section class="card">
-          <div class="grid">
-            <div><label>Floor (lowest sell) / lot</label><b id="mkFloor">–</b><div class="small muted" id="mkFloorUsd"></div></div>
-            <div><label>Best bid / lot</label><b id="mkBestBid">–</b><div class="small muted" id="mkBestBidUsd"></div></div>
-            <div><label>Last trade / lot</label><b id="mkLast">–</b><div class="small muted" id="mkLastUsd"></div></div>
-            <div><label>24h change</label><b id="mk24Change">–</b></div>
-            <div><label>24h volume</label><b id="mk24Vol">–</b><div class="small muted" id="mk24VolUsd"></div></div>
-            <div><label>24h high / low</label><b id="mk24HL">–</b></div>
-            <div><label>Holders</label><b id="mkHolders">–</b></div>
-            <div><label>Fee</label><b id="mkFee">–</b></div>
-            <div><label>Your lots</label><b id="mkBal">–</b></div>
-            <div><label>Your ETH</label><b id="mkBalEth">–</b></div>
-          </div>
-          <p class="small muted">Live · updates every 4 s. <b>1 lot = <span class="lotsize">5,000</span> <span class="sym">XYZ</span></b> · whole lots only · price = ETH per lot. USD values are estimates.</p>
-        </section>
-
-        <section class="card">
-          <div class="card-head">
-            <h2>Price per lot</h2>
-            <div class="seg small-seg">
-              <button data-prange="24h" class="active">24h</button>
-              <button data-prange="7d">7d</button>
-              <button data-prange="30d">30d</button>
-              <button data-prange="all">All</button>
-            </div>
-          </div>
-          <div id="chPrice" class="chart"></div>
-          <p class="small muted" id="chPriceNote"></p>
-        </section>
-
-        <section class="card">
-          <h2>Quick buy</h2>
-          <p class="small muted">Buys the cheapest listings for you in one transaction.</p>
-          <label for="qbLots">Lots to buy</label>
-          <div class="row nowrap stepper">
-            <button id="qbLotsMinus" class="secondary">−</button>
-            <input id="qbLots" class="field" inputmode="numeric" value="1" />
-            <button id="qbLotsPlus" class="secondary">+</button>
-          </div>
-          <p id="qbPreview" class="small">–</p>
-          <button id="qbGo">Quick buy</button>
-        </section>
-
-        <section class="card" id="swapCard">
-          <div class="card-head">
-            <h2>Instant swap (DEX pool)</h2>
-            <div class="seg small-seg">
-              <button id="swBuySide" class="active">Buy</button>
-              <button id="swSellSide">Sell</button>
-            </div>
-          </div>
-          <p class="small muted" id="swPoolInfo">Loading pool…</p>
-          <label for="swLots">Lots</label>
-          <div class="row nowrap stepper">
-            <button id="swLotsMinus" class="secondary">−</button>
-            <input id="swLots" class="field" inputmode="numeric" value="1" />
-            <button id="swLotsPlus" class="secondary">+</button>
-          </div>
-          <p id="swQuote" class="small">–</p>
-          <button id="swGo">Buy instantly</button>
-          <p class="small muted">No waiting for a seller: the pool trades with you at the current price (1% slippage protection).</p>
-        </section>
-
-        <section class="card" id="lpCard">
-          <h2>Pool liquidity</h2>
-          <p class="small" id="lpInfo">–</p>
-          <label for="lpEth">Add liquidity: ETH amount</label>
-          <input id="lpEth" class="field" inputmode="decimal" placeholder="e.g. 0.5" />
-          <div id="lpFirstRow" class="hidden">
-            <label for="lpLots">Lots to pair (you're the first provider: this sets the starting price)</label>
-            <input id="lpLots" class="field" inputmode="numeric" placeholder="e.g. 4" />
-          </div>
-          <p class="small" id="lpPreview">–</p>
-          <div class="row">
-            <button id="lpAdd">Add liquidity</button>
-            <button id="lpRemove" class="secondary">Remove all my liquidity</button>
-          </div>
-          <p class="small muted">Liquidity providers earn 0.3% of every swap. You can remove your share any time.</p>
-        </section>
-
-        <section class="card hidden" id="mkTrade">
-          <h2 id="mkTradeTitle"></h2>
-          <p class="small" id="mkTradeInfo"></p>
-          <label for="mkTradeLots">Lots</label>
-          <div class="row nowrap stepper">
-            <button id="mkTradeLotsMinus" class="secondary">−</button>
-            <input id="mkTradeLots" class="field" inputmode="numeric" value="1" />
-            <button id="mkTradeLotsPlus" class="secondary">+</button>
-            <button id="mkTradeMax" class="secondary">Max</button>
-          </div>
-          <p><b id="mkTradeCost">–</b></p>
-          <div class="row">
-            <button id="mkTradeGo">Confirm</button>
-            <button id="mkTradeClose" class="secondary">Close</button>
-          </div>
-          <div id="mkOfferBox" class="offer-box">
-            <p class="small"><b>Or make an offer</b> at your own price. Your ETH is locked; the seller can accept, or you can cancel any time.</p>
-            <div class="row nowrap">
-              <input id="mkOfferPrice" class="field" inputmode="decimal" placeholder="Your price per lot (ETH)" />
-              <select id="mkOfferExpiry" class="field select">
-              <option value="0">Never</option>
-              <option value="86400" selected>24 hours</option>
-              <option value="604800">7 days</option>
-              <option value="2592000">30 days</option>
-              </select>
-            </div>
-            <button id="mkOfferGo" class="secondary">Make offer</button>
-          </div>
-        </section>
-
-        <div class="two">
-          <section class="card">
-            <h2>🔴 Sell orders <span class="small muted">(you can buy)</span></h2>
-            <div class="tablewrap"><table id="mkAsks" class="book"></table></div>
-          </section>
-          <section class="card">
-            <h2>🟢 Buy orders <span class="small muted">(you can sell)</span></h2>
-            <div class="tablewrap"><table id="mkBids" class="book"></table></div>
-          </section>
+      <section class="hero">
+        <p class="eyebrow">Proof-of-Work · Robinhood Chain</p>
+        <h1>Mine <span class="sym">XYZ</span> with the device you already have.</h1>
+        <p class="lead">
+          CPU, GPU or phone: open the site, connect a wallet and start mining in the browser. The first miner to solve a block claims
+          <b>5,000 <span class="sym">XYZ</span></b> straight into their wallet. No pre-mine, no sign-up.
+        </p>
+        <div class="row">
+          <a class="btn big" href="/app.html">Start mining</a>
+          <a class="btn secondary big" href="#how">How it works</a>
         </div>
-
-        <section class="card">
-          <h2>Create order</h2>
-          <div class="seg">
-            <button id="mkSideSell" class="active">Sell</button>
-            <button id="mkSideBuy">Buy</button>
-          </div>
-          <label for="mkLots">Lots (1 lot = <span class="lotsize">5,000</span> <span class="sym">XYZ</span>)</label>
-          <div class="row nowrap stepper">
-            <button id="mkLotsMinus" class="secondary">−</button>
-            <input id="mkLots" class="field" inputmode="numeric" value="1" />
-            <button id="mkLotsPlus" class="secondary">+</button>
-          </div>
-          <p class="small muted" id="mkLotsHint"></p>
-          <label for="mkPrice">Price per lot (ETH)</label>
-          <input id="mkPrice" class="field" inputmode="decimal" placeholder="e.g. 0.05" />
-          <label for="mkExpiry">Expires after</label>
-          <select id="mkExpiry" class="field select">
-              <option value="0">Never</option>
-              <option value="86400">24 hours</option>
-              <option value="604800" selected>7 days</option>
-              <option value="2592000">30 days</option>
-          </select>
-          <p>Total: <b id="mkTotal">–</b></p>
-          <button id="mkCreate">List for sale</button>
-          <p class="small muted" id="mkCreateHint"></p>
-        </section>
-
-        <p class="small" id="mkStatus"></p>
-
-        <section class="card">
-          <h2>My open orders</h2>
-          <ul id="mkMine" class="list"></ul>
-          <h3>Offers on my listings</h3>
-          <ul id="mkOffersIn" class="list"></ul>
-          <h3>My offers</h3>
-          <ul id="mkOffersMine" class="list"></ul>
-          <p class="small muted">Expired orders/offers can't be filled. Click Reclaim to get your lots/ETH back (anyone can also return them to you).</p>
-        </section>
-
-        <section class="card">
-          <h2>Recent trades</h2>
-          <ul id="mkTrades" class="list"></ul>
-        </section>
-      </div>
-      <!-- ===================== STATS ===================== -->
-      <div id="tab-stats" class="hidden">
-        <section class="card">
-          <h2>Network</h2>
-          <div class="grid">
-            <div><label>Blocks mined</label><b id="stBlocks">–</b></div>
-            <div><label>Supply mined</label><b id="stMined">–</b></div>
-            <div><label>Blocks left</label><b id="stLeft">–</b></div>
-            <div><label>Avg block time (last 20)</label><b id="stAvgTime">–</b></div>
-            <div><label>Network hashrate (est.)</label><b id="stHashrate">–</b></div>
-            <div><label>Miners (24h)</label><b id="stMiners24">–</b></div>
-          </div>
-        </section>
-
-        <div class="row range-row">
-          <span class="small muted">Range</span>
-          <div class="seg small-seg">
-            <button data-range="24h" class="active">24h</button>
-            <button data-range="7d">7d</button>
-            <button data-range="all">All time</button>
-          </div>
+        <div class="grid stats" id="liveStats">
+          <div><label>Blocks mined</label><b id="lsBlocks">–</b></div>
+          <div><label>Supply mined</label><b id="lsSupply">–</b></div>
+          <div><label>Difficulty</label><b id="lsBits">–</b></div>
+          <div><label>Last block</label><b id="lsLast">–</b></div>
         </div>
+        <p class="small muted" id="lsNote">Live from the blockchain.</p>
+      </section>
 
-        <section class="card">
-          <h2>Leaderboard</h2>
-          <p class="small" id="myRank"></p>
-          <div class="tablewrap"><table id="leaderboard" class="book"></table></div>
-        </section>
+      <section id="how" class="card">
+        <h2>How it works</h2>
+        <ol class="steps">
+          <li><b>Connect a wallet.</b> MetaMask, Rabby, Coinbase, OKX, Trust or any WalletConnect wallet. Add a little ETH on Robinhood Chain for fees.</li>
+          <li><b>Press Start mining.</b> Your CPU (and GPU where supported) searches for a hash below the current target, just like Bitcoin.</li>
+          <li><b>Claim your block.</b> Found one first? Click Claim, approve in your wallet, and 5,000 <span class="sym">XYZ</span> land in that same wallet.</li>
+          <li><b>Hold, send or trade.</b> Transfer tokens, or buy and sell whole lots on the built-in marketplace, priced in dollars.</li>
+        </ol>
+      </section>
 
-        <section class="card"><h2>Network hashrate</h2><div id="chHashrate" class="chart"></div></section>
-        <section class="card"><h2>Block time</h2><p class="small muted">Target: 2 min</p><div id="chBlockTime" class="chart"></div></section>
-        <section class="card"><h2>Difficulty</h2><p class="small muted">Required leading zero bits (+1 bit = 2× harder)</p><div id="chDifficulty" class="chart"></div></section>
-      </div>
+      <section id="tokenomics" class="card">
+        <h2>Tokenomics</h2>
+        <div class="grid">
+          <div><label>Max supply</label><b>21,000,000</b></div>
+          <div><label>Per block (1 lot)</label><b>5,000</b></div>
+          <div><label>Total blocks</label><b>4,200</b></div>
+          <div><label>Target block time</label><b>~2 minutes</b></div>
+          <div><label>Pre-mine / team allocation</label><b>None</b></div>
+          <div><label>Difficulty</label><b>Adjusts every block</b></div>
+        </div>
+        <p class="small muted">Every token is mined. More miners → higher difficulty, so blocks keep coming about every 2 minutes until all 4,200 are mined.</p>
+      </section>
+
+      <section class="card">
+        <h2>Fees, up front</h2>
+        <div class="grid">
+          <div><label>Claim a block</label><b>$0.10</b><div class="small muted">paid in ETH, plus network gas</div></div>
+          <div><label>Marketplace trade</label><b>2%</b><div class="small muted">of the trade value</div></div>
+          <div><label>Mining itself</label><b>Free</b><div class="small muted">only your device's power</div></div>
+        </div>
+        <p class="small muted">If someone else claims a block before you, your claim fails and you don't pay the claim fee (only a small gas cost may apply).</p>
+      </section>
+
+      <section id="faq" class="card">
+        <h2>FAQ</h2>
+        <details><summary>What is this?</summary><p>A Bitcoin-style Proof-of-Work token on Robinhood Chain. Instead of big mining farms, anyone can mine from a browser. Each mined block also writes an inscription record on-chain.</p></details>
+        <details><summary>Can I mine on my phone?</summary><p>Yes. Open the site in your wallet app's browser (MetaMask, Trust, Coinbase…) or connect with WalletConnect. Keep the screen on while mining; phones are slower than PCs, so expect fewer blocks.</p></details>
+        <details><summary>Do I need a GPU?</summary><p>No. The CPU miner works everywhere. If your browser supports WebGPU (Chrome/Edge on desktop and Android), your graphics card can mine too and is usually much faster. The app shows which GPU it detected and has a Benchmark button to measure your speed.</p></details>
+        <details><summary>I found a block but didn't get it. Why?</summary><p>Mining is a race: the first valid claim on the blockchain wins. If another miner's claim lands first, yours is rejected and mining moves on to the next block. Turn on Auto-claim to claim as fast as possible.</p></details>
+        <details><summary>What is a "lot"?</summary><p>1 lot = 5,000 tokens = one mined block. The marketplace trades whole lots only, priced in US dollars and paid in ETH.</p></details>
+        <details><summary>What does it cost?</summary><p>Mining is free. Claiming a block costs $0.10 (in ETH) plus network gas. Marketplace trades have a 2% fee. See "Fees, up front" above.</p></details>
+        <details><summary>Which wallets work?</summary><p>MetaMask, Rabby, Coinbase Wallet, OKX, Trust, Phantom, Brave and other browser wallets are detected automatically; mobile wallets can connect via WalletConnect.</p></details>
+        <details><summary>Is it safe?</summary><p>The smart contracts are open source and have been through an internal security review with automated tests. They are experimental software: only use funds you can afford to lose, and read the <a href="/terms.html">Terms &amp; risk disclaimer</a>. Nothing here is financial advice.</p></details>
+        <details><summary>What happens after all 21M tokens are mined?</summary><p>Mining stops. Tokens can still be transferred and traded on the marketplace.</p></details>
+        <details><summary>Is this affiliated with Robinhood?</summary><p>No. This is an independent project built on Robinhood Chain, a public blockchain. It is not affiliated with, endorsed by or sponsored by Robinhood Markets, Inc.</p></details>
+      </section>
+
+      <section class="cta">
+        <h2>Ready?</h2>
+        <a class="btn big" href="/app.html">Launch app</a>
+      </section>
     </main>
-    <footer class="small muted">Token: <span class="mono" id="contractAddr"></span><br />Market: <span class="mono" id="marketAddr"></span></footer>
-    <script type="module" src="/src/main.js"></script>
+
+    <footer class="small muted">
+      <a href="/terms.html">Terms &amp; risk disclaimer</a> · <a href="/app.html">App</a> · Not financial advice. Not affiliated with Robinhood Markets, Inc.
+    </footer>
+    <script type="module" src="/src/landing.js"></script>
   </body>
 </html>

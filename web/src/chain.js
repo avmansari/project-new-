@@ -247,7 +247,7 @@ const CONTRACTS = () => ({ token, market, pool });
 /** Read owner + fee settings of all contracts. */
 export async function adminInfo() {
   const r = (c, fn, args = []) => (c ? publicClient.readContract({ ...c, functionName: fn, args }) : null);
-  const [tokenOwner, feeRecipient, mintFeeWei, fee, marketOwner, marketFee, marketRecipient, poolOwner, poolFee, poolRecipient] = await Promise.all([
+  const [tokenOwner, feeRecipient, mintFeeWei, fee, marketOwner, marketFee, marketRecipient, poolOwner, poolFee, poolRecipient, owedToken, owedMarket, owedPool] = await Promise.all([
     r(token, "owner"),
     r(token, "feeRecipient"),
     r(token, "mintFeeWei"),
@@ -258,8 +258,12 @@ export async function adminInfo() {
     r(pool, "owner"),
     r(pool, "protocolFeeBps"),
     r(pool, "feeRecipient"),
+    r(token, "feesOwed"),
+    r(market, "feesOwed"),
+    r(pool, "feesOwed"),
   ]);
-  return { tokenOwner, feeRecipient, mintFeeWei, mintFee: fee, marketOwner, marketFee, marketRecipient, poolOwner, poolFee, poolRecipient };
+  const feesOwed = { token: owedToken ?? 0n, market: owedMarket ?? 0n, pool: owedPool ?? 0n };
+  return { tokenOwner, feeRecipient, mintFeeWei, mintFee: fee, marketOwner, marketFee, marketRecipient, poolOwner, poolFee, poolRecipient, feesOwed };
 }
 
 /** Owner-only transaction on "token" | "market" | "pool". */

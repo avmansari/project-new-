@@ -26,6 +26,7 @@ pragma solidity 0.8.28;
  */
 interface IPriceFeed {
     function latestRoundData() external view returns (uint80, int256 answer, uint256, uint256 updatedAt, uint80);
+    function decimals() external view returns (uint8);
 }
 
 contract PowInscription {
@@ -64,8 +65,11 @@ contract PowInscription {
     address public owner;
     address public feeRecipient;
     uint256 public mintFeeWei; // fixed-mode fee
-    IPriceFeed public priceFeed; // optional ETH/USD feed (8 decimals, Chainlink format)
+    IPriceFeed public priceFeed; // optional ETH/USD feed (Chainlink format)
+    uint8 public priceFeedDecimals; // read from the feed when it is set
     uint256 public mintFeeUsd; // USD-mode fee, 8 decimals (10_000_000 = $0.10)
+    uint256 public feesOwed; // fees that could not be pushed to feeRecipient (see _payFee / withdrawFees)
+    uint256 private constant FEE_PUSH_GAS = 100_000;
 
     // ------------------------------------------------------------------
     // Mining state
@@ -94,6 +98,8 @@ contract PowInscription {
     event MintFeeUpdated(uint256 mintFeeWei, address priceFeed, uint256 mintFeeUsd);
     event FeeRecipientUpdated(address feeRecipient);
     event OwnershipTransferred(address previousOwner, address newOwner);
+    event FeeDeferred(uint256 amount);
+    event FeesWithdrawn(address to, uint256 amount);
 
     error StaleChallenge(bytes32 submitted, bytes32 current);
     error InsufficientWork(bytes32 digest, uint256 target);
@@ -176,7 +182,7 @@ contract PowInscription {
         _advance(digest, t);
 
         // interactions last (state is final; a re-entrant mint would face the new challenge)
-        if (fee > 0) _sendEth(feeRecipient, fee);
+        if (fee > 0) _payFee(fee);
         if (msg.value > fee) _sendEth(msg.sender, msg.value - fee);
     }
 
@@ -185,8 +191,9 @@ contract PowInscription {
         if (address(priceFeed) != address(0) && mintFeeUsd > 0) {
             try priceFeed.latestRoundData() returns (uint80, int256 answer, uint256, uint256 updatedAt, uint80) {
                 if (answer > 0 && updatedAt + FEED_MAX_AGE >= block.timestamp) {
-                    // usd (8 dec) * 1e18 / ethUsd (8 dec) = wei
-                    return (mintFeeUsd * 1e18) / uint256(answer);
+                    // usd (8 dec) * 1e18 * 10^feedDecimals / (ethUsd * 1e8) = wei, capped so a broken feed can't overcharge
+                    uint256 fee = (mintFeeUsd * 1e18 * (10 ** priceFeedDecimals)) / (uint256(answer) * 1e8);
+                    return fee > MAX_MINT_FEE_WEI ? MAX_MINT_FEE_WEI : fee;
                 }
             } catch {}
         }
@@ -211,6 +218,7 @@ contract PowInscription {
     /// @notice USD mode: ETH/USD feed (8 decimals) + fee in USD with 8 decimals. feed = 0 disables.
     function setUsdFee(address feed, uint256 feeUsd8) external onlyOwner {
         if (feeUsd8 > MAX_MINT_FEE_USD) revert FeeTooHigh();
+        priceFeedDecimals = feed == address(0) ? 0 : IPriceFeed(feed).decimals();
         priceFeed = IPriceFeed(feed);
         mintFeeUsd = feeUsd8;
         emit MintFeeUpdated(mintFeeWei, feed, feeUsd8);
@@ -220,6 +228,14 @@ contract PowInscription {
         if (recipient == address(0)) revert ZeroAddress();
         feeRecipient = recipient;
         emit FeeRecipientUpdated(recipient);
+    }
+
+    /// @notice Send any deferred fees to feeRecipient (anyone can call; funds only go to feeRecipient).
+    function withdrawFees() external {
+        uint256 amount = feesOwed;
+        feesOwed = 0;
+        _sendEth(feeRecipient, amount);
+        emit FeesWithdrawn(feeRecipient, amount);
     }
 
     function transferOwnership(address newOwner) external onlyOwner {
@@ -328,6 +344,16 @@ contract PowInscription {
         if (newTarget > maxTarget) newTarget = maxTarget;
         miningTarget = newTarget;
         emit Retarget(height, oldTarget, newTarget, elapsed);
+    }
+
+    /// @dev Push the fee to feeRecipient; if that fails (e.g. a contract that rejects ETH), keep it in `feesOwed`
+    ///      instead of reverting, so a bad fee wallet can never block mining.
+    function _payFee(uint256 amount) internal {
+        (bool ok, ) = feeRecipient.call{value: amount, gas: FEE_PUSH_GAS}("");
+        if (!ok) {
+            feesOwed += amount;
+            emit FeeDeferred(amount);
+        }
     }
 
     function _sendEth(address to, uint256 value) internal {

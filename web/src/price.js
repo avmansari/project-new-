@@ -33,3 +33,22 @@ export function usdOf(wei) {
   const digits = usd < 1 ? (usd < 0.01 ? 4 : 3) : 2;
   return `≈ $${usd.toLocaleString("en", { minimumFractionDigits: digits > 2 ? 2 : 2, maximumFractionDigits: digits })}`;
 }
+
+/** Format a wei amount in US dollars ("$12.34"); falls back to ETH if the price isn't known yet. */
+export function usd(wei) {
+  const p = cache.price;
+  if (wei == null) return "–";
+  if (!p) return `${(Number(wei) / 1e18).toLocaleString("en", { maximumFractionDigits: 6 })} ETH`;
+  const v = (Number(wei) / 1e18) * p;
+  const digits = v !== 0 && Math.abs(v) < 1 ? (Math.abs(v) < 0.01 ? 4 : 3) : 2;
+  return `$${v.toLocaleString("en", { minimumFractionDigits: 2, maximumFractionDigits: digits })}`;
+}
+
+/** Number of dollars (from user input) -> wei at today's price. Returns null if the price is unknown or input invalid. */
+export function usdToWei(dollars) {
+  const p = cache.price;
+  const d = Number(String(dollars).replace(/[$,\s]/g, ""));
+  if (!p || !(d > 0) || !isFinite(d)) return null;
+  // micro-dollar integer math to avoid float drift in wei
+  return (BigInt(Math.round(d * 1e6)) * 10n ** 18n) / BigInt(Math.round(p * 1e6));
+}

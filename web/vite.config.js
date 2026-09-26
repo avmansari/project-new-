@@ -7,7 +7,14 @@ export default defineConfig({
   build: {
     target: "es2022",
     chunkSizeWarningLimit: 1500,
-    rollupOptions: { input: { main: resolve(__dirname, "index.html"), admin: resolve(__dirname, "admin.html") } },
+    rollupOptions: {
+      input: {
+        landing: resolve(__dirname, "index.html"),
+        app: resolve(__dirname, "app.html"),
+        admin: resolve(__dirname, "admin.html"),
+        terms: resolve(__dirname, "terms.html"),
+      },
+    },
   },
   optimizeDeps: { esbuildOptions: { target: "es2022" } },
 });

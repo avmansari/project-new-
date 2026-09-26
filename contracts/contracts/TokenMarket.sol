@@ -35,6 +35,7 @@ contract TokenMarket {
         uint64 expiry; // unix time; 0 = never expires
         bool isBid; // false = sell listing, true = buy bid
         bool active;
+        uint16 feeBps; // fee at creation: a later fee increase never applies to an existing listing
     }
 
     struct Offer {
@@ -48,6 +49,8 @@ contract TokenMarket {
 
     Order[] public orders;
     Offer[] public offers;
+    uint256 public feesOwed; // fees that could not be pushed to feeRecipient
+    uint256 private constant FEE_PUSH_GAS = 100_000;
 
     event OrderCreated(uint256 indexed id, address indexed maker, bool isBid, uint256 lots, uint256 pricePerLot, uint256 expiry);
     event OrderCancelled(uint256 indexed id, address indexed maker, uint256 lotsLeft);
@@ -65,6 +68,9 @@ contract TokenMarket {
     event OfferCancelled(uint256 indexed offerId, address indexed buyer);
     event OfferAccepted(uint256 indexed offerId, uint256 indexed listingId);
     event FeeUpdated(uint256 feeBps, address feeRecipient);
+    event FeeDeferred(uint256 amount);
+    event FeesWithdrawn(address to, uint256 amount);
+    event OwnershipTransferred(address previousOwner, address newOwner);
 
     error NotOwner();
     error BadParams();
@@ -153,7 +159,7 @@ contract TokenMarket {
 
         if (!token.transferFrom(msg.sender, buyer, lots * lotSize)) revert TokenTransferFailed();
         _sendEth(msg.sender, value - fee);
-        if (fee > 0) _sendEth(feeRecipient, fee);
+        if (fee > 0) _payFee(fee);
 
         emit Trade(id, buyer, msg.sender, lots, o.pricePerLot, value, fee, block.timestamp);
     }
@@ -198,11 +204,11 @@ contract TokenMarket {
         f.active = false;
         o.lots -= f.lots;
         if (o.lots == 0) o.active = false;
-        uint256 fee = (value * feeBps) / 10_000;
+        uint256 fee = (value * _feeFor(o)) / 10_000;
 
         if (!token.transfer(f.buyer, uint256(f.lots) * lotSize)) revert TokenTransferFailed();
         _sendEth(msg.sender, value - fee);
-        if (fee > 0) _sendEth(feeRecipient, fee);
+        if (fee > 0) _payFee(fee);
 
         emit OfferAccepted(offerId, f.listingId);
         emit Trade(f.listingId, f.buyer, msg.sender, f.lots, f.pricePerLot, value, fee, block.timestamp);
@@ -284,7 +290,16 @@ contract TokenMarket {
     function transferOwnership(address newOwner) external {
         if (msg.sender != owner) revert NotOwner();
         if (newOwner == address(0)) revert BadParams();
+        emit OwnershipTransferred(owner, newOwner);
         owner = newOwner;
+    }
+
+    /// @notice Send any deferred fees to feeRecipient (anyone can call; funds only go to feeRecipient).
+    function withdrawFees() external nonReentrant {
+        uint256 amount = feesOwed;
+        feesOwed = 0;
+        _sendEth(feeRecipient, amount);
+        emit FeesWithdrawn(feeRecipient, amount);
     }
 
     // ------------------------------------------------------------------
@@ -302,7 +317,7 @@ contract TokenMarket {
 
     function _push(address maker, uint256 lots, uint256 pricePerLot, uint256 expiry, bool isBid) internal returns (uint256 id) {
         id = orders.length;
-        orders.push(Order(maker, uint64(lots), uint128(pricePerLot), uint64(expiry), isBid, true));
+        orders.push(Order(maker, uint64(lots), uint128(pricePerLot), uint64(expiry), isBid, true, uint16(feeBps)));
         emit OrderCreated(id, maker, isBid, lots, pricePerLot, expiry);
     }
 
@@ -342,13 +357,27 @@ contract TokenMarket {
         o.lots -= uint64(lots);
         if (o.lots == 0) o.active = false;
         address seller = o.maker;
-        uint256 fee = (cost * feeBps) / 10_000;
+        uint256 fee = (cost * _feeFor(o)) / 10_000; // seller is not present: never more than the fee they listed at
 
         if (!token.transfer(msg.sender, lots * lotSize)) revert TokenTransferFailed();
         _sendEth(seller, cost - fee);
-        if (fee > 0) _sendEth(feeRecipient, fee);
+        if (fee > 0) _payFee(fee);
 
         emit Trade(id, msg.sender, seller, lots, o.pricePerLot, cost, fee, block.timestamp);
+    }
+
+    /// @dev Fee for a fill of order `o`: the lower of the fee at listing time and today's fee.
+    function _feeFor(Order storage o) internal view returns (uint256) {
+        return o.feeBps < feeBps ? o.feeBps : feeBps;
+    }
+
+    /// @dev Push the fee to feeRecipient; if that fails, keep it in `feesOwed` so trading never gets blocked.
+    function _payFee(uint256 amount) internal {
+        (bool ok, ) = feeRecipient.call{value: amount, gas: FEE_PUSH_GAS}("");
+        if (!ok) {
+            feesOwed += amount;
+            emit FeeDeferred(amount);
+        }
     }
 
     function _sendEth(address to, uint256 value) internal {

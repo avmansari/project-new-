@@ -5,11 +5,14 @@ Users mine with their **CPU, GPU (WebGPU) or phone browser**. The **first** mine
 claims **5,000 tokens** straight into their connected wallet (21M supply = 4,200 blocks). Difficulty adjusts after every block to target ~2 minutes per block.
 The same user can win any number of blocks.
 
-The website has 4 tabs: **Mine** · **Transfer** (+ your activity) · **Marketplace** (on-chain order book, whole lots only: 1 lot = 5,000 tokens, priced in ETH per lot, order expiry, make offer, quick buy, price chart, 24h stats) · **Stats** (leaderboard, hashrate / block time / difficulty charts). Wallets: MetaMask, Rabby, Coinbase, OKX, Trust… plus WalletConnect.
+Pages: **`/`** landing page + FAQ · **`/app.html`** the app (terms popup on first visit) · **`/terms.html`** · **`/admin.html`** owner dashboard.
+
+The app has 5 tabs: **Mine** (benchmark, auto-claim, share card) · **Transfer** (+ your activity) · **Marketplace** (whole lots only: 1 lot = 5,000 tokens, **prices in US dollars**, order expiry, make offer, quick buy, price chart, 24h stats) · **Leaderboard** (top 100 holders) · **Stats** (miners leaderboard, hashrate / block time / difficulty charts). Wallets: MetaMask, Rabby, Coinbase, OKX, Trust… plus WalletConnect.
 
 **Fees (project revenue, all to one wallet):** $0.10 in ETH per claimed lot + 2% of marketplace volume. (A DEX pool is built but switched off for now: `DEPLOY_POOL=true` + `VITE_ENABLE_DEX=true` to turn it on.) Owner dashboard at `/admin.html`. Hosted indexer in [`indexer/`](indexer). See [Fees](docs/ARCHITECTURE.md#8b-fees-project-revenue).
 
 - 📐 Architecture: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+- 🔒 Security review: [`docs/AUDIT.md`](docs/AUDIT.md)
 - 🧪 Testnet launch checklist: [`docs/TESTNET.md`](docs/TESTNET.md)
 - 🚀 Production guide: [`docs/PRODUCTION.md`](docs/PRODUCTION.md)
 - 💡 Feature ideas / roadmap: [`docs/FEATURES.md`](docs/FEATURES.md)
@@ -40,7 +43,7 @@ Open **3 terminals**, all inside the `project-new-` folder:
 |---|---|---|
 | 1 | `npm run chain` | Starts a local blockchain (keep it running) |
 | 2 | `npm run deploy:local` | Deploys the token + marketplace. Addresses are saved for the web app and CLI automatically |
-| 3 | `npm run web` | Starts the website → open **http://localhost:5173** |
+| 3 | `npm run web` | Starts the website → open **http://localhost:5173** (landing) or **http://localhost:5173/app.html** (app) |
 
 In the browser:
 1. Click **"Connect wallet"** and pick your wallet from the list (MetaMask / Rabby / Coinbase…). The site adds the "Hardhat Local" network to your wallet.
@@ -75,7 +78,7 @@ Open the **Network** URL printed by `npm run web` (e.g. `http://192.168.x.x:5173
 
 ## 🧪 Tests
 ```bash
-npm test   # 37 Solidity tests (token, fees, marketplace, DEX pool) + 18 JS tests (mining core, GPU names)
+npm test   # 43 Solidity tests (token, fees, marketplace, DEX pool, security regressions) + 18 JS tests
 ```
 
 Project files: https://drive.google.com/drive/folders/1OLUHKGNSBcwCrs_PhZlf9YrtMuk2QPSU?usp=sharing

@@ -22,12 +22,13 @@ Details: [`TESTNET.md`](TESTNET.md)
 |---|---|---|
 | **Lock final parameters** | Contracts can't be changed after deploy | `PowInscription.sol` constants: `BLOCK_REWARD`, `TARGET_BLOCK_TIME`, `MAX_SUPPLY`; `.env`: difficulty bits, `FEE_RECIPIENT`, `MINT_FEE_USD` (0.1), `MARKET_FEE_BPS` (200 = 2%) |
 | **Keep the $0.10 claim fee in sync** | ETH price moves; the fee is stored in ETH | Run `npm run set-fee` daily (e.g. a cron / GitHub Action), or set `PRICE_FEED` if the chain has a Chainlink ETH/USD feed |
+| **Read the internal review** | Known findings are fixed and documented | [`docs/AUDIT.md`](AUDIT.md) |
 | **Smart contract audit** | Real money will be at stake; one bug can drain everything | An audit firm (Cantina, Code4rena contest, Sherlock, Hacken), or on a smaller budget an experienced freelance auditor. At least 2 independent reviews |
 | **Verify on the explorer** | Users can read the contract code → trust | Blockscout verification (hardhat-verify plugin) |
 | **Fresh deployer wallet** | The testnet key has been shared | New wallet, ideally a hardware wallet (Ledger/Trezor) |
 | **Fee wallet = multisig** | One leaked key = all fees stolen | Safe (safe.global) multisig, 2-of-3 signers. Use `setFee` / `transferOwnership` to hand the market to the multisig |
 | **Legal check** | A token + marketplace may fall under regulations | Talk to a crypto lawyer in your country once (India: VDA tax / TDS rules) |
-| **Terms + disclaimer page** | "Not financial advice", "use at your own risk" | Link in the website footer |
+| **Terms + disclaimer** | "Not financial advice", "use at your own risk" | Already built (`/terms.html` + I-agree popup). Have a lawyer review the text and add your project name/contact |
 
 ## Phase 3: Website hosting (HTTPS)
 
@@ -57,7 +58,7 @@ Details: [`TESTNET.md`](TESTNET.md)
 ## Phase 5: After launch (monitoring)
 - **Uptime:** UptimeRobot (free) pinging the website and RPC.
 - **Errors:** add Sentry (free tier) to the web app to see users' browser errors.
-- **Analytics:** Plausible or Umami (privacy-friendly): how many people are mining.
+- **Analytics:** create a site on plausible.io (or self-host) and set `VITE_PLAUSIBLE_DOMAIN` (and `VITE_PLAUSIBLE_SRC` if self-hosted) on Vercel. Visitors, wallet connects, mining starts, claims and trades then show up in Plausible; the owner dashboard links to it.
 - **Indexer:** deploy the Ponder app in [`indexer/`](../indexer/README.md) (Railway / Render + Postgres) and set `VITE_INDEXER_URL` on Vercel. Without it every visitor scans the chain history in their browser, which gets slow as the history grows.
 - **Community:** Telegram / Discord + X (Twitter) with a bot auto-posting block milestones.
 

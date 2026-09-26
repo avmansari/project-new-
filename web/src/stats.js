@@ -25,6 +25,14 @@ function blocks() {
     .sort((a, b) => a.height - b.height);
 }
 
+/** Estimated network hashrate (H/s) from the last 20 blocks, or null. */
+export function networkHashrate() {
+  const recent = blocks().slice(-21);
+  if (recent.length < 2) return null;
+  const secs = (recent[recent.length - 1].t - recent[0].t) / 1000;
+  return secs > 0 ? recent.slice(1).reduce((s, b) => s + workOf(b.target), 0) / secs : null;
+}
+
 function inRange(list) {
   const cutoff = Date.now() - RANGES[range] * 1000;
   return list.filter((b) => b.t >= cutoff);

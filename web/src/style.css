@@ -123,4 +123,23 @@ h3 { font-size: 0.9rem; margin: 14px 0 6px; color: var(--muted); font-weight: 60
 .offer-box { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 10px; }
 .select { appearance: auto; }
 .row.nowrap .select { max-width: 150px; }
+.warn-card { border-color: #e66767; }
+.alert-controls { gap: 12px; }
+.field.inline { width: auto; display: inline-block; margin: 0 0 0 6px; padding: 6px 8px; font-size: 0.85rem; }
+input.field.inline { width: 80px; }
+.alerts li { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.alerts .al-tag { font-size: 0.7rem; border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; color: var(--muted); }
+.alerts .al-amt { font-weight: 700; font-variant-numeric: tabular-nums; }
+.alerts .al-when { margin-left: auto; color: var(--muted); font-size: 0.8rem; }
 .share-card img { width: 100%; height: auto; border-radius: 10px; border: 1px solid var(--line); margin-bottom: 10px; display: block; }
+/* terms gate */
+body.locked { overflow: hidden; }
+.terms-modal { align-items: center; z-index: 200; background: rgba(0, 0, 0, 0.8); }
+.terms-modal ul { padding-left: 18px; margin: 8px 0 14px; }
+.terms-modal li { margin-bottom: 6px; }
+.terms-modal .agree { display: flex; gap: 8px; align-items: flex-start; color: var(--fg); margin-bottom: 12px; }
+.terms-modal button { width: 100%; }
+/* 5 tabs: scroll sideways on narrow phones */
+.tabs { overflow-x: auto; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tabs button { white-space: nowrap; }

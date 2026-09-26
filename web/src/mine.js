@@ -4,6 +4,8 @@ import { detectGpu } from "@pow/shared/gpu-name";
 import * as chain from "./chain.js";
 import { createEngine } from "./engine.js";
 import { showShareCard, initShare } from "./share.js";
+import { track } from "./analytics.js";
+import { networkHashrate } from "./stats.js";
 import { $, store, on, emit, fmtNum, fmtTok, fmtDur, short, errMsg } from "./store.js";
 
 const state = {
@@ -20,6 +22,7 @@ const setStatus = (s) => ($("status").textContent = s);
 
 const engine = createEngine({
   onHashrate(rate, total) {
+    if (state.bench) return state.bench.push(rate);
     state.hashrate = rate;
     $("hashrate").textContent = `${fmtNum(rate)} H/s`;
     $("totalHashes").textContent = fmtNum(total);
@@ -116,6 +119,7 @@ async function claim() {
   try {
     const ev = await chain.claimBlock(store.wallet, { nonce: sol.nonce, challenge: sol.challenge });
     state.myBlocks.unshift({ height: ev.height, reward: ev.reward, hash: ev.hash });
+    track("Block claimed", { gpu: $("useGpu").checked ? "yes" : "no" });
     renderMyBlocks();
     setStatus(`claimed block #${ev.height} ✓ ${fmtTok(ev.reward)} added to your wallet`);
     showShareCard({
@@ -195,6 +199,42 @@ function renderMyBlocks() {
     .join("");
 }
 
+// ---------- benchmark ----------
+const BENCH_SECONDS = 10;
+async function benchmark() {
+  if (state.wantMining) return ($("benchResult").textContent = "Stop mining first, then run the benchmark.");
+  const settings = { threads: Number($("threads").value), useGpu: $("useGpu").checked };
+  $("btnBench").disabled = true;
+  $("btnStart").disabled = true;
+  state.bench = [];
+  // an impossible target (0) so the engine just hashes at full speed and never "finds" anything
+  const res = await engine.start({ challenge: "0x" + "00".repeat(32), miner: "0x" + "00".repeat(20), target: 0n }, settings);
+  for (let s = BENCH_SECONDS; s > 0; s--) {
+    $("benchResult").textContent = `Measuring… ${s}s`;
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+  engine.stop();
+  const samples = state.bench.slice(2); // skip warm-up (workers/GPU start)
+  state.bench = null;
+  $("btnBench").disabled = false;
+  $("btnStart").disabled = !store.wallet ? false : state.wantMining;
+  const rate = samples.length ? samples.reduce((a, b) => a + b, 0) / samples.length : 0;
+  if (!rate) return ($("benchResult").textContent = "Could not measure; enable CPU threads or the GPU.");
+  const parts = [`<b>${fmtNum(rate)} H/s</b> with ${settings.threads} CPU thread(s)${res.gpu ? " + GPU" : ""}`];
+  if (state.info) {
+    const eta = expectedHashes(state.info.target) / rate;
+    parts.push(`At today's difficulty (${state.info.requiredBits} bits) you'd find a block about every <b>${fmtDur(eta)}</b> if you mined alone.`);
+    const net = networkHashrate();
+    if (net) {
+      const share = Math.min(100, (rate / (net + rate)) * 100);
+      // the network finds ~1 block per TARGET_BLOCK_TIME (120 s), so your average wait is 120 s / your share
+      parts.push(`Network is ~${fmtNum(net)} H/s → you'd win roughly <b>${share.toFixed(share < 1 ? 2 : 1)}%</b> of blocks, about one every <b>${fmtDur(120 / (share / 100))}</b>.`);
+    }
+  }
+  $("benchResult").innerHTML = parts.join("<br />");
+  track("Benchmark run", { gpu: res.gpu ? "yes" : "no" });
+}
+
 // ---------- device info ----------
 const GPU_KEY = "pow-gpu-name";
 const savedGpu = () => {
@@ -236,6 +276,7 @@ export function initMine() {
   $("useGpu").checked = engine.hasGpuApi();
   showDevice();
   $("gpuEdit").onclick = editGpu;
+  $("btnBench").onclick = benchmark;
   initShare();
 
   // auto-claim / sound / notification toggles (remembered per browser)
@@ -262,6 +303,7 @@ export function initMine() {
   $("btnStart").onclick = async () => {
     if (!store.wallet) return alert("Please click 'Connect wallet' at the top first.");
     state.wantMining = true;
+    track("Mining started", { gpu: $("useGpu").checked ? "yes" : "no", threads: String($("threads").value) });
     $("btnStart").disabled = true;
     $("btnStop").disabled = false;
     try {
