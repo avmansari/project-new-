@@ -10,8 +10,8 @@ async function main() {
   const symbol = process.env.TOKEN_SYMBOL || "XYZ";
   // Local chain: easy difficulty by default so you see blocks within seconds
   const isLocal = ["hardhat", "localhost"].includes(hre.network.name);
-  const minBits = Number(process.env.MIN_DIFFICULTY_BITS || (isLocal ? 18 : 20));
-  const initBits = Number(process.env.INITIAL_DIFFICULTY_BITS || (isLocal ? 24 : 26));
+  const minBits = Number(process.env.MIN_DIFFICULTY_BITS || (isLocal ? 19 : 21));
+  const initBits = Number(process.env.INITIAL_DIFFICULTY_BITS || (isLocal ? 25 : 27));
 
   const signers = await hre.ethers.getSigners();
   if (!signers.length) throw new Error("No deployer key. Put PRIVATE_KEY=0x... in contracts/.env");
@@ -39,10 +39,11 @@ async function main() {
   const feeBps = Number(process.env.MARKET_FEE_BPS ?? 100); // 100 = 1%
   const feeRecipient = process.env.FEE_RECIPIENT || deployer.address;
   const M = await hre.ethers.getContractFactory("TokenMarket");
-  const m = await M.deploy(address, feeBps, feeRecipient);
+  const lotSize = await c.BLOCK_REWARD(); // 1 lot = 1 mined block = 5,000 tokens
+  const m = await M.deploy(address, lotSize, feeBps, feeRecipient);
   await m.waitForDeployment();
   const marketAddress = await m.getAddress();
-  console.log(`TokenMarket deployed at:    ${marketAddress} (fee ${feeBps / 100}% → ${feeRecipient})`);
+  console.log(`TokenMarket deployed at:    ${marketAddress} (1 lot = ${hre.ethers.formatEther(lotSize)} tokens, fee ${feeBps / 100}% → ${feeRecipient})`);
 
   const explorer = hre.network.config.explorer;
   if (explorer) {

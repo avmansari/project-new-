@@ -2,10 +2,10 @@
 
 Bitcoin-style Proof-of-Work mining for an inscription token on Robinhood Chain (EVM L2).
 Users mine with their **CPU, GPU (WebGPU) or phone browser**. The **first** miner to solve the current block
-claims **5,000 tokens** straight into their connected wallet (21M supply = 4,200 blocks). Difficulty adjusts every block to keep ~60s per block.
+claims **5,000 tokens** straight into their connected wallet (21M supply = 4,200 blocks). Difficulty adjusts every block to keep ~2 min per block.
 The same user can win any number of blocks.
 
-Website mein 3 tabs hain: **Mine** · **Transfer** · **Marketplace** (on-chain order book, ETH mein buy/sell, live updates).
+Website mein 3 tabs hain: **Mine** · **Transfer** · **Marketplace** (on-chain order book, sirf poore lots mein: 1 lot = 5,000 tokens, price per lot ETH mein, live updates). Wallet: MetaMask, Rabby, Coinbase, OKX, Trust… + WalletConnect.
 
 - 📐 Full explanation (Hinglish): [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 - 🚀 Production guide: [`docs/PRODUCTION.md`](docs/PRODUCTION.md)
@@ -40,7 +40,7 @@ Website mein 3 tabs hain: **Mine** · **Transfer** · **Marketplace** (on-chain 
 | 3 | `npm run web` | Miner website start → browser mein **http://localhost:5173** kholo |
 
 Browser mein:
-1. **"Connect wallet"** dabao (MetaMask). Website khud "Hardhat Local" network MetaMask mein add kar degi.
+1. **"Connect wallet"** dabao aur list mein se apna wallet chuno (MetaMask / Rabby / Coinbase…). Website khud "Hardhat Local" network wallet mein add kar degi.
 2. Terminal 2 mein chalao: `npm run fund -- <tera MetaMask address>` (gas ke liye 10 fake ETH)
 3. **"Start mining"** dabao. Block solve hote hi "🎉 Block solved! Tu 5,000 XYZ claim kar sakta hai" aayega.
 4. **"Claim tokens"** dabao → MetaMask mein **Confirm** → 5,000 XYZ seedha tere wallet mein.

@@ -13,7 +13,7 @@ Details: [`TESTNET.md`](TESTNET.md)
 4. **Kam se kam 1-2 hafte** testnet chalao:
    - 10-20 log alag devices (phone, laptop, GPU PC) se mine karein
    - Marketplace mein buy/sell/bid/cancel sab try karein
-   - Block time ~60 sec pe settle ho raha hai? Gas kitna lag raha hai per claim?
+   - Block time ~2 min pe settle ho raha hai? Gas kitna lag raha hai per claim?
    - Bugs aur feedback ek jagah note karo (GitHub Issues / Google Form)
 
 ## Phase 2: Mainnet se pehle (zaroori)
@@ -37,6 +37,7 @@ Details: [`TESTNET.md`](TESTNET.md)
 4. Apna domain (jaise `xyzmine.com`) Vercel → Settings → Domains mein add karo.
 
 **Environment variables (Vercel → Settings → Environment Variables):**
+- `VITE_WC_PROJECT_ID`: WalletConnect project ID (free, https://cloud.reown.com). Isse phone wallets QR se connect hote hain.
 - `VITE_RPC_URL`: apna private RPC (neeche dekho). Public RPC pe traffic badhne pe rate limit lagegi.
 - `VITE_CONTRACT_ADDRESS` / `VITE_MARKET_ADDRESS`: optional override. Warna `deployment.json` se aata hai.
 

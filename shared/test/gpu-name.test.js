@@ -19,3 +19,25 @@ const cases = [
 for (const [raw, want] of cases) {
   test(`gpu name: ${want}`, () => assert.equal(cleanGpuName(raw), want));
 }
+
+import { resolveGpuName, nameFromWebGpuInfo } from "../gpu-name.js";
+
+test("generic Intel driver name resolved via PCI id -> Arc B580", () => {
+  assert.equal(resolveGpuName("ANGLE (Intel, Intel(R) Graphics (0x0000E20B) Direct3D11 vs_5_0 ps_5_0, D3D11)", null).name, "Intel Arc B580");
+});
+test("full WebGL name wins when vendors agree", () => {
+  const r = resolveGpuName("ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 Ti (0x00002489) Direct3D11 vs_5_0 ps_5_0, D3D11)", { vendor: "nvidia", architecture: "ampere" });
+  assert.deepEqual(r, { name: "NVIDIA GeForce RTX 3060 Ti", source: "webgl" });
+});
+test("dual-GPU laptop: WebGL on Intel iGPU, WebGPU on NVIDIA -> show NVIDIA", () => {
+  const r = resolveGpuName("ANGLE (Intel, Intel(R) UHD Graphics 630 (0x00003E92) Direct3D11 vs_5_0 ps_5_0, D3D11)", { vendor: "nvidia", architecture: "ampere" });
+  assert.equal(r.name, "NVIDIA GeForce RTX 30 series (Ampere)");
+});
+test("masked WebGL -> WebGPU family names", () => {
+  assert.equal(resolveGpuName("WebKit WebGL", { vendor: "intel", architecture: "xe-2hpg" }).name, "Intel Arc B-series (Battlemage)");
+  assert.equal(nameFromWebGpuInfo({ vendor: "amd", architecture: "rdna-2" }), "AMD Radeon RX 6000 series (RDNA 2)");
+  assert.equal(nameFromWebGpuInfo({ vendor: "nvidia", architecture: "lovelace" }), "NVIDIA GeForce RTX 40 series (Ada Lovelace)");
+});
+test("WebGPU description used when present", () => {
+  assert.equal(nameFromWebGpuInfo({ vendor: "amd", architecture: "rdna-2", description: "AMD Radeon RX 6700 XT" }), "AMD Radeon RX 6700 XT");
+});

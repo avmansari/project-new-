@@ -91,18 +91,18 @@ UI yeh dikhata hai: *"Tune block #N mine kar liya. Difficulty: 26 zero bits requ
 - Aakhri block mein jitna supply bacha hai utna hi milega. Uske baad mining band.
 
 ### Difficulty adjustment (har block pe)
-- Target: **~60 sec mein ek block** (`TARGET_BLOCK_TIME`).
+- Target: **~2 min mein ek block** (`TARGET_BLOCK_TIME = 120`). 4,200 blocks × 2 min ≈ **6 din** mein poori supply.
 - Har block ke baad: `newTarget = oldTarget × (3T + laga_hua_time) / 4T`, jahan laga hua time max 5T tak count hota hai.
   - Block turant aaya → **25% mushkil** (har block pe). Isse zyada miners aaye toh difficulty jaldi upar jaati hai.
-  - Block theek 60 sec mein aaya → difficulty same.
+  - Block theek 2 min mein aaya → difficulty same.
   - Block 5 min ya zyada mein aaya → **2× aasaan**.
-- **Stall rescue:** agar 10 min (`STALL_PERIOD`) tak koi block nahi aaya, toh `currentTarget()` har 10 min pe 2× aasaan hota jaata hai. Isse chain kabhi atakti nahi.
-- Deploy ke time set hota hai: `MIN_DIFFICULTY_BITS` (isse aasaan kabhi nahi hogi) aur `INITIAL_DIFFICULTY_BITS` (shuruaat). Testnet defaults: 20 / 26 bits.
+- **Stall rescue:** agar 20 min (`STALL_PERIOD`) tak koi block nahi aaya, toh `currentTarget()` har 20 min pe 2× aasaan hota jaata hai. Isse chain kabhi atakti nahi.
+- Deploy ke time set hota hai: `MIN_DIFFICULTY_BITS` (isse aasaan kabhi nahi hogi) aur `INITIAL_DIFFICULTY_BITS` (shuruaat). Testnet defaults: 21 / 27 bits.
 
 | Difficulty | Hashes chahiye (avg) | 10-core PC (browser CPU, ~1-3M H/s) | Phone (~0.2-0.5M H/s) |
 |---|---|---|---|
-| 20 bits | 1M | < 1 sec | 2-5 sec |
-| 26 bits | 67M | 20-60 sec | 2-5 min |
+| 21 bits | 2M | ~1 sec | 4-10 sec |
+| 27 bits | 134M | 45-130 sec | 4-11 min |
 | 28 bits | 268M | 1.5-4 min | 9-20 min |
 
 Jitne zyada miners, utni zyada difficulty. Upar wali table sirf ek miner ke liye hai.
@@ -223,11 +223,28 @@ miner-cli/index.js, worker.js            ← headless miner
 
 ## 11. Marketplace (TokenMarket.sol)
 
-On-chain **order book**, ETH mein trading:
+On-chain **order book**, ETH mein trading, **sirf poore lots mein**:
 
-- **Sell order (listing):** seller apne tokens contract mein lock karta hai (approve + list = 2 confirmations). Koi bhi poora ya thoda sa khareed sakta hai.
-- **Buy order (bid):** buyer apna ETH lock karta hai. Jiske paas tokens hain woh usme bech sakta hai.
-- **Cancel:** jo hissa bika nahi, woh wapas (tokens ya ETH).
-- **Fee:** `MARKET_FEE_BPS` (default 1%, max 5%), ETH side se kat ke `FEE_RECIPIENT` ko jaati hai. Owner baad mein `setFee` se badal sakta hai.
-- **Safety:** reentrancy guard, bid escrow exact track hota hai (rounding se kabhi zyada ETH nahi nikalta), extra ETH refund.
+- **1 lot = 5,000 tokens** (ek mined block). Chhote chunks mein trade nahi hota.
+- **Price = ETH per lot.** Har trade ka cost exactly `lots × pricePerLot` hota hai, koi rounding nahi.
+- **Sell order (listing):** seller N lots lock karta hai (approve + list = 2 confirmations). Koi bhi 1 se N poore lots khareed sakta hai.
+- **Buy order (bid):** buyer `lots × price` ETH lock karta hai. Jiske paas lots hain woh usme poore lots bech sakta hai.
+- **Cancel:** jo lots bike nahi, woh wapas (tokens ya ETH).
+- **Fee:** `MARKET_FEE_BPS` (default 1%, max 5%), ETH side se kat ke `FEE_RECIPIENT` ko jaati hai.
+- **Safety:** reentrancy guard, extra ETH refund, sirf maker cancel kar sakta hai.
 - **Realtime:** website har 4 sec pe orders + trades refresh karti hai (sirf jab Marketplace tab khula ho).
+
+## 12. Wallets
+
+- **Browser extension wallets** apne aap detect hote hain (EIP-6963): MetaMask, Rabby, Coinbase, OKX, Trust, Phantom, Brave, Zerion… Har wallet apne naam aur icon ke saath list mein aata hai.
+- Purane wallets jo sirf `window.ethereum` dete hain, woh bhi chalte hain.
+- **WalletConnect:** `VITE_WC_PROJECT_ID` set ho toh "WalletConnect" option aata hai. Phone ka koi bhi wallet app QR scan karke connect ho jaata hai.
+- **Phone bina wallet browser ke:** "Open in MetaMask / Trust / Coinbase" deep links.
+- Last wallet yaad rehta hai. Page reload pe bina popup ke reconnect ho jaata hai. Address button dabane pe disconnect.
+
+## 13. GPU name detection (`shared/gpu-name.js`)
+
+1. WebGL renderer string se exact model (jaise "Intel Arc B580 Graphics", "NVIDIA GeForce RTX 3060 Ti").
+2. Driver generic naam de ("Intel(R) Graphics") toh PCI device ID se (Intel Arc A/B series).
+3. Browser naam chhupaye, ya laptop mein WebGL aur WebGPU alag GPU pe hon, toh WebGPU (jo mining karta hai) ki family: "Intel Arc B-series (Battlemage)", "NVIDIA GeForce RTX 30 series (Ampere)"…
+4. Phir bhi galat ho toh user **change** dabake khud naam set kar sakta hai. "GPU details" mein raw strings dikhte hain.

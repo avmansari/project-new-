@@ -56,7 +56,7 @@ export function initTransfer() {
 
   $("txWatch").onclick = async () => {
     try {
-      await chain.watchToken(store.symbol);
+      await chain.watchToken(store.wallet, store.symbol);
     } catch (e) {
       setStatus(errMsg(e));
     }

@@ -1,6 +1,6 @@
 // Mine tab: poll chain -> (re)start engine -> block solved -> Claim -> approve -> tokens in the same wallet.
 import { leadingZeroBits, hexToBytes, expectedHashes } from "@pow/shared";
-import { detectGpuName } from "@pow/shared/gpu-name";
+import { detectGpu } from "@pow/shared/gpu-name";
 import * as chain from "./chain.js";
 import { createEngine } from "./engine.js";
 import { $, store, on, emit, fmtNum, fmtTok, fmtDur, short, errMsg } from "./store.js";
@@ -139,13 +139,36 @@ function renderMyBlocks() {
 }
 
 // ---------- device info ----------
+const GPU_KEY = "pow-gpu-name";
+const savedGpu = () => {
+  try {
+    return localStorage.getItem(GPU_KEY);
+  } catch {
+    return null;
+  }
+};
+
 async function showDevice() {
   const cores = navigator.hardwareConcurrency || 2;
   $("cpuName").textContent = `${cores} threads`;
-  state.gpuName = await detectGpuName();
-  $("gpuName").textContent = state.gpuName || "detect nahi hua";
-  if (!engine.hasGpuApi()) $("gpuApi").textContent = "WebGPU is browser mein nahi hai → sirf CPU mining (Chrome/Edge use karo)";
-  else $("gpuApi").textContent = "WebGPU ready ✓";
+  const det = await detectGpu();
+  const manual = savedGpu();
+  state.gpuName = manual || det.name;
+  $("gpuName").textContent = state.gpuName || "detect nahi hua — 'change' dabao";
+  if (manual) $("gpuName").title = "tumne set kiya";
+  $("gpuRaw").textContent = `WebGL:  ${det.raw.webgl ?? "–"}\nWebGPU: ${det.raw.webgpu ? JSON.stringify(det.raw.webgpu) : "–"}\nDetected: ${det.name ?? "–"} (${det.source})${manual ? `\nManual: ${manual}` : ""}`;
+  $("gpuApi").textContent = engine.hasGpuApi() ? "WebGPU ready ✓ (GPU mining available)" : "WebGPU is browser mein nahi hai → sirf CPU mining (Chrome/Edge use karo)";
+}
+
+function editGpu() {
+  const v = prompt("Apne GPU ka naam likho (e.g. Intel Arc B580). Khaali chhodo toh auto-detect wapas:", savedGpu() || state.gpuName || "");
+  if (v === null) return;
+  try {
+    if (v.trim()) localStorage.setItem(GPU_KEY, v.trim().slice(0, 60));
+    else localStorage.removeItem(GPU_KEY);
+  } catch {}
+  showDevice();
+  $("gpuEdit").onclick = editGpu;
 }
 
 // ---------- init ----------
@@ -187,8 +210,13 @@ export function initMine() {
   $("useGpu").onchange = restartIfMining;
 
   // Wallet account switched: the hash is bound to the address, so restart mining for the new one.
-  on("wallet", () => {
+  on("wallet", (w) => {
     clearSolution();
+    if (!w) {
+      // disconnected: stop mining
+      if (state.wantMining) $("btnStop").click();
+      return;
+    }
     if (state.wantMining) startEngine();
   });
 

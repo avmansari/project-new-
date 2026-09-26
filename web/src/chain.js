@@ -44,27 +44,35 @@ export async function recentBlocks(limit = 15) {
 }
 
 // ---------------- Wallet ----------------
-// Injected wallet (MetaMask / Rabby / Coinbase / any wallet app's in-app browser).
+// Works with any EIP-1193 provider (extension wallet or WalletConnect) picked in wallets.js.
 // The SAME wallet mines (its address is inside the hash) and claims (approves the tx) -> tokens land in it.
-export async function connectInjected() {
-  if (!window.ethereum) throw new Error("Wallet nahi mila. MetaMask install karo, ya phone pe wallet app ke browser mein yeh page kholo.");
-  const client = createWalletClient({ chain: CHAIN, transport: custom(window.ethereum) });
-  const [address] = await client.requestAddresses();
-  try {
-    await client.switchChain({ id: CHAIN.id });
-  } catch {
-    await client.addChain({ chain: CHAIN });
+export async function connectProvider(provider, { silent = false } = {}) {
+  const client = createWalletClient({ chain: CHAIN, transport: custom(provider) });
+  const [address] = silent ? await client.getAddresses() : await client.requestAddresses();
+  if (!address) throw new Error("Wallet ne koi account nahi diya");
+  const chainId = await client.getChainId().catch(() => null);
+  if (chainId !== CHAIN.id) {
+    try {
+      await client.switchChain({ id: CHAIN.id });
+    } catch {
+      try {
+        await client.addChain({ chain: CHAIN });
+        await client.switchChain({ id: CHAIN.id }).catch(() => {});
+      } catch {
+        throw new Error(`Wallet mein "${CHAIN.name}" network add/switch nahi hua. Wallet mein manually network add karo (chainId ${CHAIN.id}).`);
+      }
+    }
   }
-  return { address, client };
+  return { address, client, provider };
 }
 
-export function onAccountChange(cb) {
-  window.ethereum?.on?.("accountsChanged", (accs) => cb(accs[0]));
+export function onAccountChange(provider, cb) {
+  provider?.on?.("accountsChanged", (accs) => cb(accs?.[0] ?? null));
 }
 
-/** Show the token inside MetaMask's asset list. */
-export async function watchToken(symbol) {
-  return window.ethereum?.request({
+/** Show the token inside the wallet's asset list. */
+export async function watchToken(wallet, symbol) {
+  return wallet?.provider?.request({
     method: "wallet_watchAsset",
     params: { type: "ERC20", options: { address: CONTRACT_ADDRESS, symbol, decimals: 18 } },
   });
@@ -90,10 +98,16 @@ export async function transferTokens(wallet, to, amount) {
   return send(wallet, token, "transfer", [to, amount]);
 }
 
-// ---------------- Marketplace ----------------
-const ONE = 10n ** 18n;
-/** ETH (wei) for `amount` tokens at `price` wei/token, rounded up like the contract. */
-export const costOf = (amount, price) => (amount * price + ONE - 1n) / ONE;
+// ---------------- Marketplace (whole lots only) ----------------
+/** ETH (wei) for `lots` at `pricePerLot` wei — exact, same as the contract. */
+export const costOf = (lots, pricePerLot) => BigInt(lots) * pricePerLot;
+
+let _lotSize;
+/** Token units per lot (5,000 tokens = 1 mined block). */
+export async function lotSize() {
+  _lotSize ??= await publicClient.readContract({ ...market, functionName: "lotSize" });
+  return _lotSize;
+}
 
 async function ensureAllowance(wallet, amount, onStep) {
   const allowed = await publicClient.readContract({ ...token, functionName: "allowance", args: [wallet.address, market.address] });
@@ -123,22 +137,22 @@ export async function marketFeeBps() {
   return publicClient.readContract({ ...market, functionName: "feeBps" });
 }
 
-export async function listForSale(wallet, amount, price, onStep) {
-  await ensureAllowance(wallet, amount, onStep);
-  return send(wallet, market, "list", [amount, price]);
+export async function listForSale(wallet, lots, pricePerLot, onStep) {
+  await ensureAllowance(wallet, BigInt(lots) * (await lotSize()), onStep);
+  return send(wallet, market, "list", [BigInt(lots), pricePerLot]);
 }
 
-export async function placeBid(wallet, amount, price) {
-  return send(wallet, market, "bid", [amount, price], costOf(amount, price));
+export async function placeBid(wallet, lots, pricePerLot) {
+  return send(wallet, market, "bid", [BigInt(lots), pricePerLot], costOf(lots, pricePerLot));
 }
 
-export async function buyFromListing(wallet, id, amount, price) {
-  return send(wallet, market, "buy", [id, amount], costOf(amount, price));
+export async function buyFromListing(wallet, id, lots, pricePerLot) {
+  return send(wallet, market, "buy", [id, BigInt(lots)], costOf(lots, pricePerLot));
 }
 
-export async function sellIntoBid(wallet, id, amount, onStep) {
-  await ensureAllowance(wallet, amount, onStep);
-  return send(wallet, market, "sell", [id, amount]);
+export async function sellIntoBid(wallet, id, lots, onStep) {
+  await ensureAllowance(wallet, BigInt(lots) * (await lotSize()), onStep);
+  return send(wallet, market, "sell", [id, BigInt(lots)]);
 }
 
 export async function cancelOrder(wallet, id) {

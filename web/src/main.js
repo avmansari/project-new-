@@ -5,6 +5,7 @@ import { $, store, on, emit, fmtTok, fmtEth, short, errMsg } from "./store.js";
 import { initMine } from "./mine.js";
 import { initTransfer } from "./transfer.js";
 import { initMarket } from "./market.js";
+import { pickWallet, restoreWallet, rememberWallet } from "./wallets.js";
 
 // ---------- balances ----------
 async function loadBalances() {
@@ -22,25 +23,46 @@ on("balances", loadBalances);
 // ---------- wallet ----------
 function setWallet(w) {
   store.wallet = w;
-  $("btnConnect").textContent = short(w.address);
-  $("btnConnect").classList.add("secondary");
-  $("hdrBal").classList.remove("hidden");
+  $("btnConnect").textContent = w ? short(w.address) : "Connect wallet";
+  $("btnConnect").classList.toggle("secondary", !!w);
+  $("hdrBal").classList.toggle("hidden", !w);
   emit("wallet", w);
-  loadBalances();
+  if (w) loadBalances();
+}
+
+async function useProvider(picked, silent = false) {
+  const w = await chain.connectProvider(picked.provider, { silent });
+  w.name = picked.name;
+  rememberWallet(picked.id);
+  chain.onAccountChange(picked.provider, (addr) => {
+    if (!store.wallet || store.wallet.provider !== picked.provider) return;
+    if (!addr) return disconnect();
+    setWallet({ ...store.wallet, address: addr });
+  });
+  setWallet(w);
+}
+
+function disconnect() {
+  store.wallet?.provider?.disconnect?.(); // WalletConnect session
+  rememberWallet(null);
+  setWallet(null);
 }
 
 $("btnConnect").onclick = async () => {
-  if (store.wallet) return;
+  if (store.wallet) {
+    if (confirm(`${store.wallet.name || "Wallet"} disconnect karein?`)) disconnect();
+    return;
+  }
+  const picked = await pickWallet();
+  if (!picked) return;
   try {
-    setWallet(await chain.connectInjected());
+    await useProvider(picked);
   } catch (e) {
     alert(errMsg(e));
   }
 };
 
-chain.onAccountChange((addr) => {
-  if (addr && store.wallet) setWallet({ ...store.wallet, address: addr });
-});
+restoreWallet().then((picked) => picked && useProvider(picked, true).catch(() => {}));
 
 // ---------- tabs ----------
 const TABS = ["mine", "transfer", "market"];

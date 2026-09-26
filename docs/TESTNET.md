@@ -42,8 +42,8 @@ copy contracts\.env.example contracts\.env   # Windows
 PRIVATE_KEY=0x<tera testnet private key>
 TOKEN_NAME=Robin PoW
 TOKEN_SYMBOL=XYZ
-MIN_DIFFICULTY_BITS=20
-INITIAL_DIFFICULTY_BITS=26
+MIN_DIFFICULTY_BITS=21
+INITIAL_DIFFICULTY_BITS=27
 ```
 Phir:
 ```bash
@@ -70,6 +70,9 @@ npm run web          # http://localhost:5173
 CLI se bhi: `miner-cli/.env` mein `PRIVATE_KEY=...` daalo, phir `npm run mine`.
 
 ## Step 4: Website live karo (phone users ke liye, HTTPS)
+
+**WalletConnect (phone wallets ke liye, optional par recommended):** https://cloud.reown.com pe free account → New project → **Project ID** copy karo. Local ke liye `web/.env` mein `VITE_WC_PROJECT_ID=<id>`; Vercel pe Settings → Environment Variables mein same.
+
 **Vercel (free):**
 1. Code GitHub pe push karo (deployment.json ke saath).
 2. vercel.com → New Project → yeh repo choose karo → Root directory = repo root (`vercel.json` already hai) → Deploy.
@@ -77,9 +80,10 @@ CLI se bhi: `miner-cli/.env` mein `PRIVATE_KEY=...` daalo, phir `npm run mine`.
 
 ## Step 5: Testnet pe kya kya check karna hai (mainnet se pehle)
 - [ ] 2-3 alag log (phone + PC) ek saath mine karein. Sirf ek hi jeete har block, baaki ko "someone else mined this block" aaye
-- [ ] Block time dekho. Har block ke baad difficulty adjust honi chahiye (website pe "Required zero bits", Explorer pe `Retarget` event). ~60 sec per block pe settle honi chahiye
+- [ ] Block time dekho. Har block ke baad difficulty adjust honi chahiye (website pe "Required zero bits", Explorer pe `Retarget` event). ~2 min per block pe settle honi chahiye
 - [ ] 10+ min koi mine na kare → difficulty aasaan hoti hai (stall rescue)
 - [ ] Har claim pe exactly 5,000 tokens usi wallet mein aaye
+- [ ] Marketplace: sirf poore lots list/buy/sell ho rahe hain, price per lot sahi
 - [ ] Gas cost per mint note karo (users ko kitna ETH chahiye)
 - [ ] Tokens wallet mein dikh rahe hain (MetaMask → Import token → contract address)
 - [ ] Parameters final karo: reward, block time, max supply, difficulty (inke liye contract constants badalne padenge → naya deploy)

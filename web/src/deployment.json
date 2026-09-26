@@ -702,6 +702,11 @@
           },
           {
             "internalType": "uint256",
+            "name": "_lotSize",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
             "name": "_feeBps",
             "type": "uint256"
           },
@@ -807,7 +812,7 @@
           {
             "indexed": false,
             "internalType": "uint256",
-            "name": "amountLeft",
+            "name": "lotsLeft",
             "type": "uint256"
           }
         ],
@@ -838,13 +843,13 @@
           {
             "indexed": false,
             "internalType": "uint256",
-            "name": "amount",
+            "name": "lots",
             "type": "uint256"
           },
           {
             "indexed": false,
             "internalType": "uint256",
-            "name": "price",
+            "name": "pricePerLot",
             "type": "uint256"
           }
         ],
@@ -875,13 +880,13 @@
           {
             "indexed": false,
             "internalType": "uint256",
-            "name": "amount",
+            "name": "lots",
             "type": "uint256"
           },
           {
             "indexed": false,
             "internalType": "uint256",
-            "name": "price",
+            "name": "pricePerLot",
             "type": "uint256"
           },
           {
@@ -917,12 +922,12 @@
         "inputs": [
           {
             "internalType": "uint256",
-            "name": "amount",
+            "name": "lots",
             "type": "uint256"
           },
           {
             "internalType": "uint256",
-            "name": "pricePerToken",
+            "name": "pricePerLot",
             "type": "uint256"
           }
         ],
@@ -941,31 +946,12 @@
         "inputs": [
           {
             "internalType": "uint256",
-            "name": "",
-            "type": "uint256"
-          }
-        ],
-        "name": "bidEscrow",
-        "outputs": [
-          {
-            "internalType": "uint256",
-            "name": "",
-            "type": "uint256"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "uint256",
             "name": "id",
             "type": "uint256"
           },
           {
             "internalType": "uint256",
-            "name": "amount",
+            "name": "lots",
             "type": "uint256"
           }
         ],
@@ -1036,13 +1022,13 @@
                 "type": "address"
               },
               {
-                "internalType": "uint128",
-                "name": "amount",
-                "type": "uint128"
+                "internalType": "uint64",
+                "name": "lots",
+                "type": "uint64"
               },
               {
                 "internalType": "uint128",
-                "name": "price",
+                "name": "pricePerLot",
                 "type": "uint128"
               },
               {
@@ -1068,12 +1054,12 @@
         "inputs": [
           {
             "internalType": "uint256",
-            "name": "amount",
+            "name": "lots",
             "type": "uint256"
           },
           {
             "internalType": "uint256",
-            "name": "pricePerToken",
+            "name": "pricePerLot",
             "type": "uint256"
           }
         ],
@@ -1086,6 +1072,19 @@
           }
         ],
         "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "lotSize",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
         "type": "function"
       },
       {
@@ -1104,13 +1103,13 @@
             "type": "address"
           },
           {
-            "internalType": "uint128",
-            "name": "amount",
-            "type": "uint128"
+            "internalType": "uint64",
+            "name": "lots",
+            "type": "uint64"
           },
           {
             "internalType": "uint128",
-            "name": "price",
+            "name": "pricePerLot",
             "type": "uint128"
           },
           {
@@ -1162,31 +1161,7 @@
           },
           {
             "internalType": "uint256",
-            "name": "amount",
-            "type": "uint256"
-          }
-        ],
-        "name": "quoteBuy",
-        "outputs": [
-          {
-            "internalType": "uint256",
-            "name": "",
-            "type": "uint256"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "uint256",
-            "name": "id",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "amount",
+            "name": "lots",
             "type": "uint256"
           }
         ],

@@ -38,7 +38,7 @@ contract PowInscription {
     // ------------------------------------------------------------------
     uint256 public constant MAX_SUPPLY = 21_000_000 ether;
     uint256 public constant BLOCK_REWARD = 5_000 ether; // tokens per mined block
-    uint256 public constant TARGET_BLOCK_TIME = 60; // seconds
+    uint256 public constant TARGET_BLOCK_TIME = 120; // seconds (2 min per block)
     uint256 public constant MIN_TARGET = 2 ** 16; // hardest possible difficulty (240 zero bits)
     uint256 public constant STALL_PERIOD = TARGET_BLOCK_TIME * 10; // no block for this long => difficulty eases
 

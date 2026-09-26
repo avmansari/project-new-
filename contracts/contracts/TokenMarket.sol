@@ -8,43 +8,42 @@ interface IERC20 {
 
 /**
  * @title TokenMarket
- * @notice Simple on-chain order book for the mined token, paid in ETH.
+ * @notice On-chain order book for the mined token, traded ONLY in whole lots, paid in ETH.
+ *         1 lot = `lotSize` tokens (5,000 = one mined block). No small chunks.
  *
- *  Sell side (listings):  seller escrows tokens -> anyone can buy all or part, paying ETH.
- *  Buy side (bids):       buyer escrows ETH     -> any holder can sell into it, receiving ETH.
+ *  Sell side (listings):  seller escrows N lots   -> anyone can buy 1..N whole lots.
+ *  Buy side (bids):       buyer escrows ETH       -> any holder can sell 1..N whole lots into it.
  *
- *  - Partial fills on both sides.
- *  - Cancel any time: unfilled tokens / ETH go back.
+ *  - Price is "wei per lot"; every trade costs exactly lots * pricePerLot (no rounding).
+ *  - Cancel any time: unfilled lots / ETH go back.
  *  - Optional marketplace fee (basis points, max 5%) taken from the ETH side, sent to feeRecipient.
- *  - Price is always "wei per 1 whole token" (1e18 token units).
  */
 contract TokenMarket {
     IERC20 public immutable token;
+    uint256 public immutable lotSize; // token units per lot (18 decimals)
     address public owner;
     address public feeRecipient;
     uint256 public feeBps; // 100 = 1%
     uint256 public constant MAX_FEE_BPS = 500;
-    uint256 private constant ONE = 1e18;
 
     struct Order {
         address maker;
-        uint128 amount; // remaining token amount (18 decimals)
-        uint128 price; // wei per whole token
+        uint64 lots; // remaining whole lots
+        uint128 pricePerLot; // wei per lot
         bool isBid; // false = sell listing, true = buy bid
         bool active;
     }
 
     Order[] public orders;
-    mapping(uint256 => uint256) public bidEscrow; // exact ETH still held for each bid
 
-    event OrderCreated(uint256 indexed id, address indexed maker, bool isBid, uint256 amount, uint256 price);
-    event OrderCancelled(uint256 indexed id, address indexed maker, uint256 amountLeft);
+    event OrderCreated(uint256 indexed id, address indexed maker, bool isBid, uint256 lots, uint256 pricePerLot);
+    event OrderCancelled(uint256 indexed id, address indexed maker, uint256 lotsLeft);
     event Trade(
         uint256 indexed id,
         address indexed buyer,
         address indexed seller,
-        uint256 amount,
-        uint256 price,
+        uint256 lots,
+        uint256 pricePerLot,
         uint256 ethPaid,
         uint256 fee
     );
@@ -69,9 +68,10 @@ contract TokenMarket {
         _lock = 1;
     }
 
-    constructor(address _token, uint256 _feeBps, address _feeRecipient) {
-        if (_token == address(0) || _feeBps > MAX_FEE_BPS) revert BadParams();
+    constructor(address _token, uint256 _lotSize, uint256 _feeBps, address _feeRecipient) {
+        if (_token == address(0) || _lotSize == 0 || _feeBps > MAX_FEE_BPS) revert BadParams();
         token = IERC20(_token);
+        lotSize = _lotSize;
         owner = msg.sender;
         feeBps = _feeBps;
         feeRecipient = _feeRecipient == address(0) ? msg.sender : _feeRecipient;
@@ -81,98 +81,87 @@ contract TokenMarket {
     // Sell side
     // ------------------------------------------------------------------
 
-    /// @notice List tokens for sale. Requires token.approve(market, amount) first.
-    function list(uint256 amount, uint256 pricePerToken) external nonReentrant returns (uint256 id) {
-        _checkOrder(amount, pricePerToken);
-        if (!token.transferFrom(msg.sender, address(this), amount)) revert TokenTransferFailed();
-        id = _push(msg.sender, amount, pricePerToken, false);
+    /// @notice List `lots` whole lots for sale. Requires token.approve(market, lots * lotSize) first.
+    function list(uint256 lots, uint256 pricePerLot) external nonReentrant returns (uint256 id) {
+        _checkOrder(lots, pricePerLot);
+        if (!token.transferFrom(msg.sender, address(this), lots * lotSize)) revert TokenTransferFailed();
+        id = _push(msg.sender, lots, pricePerLot, false);
     }
 
-    /// @notice Buy `amount` tokens from listing `id`. Send at least quoteBuy(id, amount) ETH; extra is refunded.
-    function buy(uint256 id, uint256 amount) external payable nonReentrant {
+    /// @notice Buy `lots` whole lots from listing `id`. Send exactly lots * pricePerLot ETH (extra is refunded).
+    function buy(uint256 id, uint256 lots) external payable nonReentrant {
         Order storage o = orders[id];
         if (!o.active) revert OrderClosed();
         if (o.isBid) revert WrongSide();
-        if (amount == 0 || amount > o.amount) revert BadParams();
+        if (lots == 0 || lots > o.lots) revert BadParams();
 
-        uint256 cost = _cost(amount, o.price);
+        uint256 cost = lots * o.pricePerLot;
         if (msg.value < cost) revert InsufficientPayment(cost, msg.value);
 
-        o.amount -= uint128(amount);
-        if (o.amount == 0) o.active = false;
+        o.lots -= uint64(lots);
+        if (o.lots == 0) o.active = false;
         address seller = o.maker;
         uint256 fee = (cost * feeBps) / 10_000;
 
-        if (!token.transfer(msg.sender, amount)) revert TokenTransferFailed();
+        if (!token.transfer(msg.sender, lots * lotSize)) revert TokenTransferFailed();
         _sendEth(seller, cost - fee);
         if (fee > 0) _sendEth(feeRecipient, fee);
         if (msg.value > cost) _sendEth(msg.sender, msg.value - cost);
 
-        emit Trade(id, msg.sender, seller, amount, o.price, cost, fee);
+        emit Trade(id, msg.sender, seller, lots, o.pricePerLot, cost, fee);
     }
 
     // ------------------------------------------------------------------
     // Buy side
     // ------------------------------------------------------------------
 
-    /// @notice Place a bid: escrow ETH to buy `amount` tokens at `pricePerToken`.
-    function bid(uint256 amount, uint256 pricePerToken) external payable nonReentrant returns (uint256 id) {
-        _checkOrder(amount, pricePerToken);
-        uint256 cost = _cost(amount, pricePerToken);
+    /// @notice Place a bid for `lots` whole lots at `pricePerLot`; escrows lots * pricePerLot ETH.
+    function bid(uint256 lots, uint256 pricePerLot) external payable nonReentrant returns (uint256 id) {
+        _checkOrder(lots, pricePerLot);
+        uint256 cost = lots * pricePerLot;
         if (msg.value < cost) revert InsufficientPayment(cost, msg.value);
-        id = _push(msg.sender, amount, pricePerToken, true);
-        bidEscrow[id] = cost;
+        id = _push(msg.sender, lots, pricePerLot, true);
         if (msg.value > cost) _sendEth(msg.sender, msg.value - cost);
     }
 
-    /// @notice Sell `amount` tokens into bid `id`. Requires token.approve(market, amount) first.
-    function sell(uint256 id, uint256 amount) external nonReentrant {
+    /// @notice Sell `lots` whole lots into bid `id`. Requires token.approve(market, lots * lotSize) first.
+    function sell(uint256 id, uint256 lots) external nonReentrant {
         Order storage o = orders[id];
         if (!o.active) revert OrderClosed();
         if (!o.isBid) revert WrongSide();
-        if (amount == 0 || amount > o.amount) revert BadParams();
+        if (lots == 0 || lots > o.lots) revert BadParams();
 
-        // Partial fill pays floor(amount*price); the final fill takes whatever escrow is left,
-        // so rounding never lets a bid pay out more ETH than it deposited.
-        uint256 value = amount == o.amount ? bidEscrow[id] : (amount * o.price) / ONE;
-        bidEscrow[id] -= value;
-        o.amount -= uint128(amount);
-        if (o.amount == 0) o.active = false;
+        uint256 value = lots * o.pricePerLot;
+        o.lots -= uint64(lots);
+        if (o.lots == 0) o.active = false;
         address buyer = o.maker;
         uint256 fee = (value * feeBps) / 10_000;
 
-        if (!token.transferFrom(msg.sender, buyer, amount)) revert TokenTransferFailed();
+        if (!token.transferFrom(msg.sender, buyer, lots * lotSize)) revert TokenTransferFailed();
         _sendEth(msg.sender, value - fee);
         if (fee > 0) _sendEth(feeRecipient, fee);
 
-        emit Trade(id, buyer, msg.sender, amount, o.price, value, fee);
+        emit Trade(id, buyer, msg.sender, lots, o.pricePerLot, value, fee);
     }
 
     // ------------------------------------------------------------------
     // Both sides
     // ------------------------------------------------------------------
 
-    /// @notice Cancel your order; unfilled tokens (listing) or ETH (bid) are returned.
+    /// @notice Cancel your order; unfilled lots (listing) or ETH (bid) are returned.
     function cancel(uint256 id) external nonReentrant {
         Order storage o = orders[id];
         if (!o.active) revert OrderClosed();
         if (o.maker != msg.sender) revert NotMaker();
-        uint256 left = o.amount;
+        uint256 left = o.lots;
         o.active = false;
-        o.amount = 0;
+        o.lots = 0;
         if (o.isBid) {
-            uint256 refund = bidEscrow[id];
-            bidEscrow[id] = 0;
-            _sendEth(msg.sender, refund);
-        } else if (!token.transfer(msg.sender, left)) {
+            _sendEth(msg.sender, left * o.pricePerLot);
+        } else if (!token.transfer(msg.sender, left * lotSize)) {
             revert TokenTransferFailed();
         }
         emit OrderCancelled(id, msg.sender, left);
-    }
-
-    /// @notice ETH needed to buy `amount` from listing `id` (rounded up in seller's favour).
-    function quoteBuy(uint256 id, uint256 amount) external view returns (uint256) {
-        return _cost(amount, orders[id].price);
     }
 
     function ordersCount() external view returns (uint256) {
@@ -208,18 +197,14 @@ contract TokenMarket {
     // ------------------------------------------------------------------
     // Internals
     // ------------------------------------------------------------------
-    function _checkOrder(uint256 amount, uint256 price) internal pure {
-        if (amount == 0 || price == 0 || amount > type(uint128).max || price > type(uint128).max) revert BadParams();
+    function _checkOrder(uint256 lots, uint256 pricePerLot) internal pure {
+        if (lots == 0 || pricePerLot == 0 || lots > type(uint64).max || pricePerLot > type(uint128).max) revert BadParams();
     }
 
-    function _push(address maker, uint256 amount, uint256 price, bool isBid) internal returns (uint256 id) {
+    function _push(address maker, uint256 lots, uint256 pricePerLot, bool isBid) internal returns (uint256 id) {
         id = orders.length;
-        orders.push(Order(maker, uint128(amount), uint128(price), isBid, true));
-        emit OrderCreated(id, maker, isBid, amount, price);
-    }
-
-    function _cost(uint256 amount, uint256 price) internal pure returns (uint256) {
-        return (amount * price + ONE - 1) / ONE; // round up
+        orders.push(Order(maker, uint64(lots), uint128(pricePerLot), isBid, true));
+        emit OrderCreated(id, maker, isBid, lots, pricePerLot);
     }
 
     function _sendEth(address to, uint256 value) internal {

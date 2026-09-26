@@ -30,10 +30,11 @@
         <section class="card">
           <h2>Your device</h2>
           <div class="grid">
-            <div><label>GPU</label><b id="gpuName">detecting…</b></div>
+            <div><label>GPU</label><b id="gpuName">detecting…</b> <button id="gpuEdit" class="link small">change</button></div>
             <div><label>CPU</label><b id="cpuName">–</b></div>
           </div>
           <p class="small muted" id="gpuApi"></p>
+          <details class="small muted"><summary>GPU details</summary><pre class="mono" id="gpuRaw"></pre></details>
         </section>
 
         <section class="card">
@@ -124,18 +125,20 @@
             <div><label>Last trade</label><b id="mkLast">–</b></div>
             <div><label>Volume (recent)</label><b id="mkVolume">–</b></div>
             <div><label>Fee</label><b id="mkFee">–</b></div>
-            <div><label>Your <span class="sym">XYZ</span></label><b id="mkBal">–</b></div>
+            <div><label>Your lots</label><b id="mkBal">–</b></div>
             <div><label>Your ETH</label><b id="mkBalEth">–</b></div>
           </div>
-          <p class="small muted">Live · har 4 sec update. Prices = ETH per 1 token.</p>
+          <p class="small muted">Live · har 4 sec update. <b>1 lot = <span class="lotsize">5,000</span> <span class="sym">XYZ</span></b> · sirf poore lots mein trade · price = ETH per lot.</p>
         </section>
 
         <section class="card hidden" id="mkTrade">
           <h2 id="mkTradeTitle"></h2>
           <p class="small" id="mkTradeInfo"></p>
-          <label for="mkTradeAmt">Amount (tokens)</label>
-          <div class="row nowrap">
-            <input id="mkTradeAmt" class="field" inputmode="decimal" />
+          <label for="mkTradeLots">Lots</label>
+          <div class="row nowrap stepper">
+            <button id="mkTradeLotsMinus" class="secondary">−</button>
+            <input id="mkTradeLots" class="field" inputmode="numeric" value="1" />
+            <button id="mkTradeLotsPlus" class="secondary">+</button>
             <button id="mkTradeMax" class="secondary">Max</button>
           </div>
           <p><b id="mkTradeCost">–</b></p>
@@ -162,10 +165,15 @@
             <button id="mkSideSell" class="active">Sell</button>
             <button id="mkSideBuy">Buy</button>
           </div>
-          <label for="mkAmt">Amount (<span class="sym">XYZ</span>)</label>
-          <input id="mkAmt" class="field" inputmode="decimal" placeholder="e.g. 5000" />
-          <label for="mkPrice">Price per token (ETH)</label>
-          <input id="mkPrice" class="field" inputmode="decimal" placeholder="e.g. 0.000001" />
+          <label for="mkLots">Lots (1 lot = <span class="lotsize">5,000</span> <span class="sym">XYZ</span>)</label>
+          <div class="row nowrap stepper">
+            <button id="mkLotsMinus" class="secondary">−</button>
+            <input id="mkLots" class="field" inputmode="numeric" value="1" />
+            <button id="mkLotsPlus" class="secondary">+</button>
+          </div>
+          <p class="small muted" id="mkLotsHint"></p>
+          <label for="mkPrice">Price per lot (ETH)</label>
+          <input id="mkPrice" class="field" inputmode="decimal" placeholder="e.g. 0.05" />
           <p>Total: <b id="mkTotal">–</b></p>
           <button id="mkCreate">List for sale</button>
           <p class="small muted" id="mkCreateHint"></p>

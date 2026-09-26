@@ -75,28 +75,27 @@ describe("PowInscription", () => {
     await mineAndClaim(c, alice);
     const t1 = await c.miningTarget();
     expect(t1).to.be.lt(t0);
-    // elapsed is ~1s on hardhat: factor (180+1)/240
-    expect(t1).to.be.lte((t0 / 240n) * 181n);
+        expect(t1).to.be.lte((t0 / 480n) * 361n); // T=120: (3T+1)/4T
   });
 
   it("stays the same when blocks come exactly on time and eases when slow", async () => {
     const { c, alice } = await deploy(4, 8);
     await mineAndClaim(c, alice);
     let before = await c.miningTarget();
-    await time.increase(59); // + 1s for the tx block = 60s
+    await time.increase(119); // + 1s for the tx block = 120s = T
     await mineAndClaim(c, alice);
-    expect(await c.miningTarget()).to.equal((before / 240n) * 240n);
+    expect(await c.miningTarget()).to.equal((before / 480n) * 480n);
 
     before = await c.miningTarget();
-    await time.increase(299);
+    await time.increase(599); // 5T
     await mineAndClaim(c, alice);
-    expect(await c.miningTarget()).to.equal((before / 240n) * 480n); // 2x easier
+    expect(await c.miningTarget()).to.equal((before / 480n) * 960n); // 2x easier
   });
 
   it("eases difficulty after a long stall", async () => {
     const { c } = await deploy(4, 10);
     const t0 = await c.currentTarget();
-    await time.increase(60 * 10 * 2 + 1);
+    await time.increase(120 * 10 * 2 + 1);
     expect(await c.currentTarget()).to.equal(t0 << 2n);
   });
 
