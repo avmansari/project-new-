@@ -21,7 +21,7 @@ export function requireTerms() {
       <ul class="small">
         <li>This is experimental software on a public blockchain. <b>Not financial advice.</b></li>
         <li>Tokens may lose all value. Smart contracts can have bugs. Only use funds you can afford to lose.</li>
-        <li>Claiming a block costs ~$0.10 in ETH + gas; marketplace trades have a 2% fee.</li>
+        <li>Transactions need ETH for gas and fees (your wallet shows the exact amount); marketplace trades have a 2% fee.</li>
         <li>You're responsible for your wallet, your taxes, and following your local laws. You must be 18+.</li>
         <li>Not affiliated with Robinhood Markets, Inc.</li>
       </ul>

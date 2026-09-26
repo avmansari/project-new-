@@ -45,7 +45,7 @@ function activity() {
       logIndex: e.logIndex,
       t: Number(a.timestamp) * 1000,
       tx: e.tx,
-      text: `⛏️ Claimed block #${a.height} · +${fmtTok(a.reward)} · fee ${fmtEth(a.feePaid, 8)}`,
+      text: `⛏️ Claimed block #${a.height} · +${fmtTok(a.reward)}`,
     });
   }
   for (const e of indexer.events("token", "Transfer")) {
