@@ -159,10 +159,37 @@ On-chain **order book** traded in ETH, **whole lots only**:
 - **Price = ETH per lot.** Every trade costs exactly `lots × pricePerLot`, no rounding.
 - **Sell order (listing):** the seller locks N lots (approve + list = 2 confirmations). Anyone can buy 1…N whole lots.
 - **Buy order (bid):** the buyer locks `lots × price` ETH. Any holder can sell whole lots into it.
+- **Quick buy (`buyMany`):** fills the cheapest listings for the requested number of lots in **one transaction** (all-or-nothing, payment checked before any transfer).
 - **Cancel:** unsold lots / unused ETH are returned.
-- **Fee:** `MARKET_FEE_BPS` (default 1%, max 5%), taken from the ETH side and sent to `FEE_RECIPIENT`. The owner can change it later with `setFee`.
+- **Fee:** `MARKET_FEE_BPS` (default **2%**, max 5%) of the ETH side, sent to `FEE_RECIPIENT`. The owner can change it with `setFee`.
 - **Safety:** reentrancy guard, overpayment refunds, only the maker can cancel.
-- **Realtime:** the site refreshes orders + trades every 4 s while the Marketplace tab is open.
+- **Realtime:** orders refresh every 4 s; trades, charts and 24h stats come from the indexer (every 8 s).
+
+## 8b. Fees (project revenue)
+
+Both fees go to the same wallet: `FEE_RECIPIENT` in `contracts/.env` (empty = the deployer wallet).
+
+| Fee | Amount | Paid by | When |
+|---|---|---|---|
+| **Claim fee** | **$0.10 per lot** (in ETH) | the miner | on every successful claim (1 claim = 1 lot = 5,000 tokens). A losing (stale) claim reverts, so it pays nothing |
+| **Marketplace fee** | **2%** of trade volume (in ETH) | taken from the ETH side of every trade | on every buy / sell / quick buy |
+
+How the $0.10 is turned into ETH (the contract can't read USD by itself):
+- **Fixed mode (default):** at deploy, `MINT_FEE_USD` (0.1) is converted with the live ETH price into `mintFeeWei`. Run **`npm run set-fee`** from time to time (e.g. daily) to re-sync it with the ETH price. Only the owner can change it; it is capped at 0.01 ETH.
+- **USD mode (optional):** if the chain has a Chainlink-style ETH/USD feed, set `PRICE_FEED` in `.env` (or call `setUsdFee`). The fee is then always exactly $0.10, and falls back to the fixed fee if the feed is older than 1 day. Capped at $1.
+
+Owner functions (hand them to a multisig for mainnet): `setMintFeeWei`, `setUsdFee`, `setFeeRecipient`, `transferOwnership` on the token; `setFee`, `transferOwnership` on the market.
+
+## 8c. Indexer, stats and charts
+
+`web/src/indexer.js` is a small in-browser indexer: it loads every token + market event from the deploy block (in adaptive chunks), caches them in `localStorage`, and fetches only new blocks every 8 s. It powers:
+- **Stats tab:** network tiles (blocks mined, % supply, blocks left, avg block time, estimated hashrate, miners 24h), **leaderboard** (24h / 7d / all time) and **hashrate / block time / difficulty charts**.
+- **Marketplace:** **price-per-lot candlestick chart** (24h / 7d / 30d / all), **24h volume / change / high / low**, **holders count**, recent trades.
+- **Transfer tab → Your activity:** the wallet's claims, transfers and trades with explorer links.
+
+Charts are dependency-free SVG (`web/src/charts.js`) with crosshair/tooltips, keyboard focus and a data-table view. Up/down candles use a colour-blind-safe blue/red pair. When the project outgrows the browser indexer, replace `indexer.load` with a hosted indexer (The Graph / Goldsky / Ponder) returning the same arrays.
+
+Other Mine-tab helpers: **auto-claim** (wallet opens as soon as a block is found), **sound** and **browser notification** toggles, and the claim fee shown in ETH + USD before claiming.
 
 ## 9. Wallets
 
@@ -226,8 +253,8 @@ npm run web                      # or host it on Vercel (vercel.json is included
 ```
 contracts/contracts/PowInscription.sol   ← token: PoW verify, 5,000/block, per-block retarget, inscription, ERC-20
 contracts/contracts/TokenMarket.sol      ← marketplace: whole-lot listings + ETH bids, cancel, fee
-contracts/test/PowInscription.test.js    ← 11 tests (first-wins, anti-theft, 5,000/block, retarget, stall…)
-contracts/test/TokenMarket.test.js       ← 7 tests (lots only, fees, escrow, cancel…)
+contracts/test/PowInscription.test.js    ← 15 tests (first-wins, anti-theft, 5,000/block, retarget, stall, claim fee…)
+contracts/test/TokenMarket.test.js       ← 10 tests (lots only, 2% fee, quick buy, escrow, cancel…)
 contracts/scripts/deploy.js              ← deploys token + market, exports ABIs/addresses to web & CLI
 contracts/scripts/setup-testnet.js       ← `npm run testnet`: key → faucet wait → deploy
 contracts/scripts/new-wallet.js          ← `npm run new-wallet`: fresh deployer key into .env
@@ -238,11 +265,17 @@ shared/gpu-name.js                       ← GPU name detection
 web/src/main.js                          ← app shell: wallet, balances, tabs
 web/src/wallets.js                       ← wallet picker (EIP-6963, WalletConnect, deep links)
 web/src/mine.js                          ← Mine tab (mining state machine + claim + device info)
-web/src/transfer.js                      ← Transfer tab
+web/src/transfer.js                      ← Transfer tab + your activity
 web/src/market.js                        ← Marketplace tab (order book, live polling)
 web/src/engine.js                        ← CPU workers + GPU orchestration
 web/src/gpu-miner.js                     ← WebGPU host code
 web/src/cpu-worker.js                    ← CPU worker
-web/src/chain.js                         ← viem: reads, claim, transfer, marketplace txs
+web/src/chain.js                         ← viem: reads, claim (+fee), transfer, marketplace txs, quick buy
+web/src/indexer.js                       ← in-browser event indexer (cached, incremental)
+web/src/stats.js                         ← Stats tab: tiles, leaderboard, charts
+web/src/charts.js                        ← SVG line + candlestick charts
+web/src/price.js                         ← ETH/USD price for USD estimates
+contracts/scripts/set-fee.js             ← `npm run set-fee`: keep the claim fee at ~$0.10
+contracts/scripts/eth-price.js           ← ETH/USD helper for fee scripts
 miner-cli/index.js, worker.js            ← headless miner
 ```

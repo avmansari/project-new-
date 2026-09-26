@@ -67,9 +67,10 @@ async function onFound(job, nonce, digest) {
   stopWorkers();
   submitting = true;
   const bits = leadingZeroBits(hexToBytes(digest));
-  log(`💎 solved #${job.height}: ${bits} zero bits (need ${job.requiredBits}) → claiming ${formatEther(job.reward)} tokens…`);
+  log(`💎 solved #${job.height}: ${bits} zero bits (need ${job.requiredBits}) → claiming ${formatEther(job.reward)} tokens (claim fee paid in ETH)…`);
   try {
-    const hash = await wallet.writeContract({ ...c, functionName: "mint", args: [nonce, job.challenge] });
+    const fee = await pub.readContract({ ...c, functionName: "mintFee" }); // ~$0.10 claim fee, paid in ETH
+    const hash = await wallet.writeContract({ ...c, functionName: "mint", args: [nonce, job.challenge], value: fee });
     const receipt = await pub.waitForTransactionReceipt({ hash });
     const [ev] = parseEventLogs({ abi: deployment.abi, logs: receipt.logs, eventName: "BlockMined" });
     mined++;

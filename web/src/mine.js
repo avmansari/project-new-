@@ -3,7 +3,8 @@ import { leadingZeroBits, hexToBytes, expectedHashes } from "@pow/shared";
 import { detectGpu } from "@pow/shared/gpu-name";
 import * as chain from "./chain.js";
 import { createEngine } from "./engine.js";
-import { $, store, on, emit, fmtNum, fmtTok, fmtDur, short, errMsg } from "./store.js";
+import { $, store, on, emit, fmtNum, fmtTok, fmtDur, fmtEth, short, errMsg } from "./store.js";
+import { usdOf } from "./price.js";
 
 const state = {
   info: null,
@@ -53,6 +54,62 @@ function handleSolution(sol) {
   $("solutionCard").classList.remove("hidden");
   setStatus("block solved!");
   navigator.vibrate?.(200);
+  alertFound(state.info.height);
+  showClaimFee();
+  if (pref("autoClaim")) claim();
+}
+
+async function showClaimFee() {
+  try {
+    const fee = await chain.mintFee();
+    $("solFee").textContent = `${fmtEth(fee, 8)} ${usdOf(fee)}`.trim();
+  } catch {
+    $("solFee").textContent = "–";
+  }
+}
+
+// ---------- preferences (auto-claim, sound, notifications) ----------
+const PREFS_KEY = "pow-mine-prefs";
+function prefs() {
+  try {
+    return JSON.parse(localStorage.getItem(PREFS_KEY)) || {};
+  } catch {
+    return {};
+  }
+}
+const pref = (k) => !!prefs()[k];
+function setPref(k, v) {
+  try {
+    localStorage.setItem(PREFS_KEY, JSON.stringify({ ...prefs(), [k]: v }));
+  } catch {}
+}
+
+let audioCtx;
+function beep() {
+  try {
+    audioCtx ??= new AudioContext();
+    const t = audioCtx.currentTime;
+    [880, 1320].forEach((f, i) => {
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t + i * 0.15);
+      g.gain.exponentialRampToValueAtTime(0.2, t + i * 0.15 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + i * 0.15 + 0.14);
+      o.connect(g).connect(audioCtx.destination);
+      o.start(t + i * 0.15);
+      o.stop(t + i * 0.15 + 0.15);
+    });
+  } catch {}
+}
+
+function alertFound(height) {
+  if (pref("sound")) beep();
+  if (pref("notify") && "Notification" in window && Notification.permission === "granted" && document.hidden) {
+    try {
+      new Notification("⛏️ Block solved!", { body: `You solved block #${height}. Claim your ${store.symbol} now.`, tag: "pow-block" });
+    } catch {}
+  }
 }
 
 function clearSolution() {
@@ -179,6 +236,26 @@ export function initMine() {
   $("threadsVal").textContent = $("threads").value;
   $("useGpu").checked = engine.hasGpuApi();
   showDevice();
+
+  // auto-claim / sound / notification toggles (remembered per browser)
+  $("autoClaim").checked = pref("autoClaim");
+  $("soundOn").checked = pref("sound");
+  $("notifyOn").checked = pref("notify") && "Notification" in window && Notification.permission === "granted";
+  $("autoClaim").onchange = () => setPref("autoClaim", $("autoClaim").checked);
+  $("soundOn").onchange = () => {
+    setPref("sound", $("soundOn").checked);
+    if ($("soundOn").checked) beep(); // preview + unlocks audio on iOS
+  };
+  $("notifyOn").onchange = async () => {
+    if (!$("notifyOn").checked) return setPref("notify", false);
+    if (!("Notification" in window)) {
+      $("notifyOn").checked = false;
+      return alert("This browser does not support notifications.");
+    }
+    const perm = await Notification.requestPermission();
+    $("notifyOn").checked = perm === "granted";
+    setPref("notify", perm === "granted");
+  };
 
   let wakeLock = null;
   $("btnStart").onclick = async () => {

@@ -6,6 +6,9 @@ import { initMine } from "./mine.js";
 import { initTransfer } from "./transfer.js";
 import { initMarket } from "./market.js";
 import { pickWallet, restoreWallet, rememberWallet } from "./wallets.js";
+import { initStats } from "./stats.js";
+import { indexer } from "./indexer.js";
+import { ethUsd } from "./price.js";
 
 // ---------- balances ----------
 async function loadBalances() {
@@ -65,7 +68,7 @@ $("btnConnect").onclick = async () => {
 restoreWallet().then((picked) => picked && useProvider(picked, true).catch(() => {}));
 
 // ---------- tabs ----------
-const TABS = ["mine", "transfer", "market"];
+const TABS = ["mine", "transfer", "market", "stats"];
 let market;
 function showTab(name) {
   if (!TABS.includes(name)) name = "mine";
@@ -84,6 +87,10 @@ window.addEventListener("hashchange", () => showTab(location.hash.slice(1)));
 const refreshMine = initMine();
 initTransfer();
 market = initMarket();
+initStats();
+indexer.start();
+ethUsd().then(() => emit("balances:updated"));
+setInterval(ethUsd, 60_000);
 $("contractAddr").textContent = CONTRACT_ADDRESS;
 $("marketAddr").textContent = MARKET?.address ?? "–";
 chain

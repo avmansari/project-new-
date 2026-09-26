@@ -2,6 +2,9 @@
 import { parseEther } from "viem";
 import * as chain from "./chain.js";
 import { $, store, on, emit, fmtAmt, fmtEth, short, errMsg } from "./store.js";
+import { indexer } from "./indexer.js";
+import { candleChart, onResize } from "./charts.js";
+import { usdOf, ethUsd } from "./price.js";
 
 const REFRESH_MS = 4000;
 const state = { orders: [], trades: [], feeBps: 0n, lotSize: 0n, side: "sell", selected: null, busy: false, timer: null };
@@ -31,9 +34,8 @@ async function refresh() {
       state.lotSize = await chain.lotSize();
       document.querySelectorAll(".lotsize").forEach((el) => (el.textContent = fmtAmt(state.lotSize, 0)));
     }
-    const [orders, trades, feeBps] = await Promise.all([chain.getOrders(), chain.recentTrades(), chain.marketFeeBps()]);
+    const [orders, feeBps] = await Promise.all([chain.getOrders(), chain.marketFeeBps(), ethUsd()]);
     state.orders = orders;
-    state.trades = trades;
     state.feeBps = feeBps;
     render();
   } catch (e) {
@@ -50,10 +52,14 @@ function render() {
 
   // stats
   $("mkFloor").textContent = asks.length ? fmtEth(asks[0].pricePerLot) : "–";
+  $("mkFloorUsd").textContent = asks.length ? usdOf(asks[0].pricePerLot) : "";
   $("mkBestBid").textContent = bids.length ? fmtEth(bids[0].pricePerLot) : "–";
+  $("mkBestBidUsd").textContent = bids.length ? usdOf(bids[0].pricePerLot) : "";
   $("mkLast").textContent = state.trades.length ? fmtEth(state.trades[0].pricePerLot) : "–";
-  $("mkVolume").textContent = fmtEth(state.trades.reduce((s, t) => s + t.ethPaid, 0n), 4);
+  $("mkLastUsd").textContent = state.trades.length ? usdOf(state.trades[0].pricePerLot) : "";
   $("mkFee").textContent = `${Number(state.feeBps) / 100}%`;
+  state.asks = asks;
+  updateQuickBuy();
   $("mkBal").textContent = store.wallet ? `${lotsLabel(myLots())}` : "–";
 
   const row = (o, action) => `
@@ -80,6 +86,7 @@ function render() {
 
   $("mkTrades").innerHTML = state.trades.length
     ? state.trades
+        .slice(0, 30)
         .map((t) => {
           const url = chain.explorerTx(t.tx);
           return `<li>${lotsLabel(t.lots)} @ ${fmtEth(t.pricePerLot)} / lot · <span class="mono small">${short(t.seller)} → ${short(t.buyer)}</span> ${url ? `· <a href="${url}" target="_blank" rel="noopener">tx</a>` : ""}</li>`;
@@ -132,8 +139,8 @@ function updateTradeCost() {
   const fee = (eth * state.feeBps) / 10_000n;
   const tokens = `${fmtAmt(lots * state.lotSize, 0)} ${store.symbol}`;
   $("mkTradeCost").textContent = o.isBid
-    ? `Sell ${lotsLabel(lots)} (${tokens}) → you receive ${fmtEth(eth - fee)} (fee ${fmtEth(fee)})`
-    : `Buy ${lotsLabel(lots)} (${tokens}) → you pay ${fmtEth(eth)}`;
+    ? `Sell ${lotsLabel(lots)} (${tokens}) → you receive ${fmtEth(eth - fee)} ${usdOf(eth - fee)} (fee ${fmtEth(fee)})`
+    : `Buy ${lotsLabel(lots)} (${tokens}) → you pay ${fmtEth(eth)} ${usdOf(eth)}`;
 }
 
 async function doTrade() {
@@ -171,7 +178,9 @@ function updateCreateTotal() {
   const lots = parseLots($("mkLots").value);
   const price = parsePrice($("mkPrice").value);
   $("mkTotal").textContent =
-    lots > 0n && price > 0n ? `${fmtEth(chain.costOf(lots, price))} for ${lotsLabel(lots)} (${fmtAmt(lots * state.lotSize, 0)} ${store.symbol})` : "–";
+    lots > 0n && price > 0n
+      ? `${fmtEth(chain.costOf(lots, price))} ${usdOf(chain.costOf(lots, price))} for ${lotsLabel(lots)} (${fmtAmt(lots * state.lotSize, 0)} ${store.symbol})`
+      : "–";
   if (state.side === "sell") $("mkLotsHint").textContent = store.wallet ? `You have ${lotsLabel(myLots())}` : "";
   else $("mkLotsHint").textContent = "";
 }
@@ -216,6 +225,7 @@ async function busy(fn) {
     state.busy = false;
     document.querySelectorAll("#tab-market button").forEach((b) => (b.disabled = false));
     await refresh();
+    indexer.refresh().catch(() => {}); // pull the new Trade event right away
   }
 }
 
@@ -230,6 +240,125 @@ function stepper(inputId, max) {
   };
   $(`${inputId}Minus`).onclick = () => set(parseLots(input.value) - 1n);
   $(`${inputId}Plus`).onclick = () => set(parseLots(input.value) + 1n);
+}
+
+// ---------------- history: 24h stats, holders, price chart (from the indexer) ----------------
+const PRANGES = { "24h": [86400, 3600], "7d": [7 * 86400, 4 * 3600], "30d": [30 * 86400, 86400], all: [Infinity, 86400] };
+let prange = "24h";
+const ethNum = (wei) => Number(wei) / 1e18;
+
+function tradesFromIndex() {
+  return indexer
+    .events("market", "Trade")
+    .map((e) => ({ ...e.args, t: Number(e.args.timestamp) * 1000, tx: e.tx, block: e.block, logIndex: e.logIndex }))
+    // newest first; trades inside one tx (quick buy) keep their on-chain order
+    .sort((a, b) => (a.block === b.block ? b.logIndex - a.logIndex : a.block < b.block ? 1 : -1));
+}
+
+function holdersCount() {
+  const bal = new Map();
+  const skip = new Set(["0x0000000000000000000000000000000000000000", chain.MARKET_CONTRACT?.address.toLowerCase()]);
+  for (const e of indexer.events("token", "Transfer")) {
+    const { from, to, value } = e.args;
+    const f = from.toLowerCase();
+    const t = to.toLowerCase();
+    bal.set(f, (bal.get(f) ?? 0n) - value);
+    bal.set(t, (bal.get(t) ?? 0n) + value);
+  }
+  let n = 0;
+  for (const [a, v] of bal) if (v > 0n && !skip.has(a)) n++;
+  return n;
+}
+
+function renderHistory() {
+  state.trades = tradesFromIndex();
+  const now = Date.now();
+  const day = state.trades.filter((t) => t.t >= now - 86400_000);
+  const vol = day.reduce((s, t) => s + t.ethPaid, 0n);
+  $("mk24Vol").textContent = fmtEth(vol, 4);
+  $("mk24VolUsd").textContent = usdOf(vol);
+  if (day.length) {
+    const prices = day.map((t) => t.pricePerLot);
+    const hi = prices.reduce((a, b) => (b > a ? b : a));
+    const lo = prices.reduce((a, b) => (b < a ? b : a));
+    $("mk24HL").textContent = `${fmtAmt(hi, 6)} / ${fmtAmt(lo, 6)}`;
+  } else $("mk24HL").textContent = "–";
+  // change: latest price vs the last price before the 24h window (or the first trade inside it)
+  const before = state.trades.find((t) => t.t < now - 86400_000);
+  const base = before ?? day[day.length - 1];
+  if (state.trades.length && base && base !== state.trades[0]) {
+    const pct = ((ethNum(state.trades[0].pricePerLot) - ethNum(base.pricePerLot)) / ethNum(base.pricePerLot)) * 100;
+    $("mk24Change").textContent = `${pct >= 0 ? "▲ +" : "▼ "}${pct.toFixed(2)}%`;
+  } else $("mk24Change").textContent = "–";
+  $("mkHolders").textContent = holdersCount().toLocaleString("en");
+  renderChart();
+  render();
+}
+
+function renderChart() {
+  const [span, bucket] = PRANGES[prange];
+  const now = Date.now();
+  const list = state.trades.filter((t) => t.t >= now - span * 1000).slice().reverse(); // oldest first
+  const map = new Map();
+  for (const t of list) {
+    const k = Math.floor(t.t / 1000 / bucket) * bucket * 1000;
+    const p = ethNum(t.pricePerLot);
+    const c = map.get(k);
+    if (!c) map.set(k, { t: k, o: p, h: p, l: p, c: p, v: ethNum(t.ethPaid) });
+    else {
+      c.h = Math.max(c.h, p);
+      c.l = Math.min(c.l, p);
+      c.c = p;
+      c.v += ethNum(t.ethPaid);
+    }
+  }
+  const candles = [...map.values()];
+  const fmt = (v) => `${+v.toPrecision(4)} ETH`;
+  candleChart($("chPrice"), candles, { yFmt: fmt, volFmt: (v) => `${+v.toPrecision(4)} ETH`, empty: "No trades in this range yet" });
+  $("chPriceNote").textContent = candles.length ? `${list.length} trade(s) · ${bucket >= 86400 ? "1 day" : bucket / 3600 + "h"} candles · blue = up, red = down` : "";
+}
+
+// ---------------- quick buy ----------------
+/** Cheapest-first fill plan for `want` lots, skipping your own listings. */
+function quickPlan(want) {
+  const plan = [];
+  let left = want;
+  for (const o of state.asks ?? []) {
+    if (left <= 0n) break;
+    if (mine(o)) continue;
+    const take = o.lots < left ? o.lots : left;
+    plan.push({ id: o.id, lots: take, pricePerLot: o.pricePerLot });
+    left -= take;
+  }
+  return { plan, missing: left };
+}
+
+function updateQuickBuy() {
+  const want = parseLots($("qbLots").value);
+  if (want <= 0n) return ($("qbPreview").textContent = "Enter whole lots (1, 2, 3…)");
+  const { plan, missing } = quickPlan(want);
+  if (!plan.length) return ($("qbPreview").textContent = "No listings to buy from right now");
+  const total = plan.reduce((s, f) => s + chain.costOf(f.lots, f.pricePerLot), 0n);
+  const got = want - missing;
+  const avg = total / got;
+  $("qbPreview").textContent =
+    `${lotsLabel(got)} from ${plan.length} listing(s) · avg ${fmtEth(avg)} / lot · total ${fmtEth(total)} ${usdOf(total)}` +
+    (missing > 0n ? ` · only ${lotsLabel(got)} available` : "");
+}
+
+async function quickBuy() {
+  if (!store.wallet) return alert("Please click 'Connect wallet' at the top first.");
+  const want = parseLots($("qbLots").value);
+  if (want <= 0n) return setStatus("Enter whole lots (1, 2, 3…)");
+  const { plan } = quickPlan(want);
+  if (!plan.length) return setStatus("No listings to buy from right now");
+  const total = plan.reduce((s, f) => s + chain.costOf(f.lots, f.pricePerLot), 0n);
+  if (total > store.ethBalance) return setStatus("Not enough ETH");
+  await busy(async () => {
+    setStatus("Confirm in your wallet…");
+    await chain.buyMany(store.wallet, plan);
+    setStatus(`✓ Quick buy done: ${lotsLabel(plan.reduce((s, f) => s + f.lots, 0n))}`);
+  });
 }
 
 // ---------------- init ----------------
@@ -251,6 +380,18 @@ export function initMarket() {
     updateTradeCost();
   };
   stepper("mkLots", () => (state.side === "sell" ? myLots() : 0n));
+  stepper("qbLots", () => (state.asks ?? []).filter((o) => !mine(o)).reduce((s, o) => s + o.lots, 0n));
+  $("qbLots").oninput = updateQuickBuy;
+  $("qbGo").onclick = quickBuy;
+  document.querySelectorAll("[data-prange]").forEach((b) => {
+    b.onclick = () => {
+      prange = b.dataset.prange;
+      document.querySelectorAll("[data-prange]").forEach((x) => x.classList.toggle("active", x === b));
+      renderChart();
+    };
+  });
+  indexer.subscribe(renderHistory);
+  onResize($("chPrice"), renderChart);
   stepper("mkTradeLots", tradeMax);
   $("tab-market").addEventListener("click", (e) => {
     const pick = e.target.closest("[data-pick]");

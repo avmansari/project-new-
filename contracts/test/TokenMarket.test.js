@@ -16,7 +16,7 @@ describe("TokenMarket (lots of 5,000)", () => {
   async function setup(feeBps = 100, blocks = 4) {
     const [owner, alice, bob, feeWallet] = await ethers.getSigners();
     const Token = await ethers.getContractFactory("PowInscription");
-    const token = await Token.deploy("Robin PoW", "XYZ", MAX >> 4n, MAX >> 4n);
+    const token = await Token.deploy("Robin PoW", "XYZ", MAX >> 4n, MAX >> 4n, feeWallet.address, 0n);
     const Market = await ethers.getContractFactory("TokenMarket");
     const market = await Market.deploy(await token.getAddress(), LOT, feeBps, feeWallet.address);
     for (let i = 0; i < blocks; i++) {
@@ -99,5 +99,39 @@ describe("TokenMarket (lots of 5,000)", () => {
     await expect(market.connect(owner).setFee(501, owner.address)).to.be.revertedWithCustomError(market, "BadParams");
     await expect(market.connect(bob).setFee(10, bob.address)).to.be.revertedWithCustomError(market, "NotOwner");
     expect(await market.lotSize()).to.equal(LOT);
+  });
+
+  it("2% fee on trade volume goes to the fee wallet", async () => {
+    const { token, market, alice, bob, feeWallet, m } = await setup(200);
+    await token.connect(alice).approve(m, LOT);
+    await market.connect(alice).list(1, E("1"));
+    await expect(market.connect(bob).buy(0, 1, { value: E("1") })).to.changeEtherBalances(
+      [alice, feeWallet, bob],
+      [E("0.98"), E("0.02"), -E("1")]
+    );
+  });
+
+  it("quick buy (buyMany) fills several cheapest listings in one tx", async () => {
+    const { token, market, owner, alice, bob, feeWallet, m } = await setup(200, 4);
+    await token.connect(alice).approve(m, LOT * 4n);
+    await market.connect(alice).list(2, E("0.3")); // id 0
+    await market.connect(alice).list(1, E("0.1")); // id 1 (cheapest)
+    await market.connect(alice).list(1, E("0.5")); // id 2
+    const total = E("0.1") + E("0.3") * 2n;
+    const tx = market.connect(bob).buyMany([1, 0], [1, 2], { value: total + E("1") }); // overpay -> refund
+    await expect(tx).to.changeEtherBalances([bob, feeWallet], [-total, (total * 200n) / 10_000n]);
+    expect(await token.balanceOf(bob.address)).to.equal(LOT * 3n);
+    expect((await market.orders(2)).active).to.equal(true);
+    expect(await ethers.provider.getBalance(m)).to.equal(0n);
+  });
+
+  it("quick buy is all-or-nothing (underpay reverts everything)", async () => {
+    const { token, market, alice, bob, m } = await setup(0);
+    await token.connect(alice).approve(m, LOT * 2n);
+    await market.connect(alice).list(1, E("0.1"));
+    await market.connect(alice).list(1, E("0.2"));
+    await expect(market.connect(bob).buyMany([0, 1], [1, 1], { value: E("0.25") })).to.be.revertedWithCustomError(market, "InsufficientPayment");
+    expect(await token.balanceOf(bob.address)).to.equal(0n);
+    await expect(market.connect(bob).buyMany([0], [1, 1], { value: E("1") })).to.be.revertedWithCustomError(market, "BadParams");
   });
 });

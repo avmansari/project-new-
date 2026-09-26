@@ -9,6 +9,9 @@
 - ✅ **Marketplace**: whole lots only (1 lot = 5,000), price per lot, listings + bids, cancel, 1% fee, live updates every 4 s
 - ✅ **Multiple wallets**: auto-detect (MetaMask, Rabby, Coinbase, OKX, Trust…), WalletConnect QR, phone deep links
 - ✅ Full GPU name (Intel Arc B580, RTX 3060 Ti, RX 6700 XT, Apple M-series, Adreno…), manual override
+- ✅ **Fees:** $0.10 per claimed lot + 2% marketplace fee, both to one wallet
+- ✅ **Leaderboard**, **network stats page** (hashrate / block time / difficulty charts), **auto-claim**, **sound + notification**
+- ✅ **In-browser indexer**, **price chart**, **24h stats + holders**, **activity history**, **quick buy**, **USD estimates**
 
 ## Mining
 | Feature | Why | Effort |

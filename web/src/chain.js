@@ -86,9 +86,15 @@ async function send(wallet, contract, functionName, args, value) {
 }
 
 // ---------------- Claim ----------------
+/** Current claim fee in wei (~$0.10, paid in ETH to the project fee wallet). */
+export async function mintFee() {
+  return publicClient.readContract({ ...token, functionName: "mintFee" });
+}
+
 /** Claim the mined block: wallet pops up for approval, tokens go straight into that wallet. */
 export async function claimBlock(wallet, { nonce, challenge }) {
-  const { hash, receipt } = await send(wallet, token, "mint", [nonce, challenge]);
+  const fee = await mintFee();
+  const { hash, receipt } = await send(wallet, token, "mint", [nonce, challenge], fee);
   const [ev] = parseEventLogs({ abi: ABI, logs: receipt.logs, eventName: "BlockMined" });
   return { hash, ...ev.args };
 }
@@ -155,6 +161,12 @@ export async function sellIntoBid(wallet, id, lots, onStep) {
   return send(wallet, market, "sell", [id, BigInt(lots)]);
 }
 
+/** Quick buy: fill several listings in one tx. fills = [{ id, lots, pricePerLot }] */
+export async function buyMany(wallet, fills) {
+  const total = fills.reduce((s, f) => s + costOf(f.lots, f.pricePerLot), 0n);
+  return send(wallet, market, "buyMany", [fills.map((f) => f.id), fills.map((f) => BigInt(f.lots))], total);
+}
+
 export async function cancelOrder(wallet, id) {
   return send(wallet, market, "cancel", [id]);
 }
@@ -162,4 +174,14 @@ export async function cancelOrder(wallet, id) {
 export function explorerTx(hash) {
   const url = CHAIN.blockExplorers?.default?.url;
   return url ? `${url}/tx/${hash}` : null;
+}
+
+// ---------------- raw logs (used by the indexer) ----------------
+export const TOKEN = token;
+export const MARKET_CONTRACT = market;
+
+/** All logs of `address` in [fromBlock, toBlock], decoded with `abi`. */
+export async function getDecodedLogs(address, abi, fromBlock, toBlock) {
+  const logs = await publicClient.getLogs({ address, fromBlock, toBlock });
+  return parseEventLogs({ abi, logs, strict: false });
 }

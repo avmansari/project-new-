@@ -20,7 +20,8 @@ Details: [`TESTNET.md`](TESTNET.md)
 
 | Task | Why | How |
 |---|---|---|
-| **Lock final parameters** | Contracts can't be changed after deploy | `PowInscription.sol` constants: `BLOCK_REWARD`, `TARGET_BLOCK_TIME`, `MAX_SUPPLY`; `.env`: difficulty bits, market fee |
+| **Lock final parameters** | Contracts can't be changed after deploy | `PowInscription.sol` constants: `BLOCK_REWARD`, `TARGET_BLOCK_TIME`, `MAX_SUPPLY`; `.env`: difficulty bits, `FEE_RECIPIENT`, `MINT_FEE_USD` (0.1), `MARKET_FEE_BPS` (200 = 2%) |
+| **Keep the $0.10 claim fee in sync** | ETH price moves; the fee is stored in ETH | Run `npm run set-fee` daily (e.g. a cron / GitHub Action), or set `PRICE_FEED` if the chain has a Chainlink ETH/USD feed |
 | **Smart contract audit** | Real money will be at stake; one bug can drain everything | An audit firm (Cantina, Code4rena contest, Sherlock, Hacken), or on a smaller budget an experienced freelance auditor. At least 2 independent reviews |
 | **Verify on the explorer** | Users can read the contract code → trust | Blockscout verification (hardhat-verify plugin) |
 | **Fresh deployer wallet** | The testnet key has been shared | New wallet, ideally a hardware wallet (Ledger/Trezor) |
@@ -47,7 +48,7 @@ Details: [`TESTNET.md`](TESTNET.md)
 1. Fill `RH_MAINNET_RPC`, `RH_MAINNET_CHAIN_ID` (from the official docs) and a new `PRIVATE_KEY` in `contracts/.env`.
 2. Add the mainnet chain in `web/src/config.js` (same shape as the testnet block, with the new chainId/RPC/explorer).
 3. Run `npx hardhat run scripts/deploy.js --network robinhood` (inside `contracts/`).
-4. Transfer market ownership to the multisig.
+4. Transfer ownership of **both** contracts (token: fee settings; market: fee) to the multisig, and set `FEE_RECIPIENT` to the wallet you want the revenue in.
 5. Commit the mainnet `deployment.json` → Vercel redeploys automatically.
 6. Announce the launch with an exact **start time** so everyone starts together (fair launch).
 

@@ -18,7 +18,16 @@ pragma solidity 0.8.28;
  *
  *  Supply: 21,000,000 / 5,000 per block = 4,200 blocks.
  *  Same wallet can win any number of blocks - one block per solved challenge.
+ *
+ *  Claim fee: every claim (= 1 lot of 5,000 tokens) pays a small ETH fee to `feeRecipient`.
+ *   - USD mode: if a Chainlink-style ETH/USD `priceFeed` is set, fee = mintFeeUsd (e.g. $0.10) converted to ETH.
+ *   - Fixed mode (fallback): fee = mintFeeWei, kept near $0.10 by the owner (`npm run set-fee`).
+ *  A losing claim reverts, so only the block winner ever pays.
  */
+interface IPriceFeed {
+    function latestRoundData() external view returns (uint80, int256 answer, uint256, uint256 updatedAt, uint80);
+}
+
 contract PowInscription {
     // ------------------------------------------------------------------
     // ERC-20 (minimal, self-contained)
@@ -46,6 +55,19 @@ contract PowInscription {
     uint256 public immutable maxTarget;
 
     // ------------------------------------------------------------------
+    // Claim fee
+    // ------------------------------------------------------------------
+    uint256 public constant MAX_MINT_FEE_WEI = 0.01 ether; // safety cap for fixed mode
+    uint256 public constant MAX_MINT_FEE_USD = 1e8; // $1.00 cap (8 decimals) for USD mode
+    uint256 public constant FEED_MAX_AGE = 1 days; // older price => fall back to fixed fee
+
+    address public owner;
+    address public feeRecipient;
+    uint256 public mintFeeWei; // fixed-mode fee
+    IPriceFeed public priceFeed; // optional ETH/USD feed (8 decimals, Chainlink format)
+    uint256 public mintFeeUsd; // USD-mode fee, 8 decimals (10_000_000 = $0.10)
+
+    // ------------------------------------------------------------------
     // Mining state
     // ------------------------------------------------------------------
     bytes32 public challenge; // current puzzle
@@ -61,11 +83,17 @@ contract PowInscription {
         uint256 reward,
         bytes32 digest,
         uint256 requiredBits,
-        uint256 achievedBits
+        uint256 achievedBits,
+        uint256 target,
+        uint256 timestamp,
+        uint256 feePaid
     );
     /// @notice Inscription-style record of every mint (indexers can read the JSON directly).
     event Inscribed(uint256 indexed height, address indexed miner, string inscription);
     event Retarget(uint256 indexed height, uint256 oldTarget, uint256 newTarget, uint256 blockSeconds);
+    event MintFeeUpdated(uint256 mintFeeWei, address priceFeed, uint256 mintFeeUsd);
+    event FeeRecipientUpdated(address feeRecipient);
+    event OwnershipTransferred(address previousOwner, address newOwner);
 
     error StaleChallenge(bytes32 submitted, bytes32 current);
     error InsufficientWork(bytes32 digest, uint256 target);
@@ -74,11 +102,26 @@ contract PowInscription {
     error InsufficientAllowance();
     error InsufficientBalance();
     error ZeroAddress();
+    error InsufficientFee(uint256 required, uint256 sent);
+    error FeeTooHigh();
+    error NotOwner();
+    error EthTransferFailed();
 
-    constructor(string memory _name, string memory _symbol, uint256 _maxTarget, uint256 _initialTarget) {
+    constructor(
+        string memory _name,
+        string memory _symbol,
+        uint256 _maxTarget,
+        uint256 _initialTarget,
+        address _feeRecipient,
+        uint256 _mintFeeWei
+    ) {
         if (_maxTarget < MIN_TARGET || _initialTarget < MIN_TARGET || _initialTarget > _maxTarget) {
             revert InvalidTarget();
         }
+        if (_mintFeeWei > MAX_MINT_FEE_WEI) revert FeeTooHigh();
+        owner = msg.sender;
+        feeRecipient = _feeRecipient == address(0) ? msg.sender : _feeRecipient;
+        mintFeeWei = _mintFeeWei;
         name = _name;
         symbol = _symbol;
         maxTarget = _maxTarget;
@@ -94,16 +137,20 @@ contract PowInscription {
     /**
      * @notice Claim a mined block. Tokens go directly to the wallet that sends this tx
      *         (the same wallet whose address was used while mining).
+     *         Send at least `mintFee()` ETH; it goes to `feeRecipient`, any extra is refunded.
      * @param nonce             nonce found by the miner
      * @param expectedChallenge the challenge the miner worked on (cheap revert if someone already won)
      */
-    function mint(uint256 nonce, bytes32 expectedChallenge) external returns (uint256 reward) {
+    function mint(uint256 nonce, bytes32 expectedChallenge) external payable returns (uint256 reward) {
         bytes32 current = challenge;
         if (expectedChallenge != current) revert StaleChallenge(expectedChallenge, current);
 
         bytes32 digest = keccak256(abi.encodePacked(current, msg.sender, nonce));
         uint256 t = currentTarget();
         if (uint256(digest) > t) revert InsufficientWork(digest, t);
+
+        uint256 fee = mintFee();
+        if (msg.value < fee) revert InsufficientFee(fee, msg.value);
 
         uint256 remaining = MAX_SUPPLY - totalSupply;
         if (remaining == 0) revert SupplyExhausted();
@@ -113,10 +160,72 @@ contract PowInscription {
         _mint(msg.sender, reward);
         blocksMinedBy[msg.sender] += 1;
 
-        emit BlockMined(minedHeight, msg.sender, reward, digest, _leadingZeroBits(t), _leadingZeroBits(uint256(digest)));
+        emit BlockMined(
+            minedHeight,
+            msg.sender,
+            reward,
+            digest,
+            _leadingZeroBits(t),
+            _leadingZeroBits(uint256(digest)),
+            t,
+            block.timestamp,
+            fee
+        );
         emit Inscribed(minedHeight, msg.sender, _inscription(minedHeight, reward));
 
         _advance(digest, t);
+
+        // interactions last (state is final; a re-entrant mint would face the new challenge)
+        if (fee > 0) _sendEth(feeRecipient, fee);
+        if (msg.value > fee) _sendEth(msg.sender, msg.value - fee);
+    }
+
+    /// @notice ETH (wei) a claim costs right now (~$0.10).
+    function mintFee() public view returns (uint256) {
+        if (address(priceFeed) != address(0) && mintFeeUsd > 0) {
+            try priceFeed.latestRoundData() returns (uint80, int256 answer, uint256, uint256 updatedAt, uint80) {
+                if (answer > 0 && updatedAt + FEED_MAX_AGE >= block.timestamp) {
+                    // usd (8 dec) * 1e18 / ethUsd (8 dec) = wei
+                    return (mintFeeUsd * 1e18) / uint256(answer);
+                }
+            } catch {}
+        }
+        return mintFeeWei;
+    }
+
+    // ------------------------------------------------------------------
+    // Admin (owner = deployer; hand it to a multisig for mainnet)
+    // ------------------------------------------------------------------
+    modifier onlyOwner() {
+        if (msg.sender != owner) revert NotOwner();
+        _;
+    }
+
+    /// @notice Fixed-mode fee in wei (used when no fresh price feed is set).
+    function setMintFeeWei(uint256 feeWei) external onlyOwner {
+        if (feeWei > MAX_MINT_FEE_WEI) revert FeeTooHigh();
+        mintFeeWei = feeWei;
+        emit MintFeeUpdated(feeWei, address(priceFeed), mintFeeUsd);
+    }
+
+    /// @notice USD mode: ETH/USD feed (8 decimals) + fee in USD with 8 decimals. feed = 0 disables.
+    function setUsdFee(address feed, uint256 feeUsd8) external onlyOwner {
+        if (feeUsd8 > MAX_MINT_FEE_USD) revert FeeTooHigh();
+        priceFeed = IPriceFeed(feed);
+        mintFeeUsd = feeUsd8;
+        emit MintFeeUpdated(mintFeeWei, feed, feeUsd8);
+    }
+
+    function setFeeRecipient(address recipient) external onlyOwner {
+        if (recipient == address(0)) revert ZeroAddress();
+        feeRecipient = recipient;
+        emit FeeRecipientUpdated(recipient);
+    }
+
+    function transferOwnership(address newOwner) external onlyOwner {
+        if (newOwner == address(0)) revert ZeroAddress();
+        emit OwnershipTransferred(owner, newOwner);
+        owner = newOwner;
     }
 
     /// @notice Target right now. If nobody mined for a long time, difficulty halves every STALL_PERIOD.
@@ -219,6 +328,11 @@ contract PowInscription {
         if (newTarget > maxTarget) newTarget = maxTarget;
         miningTarget = newTarget;
         emit Retarget(height, oldTarget, newTarget, elapsed);
+    }
+
+    function _sendEth(address to, uint256 value) internal {
+        (bool ok, ) = to.call{value: value}("");
+        if (!ok) revert EthTransferFailed();
     }
 
     function _mint(address to, uint256 value) internal {

@@ -1,24 +1,89 @@
 // Transfer tab: send tokens from the connected wallet to any address.
 import { isAddress, parseEther, formatEther } from "viem";
 import * as chain from "./chain.js";
-import { $, store, on, emit, fmtTok, short, errMsg } from "./store.js";
+import { $, store, on, emit, fmtTok, fmtEth, fmtDur, short, errMsg, escapeHtml } from "./store.js";
+import { indexer } from "./indexer.js";
 
-const sent = [];
+let actFilter = "all";
 
 function setStatus(s) {
   $("txStatus").textContent = s;
 }
 
+/** The connected wallet's claims, transfers and trades, newest first. */
+function activity() {
+  const me = store.wallet?.address.toLowerCase();
+  if (!me) return [];
+  const marketAddr = chain.MARKET_CONTRACT?.address.toLowerCase();
+  const zero = "0x0000000000000000000000000000000000000000";
+  const items = [];
+  const tradeTxs = new Set();
+
+  for (const e of indexer.events("market", "Trade")) {
+    const a = e.args;
+    tradeTxs.add(e.tx);
+    const buyer = a.buyer.toLowerCase() === me;
+    const seller = a.seller.toLowerCase() === me;
+    if (!buyer && !seller) continue;
+    items.push({
+      kind: "trade",
+      block: e.block,
+      logIndex: e.logIndex,
+      t: Number(a.timestamp) * 1000,
+      tx: e.tx,
+      text: buyer
+        ? `🟢 Bought ${a.lots} lot${a.lots === 1n ? "" : "s"} @ ${fmtEth(a.pricePerLot)} / lot · paid ${fmtEth(a.ethPaid)}`
+        : `🔴 Sold ${a.lots} lot${a.lots === 1n ? "" : "s"} @ ${fmtEth(a.pricePerLot)} / lot · got ${fmtEth(a.ethPaid - a.fee)}`,
+    });
+  }
+  for (const e of indexer.events("token", "BlockMined")) {
+    const a = e.args;
+    if (a.miner.toLowerCase() !== me) continue;
+    items.push({
+      kind: "claim",
+      block: e.block,
+      logIndex: e.logIndex,
+      t: Number(a.timestamp) * 1000,
+      tx: e.tx,
+      text: `⛏️ Claimed block #${a.height} · +${fmtTok(a.reward)} · fee ${fmtEth(a.feePaid, 8)}`,
+    });
+  }
+  for (const e of indexer.events("token", "Transfer")) {
+    const { from, to, value } = e.args;
+    const f = from.toLowerCase();
+    const t = to.toLowerCase();
+    if (f !== me && t !== me) continue;
+    // mints, market escrow and trade settlement are shown as claims / trades instead
+    if (f === zero || f === marketAddr || t === marketAddr || tradeTxs.has(e.tx)) continue;
+    items.push({
+      kind: "transfer",
+      block: e.block,
+      logIndex: e.logIndex,
+      t: null,
+      tx: e.tx,
+      text: f === me ? `↗ Sent ${fmtTok(value)} to ${short(to)}` : `↘ Received ${fmtTok(value)} from ${short(from)}`,
+    });
+  }
+  return items.sort((a, b) => (a.block === b.block ? b.logIndex - a.logIndex : a.block < b.block ? 1 : -1));
+}
+
 function render() {
   $("txBalance").textContent = store.wallet ? fmtTok(store.tokenBalance) : "–";
-  $("txSent").innerHTML = sent.length
-    ? sent
-        .map((t) => {
-          const url = chain.explorerTx(t.hash);
-          return `<li>${fmtTok(t.amount)} → <span class="mono">${short(t.to)}</span> ${url ? `· <a href="${url}" target="_blank" rel="noopener">tx</a>` : ""}</li>`;
+  if (!store.wallet) {
+    $("activity").innerHTML = `<li class="muted">Connect your wallet to see your history</li>`;
+    return;
+  }
+  const list = activity().filter((i) => actFilter === "all" || i.kind === actFilter);
+  $("activity").innerHTML = list.length
+    ? list
+        .slice(0, 100)
+        .map((i) => {
+          const url = chain.explorerTx(i.tx);
+          const when = i.t ? ` · <span class="muted">${fmtDur(Math.max(0, (Date.now() - i.t) / 1000))} ago</span>` : "";
+          return `<li>${escapeHtml(i.text)}${when}${url ? ` · <a href="${url}" target="_blank" rel="noopener">tx</a>` : ""}</li>`;
         })
         .join("")
-    : `<li class="muted">Nothing sent yet</li>`;
+    : `<li class="muted">${indexer.isLoaded() ? "Nothing here yet" : "Loading history…"}</li>`;
 }
 
 export function initTransfer() {
@@ -41,8 +106,8 @@ export function initTransfer() {
     $("txSend").disabled = true;
     setStatus("Confirm in your wallet…");
     try {
-      const { hash } = await chain.transferTokens(store.wallet, to, amount);
-      sent.unshift({ to, amount, hash });
+      await chain.transferTokens(store.wallet, to, amount);
+      indexer.refresh().catch(() => {});
       setStatus(`✓ Sent ${fmtTok(amount)}`);
       $("txAmount").value = "";
       emit("balances");
@@ -62,6 +127,15 @@ export function initTransfer() {
     }
   };
 
+  document.querySelectorAll("[data-act]").forEach((b) => {
+    b.onclick = () => {
+      actFilter = b.dataset.act;
+      document.querySelectorAll("[data-act]").forEach((x) => x.classList.toggle("active", x === b));
+      render();
+    };
+  });
   on("balances:updated", render);
+  on("wallet", render);
+  indexer.subscribe(render);
   render();
 }

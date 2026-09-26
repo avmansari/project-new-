@@ -15,6 +15,7 @@
         <button data-tab="mine" class="active">Mine</button>
         <button data-tab="transfer">Transfer</button>
         <button data-tab="market">Marketplace</button>
+        <button data-tab="stats">Stats</button>
       </nav>
       <div class="wallet">
         <span id="hdrBal" class="small muted hidden"></span>
@@ -58,6 +59,13 @@
             <label><input type="checkbox" id="useGpu" /> Use GPU (WebGPU) <span id="gpuStatus" class="small"></span></label>
           </div>
           <div class="row">
+            <label><input type="checkbox" id="autoClaim" /> Auto-claim (wallet opens as soon as a block is found)</label>
+          </div>
+          <div class="row">
+            <label><input type="checkbox" id="soundOn" /> Sound</label>
+            <label><input type="checkbox" id="notifyOn" /> Notification (when the tab is in the background)</label>
+          </div>
+          <div class="row">
             <button id="btnStart">Start mining</button>
             <button id="btnStop" class="secondary" disabled>Stop</button>
           </div>
@@ -73,6 +81,7 @@
           <h2>🎉 Block solved!</h2>
           <p>You mined block <b id="solHeight"></b>. Difficulty: <b id="solReq"></b> zero bits required, your hash has <b id="solBits"></b>.</p>
           <p class="big">You can claim: <b id="solReward"></b></p>
+          <p class="small">Claim fee: <b id="solFee">…</b> (paid in ETH, plus network gas)</p>
           <p class="mono small" id="solDigest"></p>
           <div class="row">
             <button id="btnClaim">Claim tokens</button>
@@ -111,8 +120,14 @@
           <p class="small" id="txStatus"></p>
         </section>
         <section class="card">
-          <h2>Sent (this session)</h2>
-          <ul id="txSent" class="list"></ul>
+          <h2>Your activity</h2>
+          <div class="seg small-seg" id="actFilter">
+            <button data-act="all" class="active">All</button>
+            <button data-act="claim">Claims</button>
+            <button data-act="transfer">Transfers</button>
+            <button data-act="trade">Trades</button>
+          </div>
+          <ul id="activity" class="list"><li class="muted">Connect your wallet to see your history</li></ul>
         </section>
       </div>
 
@@ -120,15 +135,45 @@
       <div id="tab-market" class="hidden">
         <section class="card">
           <div class="grid">
-            <div><label>Floor (lowest sell)</label><b id="mkFloor">–</b></div>
-            <div><label>Best bid</label><b id="mkBestBid">–</b></div>
-            <div><label>Last trade</label><b id="mkLast">–</b></div>
-            <div><label>Volume (recent)</label><b id="mkVolume">–</b></div>
+            <div><label>Floor (lowest sell) / lot</label><b id="mkFloor">–</b><div class="small muted" id="mkFloorUsd"></div></div>
+            <div><label>Best bid / lot</label><b id="mkBestBid">–</b><div class="small muted" id="mkBestBidUsd"></div></div>
+            <div><label>Last trade / lot</label><b id="mkLast">–</b><div class="small muted" id="mkLastUsd"></div></div>
+            <div><label>24h change</label><b id="mk24Change">–</b></div>
+            <div><label>24h volume</label><b id="mk24Vol">–</b><div class="small muted" id="mk24VolUsd"></div></div>
+            <div><label>24h high / low</label><b id="mk24HL">–</b></div>
+            <div><label>Holders</label><b id="mkHolders">–</b></div>
             <div><label>Fee</label><b id="mkFee">–</b></div>
             <div><label>Your lots</label><b id="mkBal">–</b></div>
             <div><label>Your ETH</label><b id="mkBalEth">–</b></div>
           </div>
-          <p class="small muted">Live · updates every 4 s. <b>1 lot = <span class="lotsize">5,000</span> <span class="sym">XYZ</span></b> · whole lots only · price = ETH per lot.</p>
+          <p class="small muted">Live · updates every 4 s. <b>1 lot = <span class="lotsize">5,000</span> <span class="sym">XYZ</span></b> · whole lots only · price = ETH per lot. USD values are estimates.</p>
+        </section>
+
+        <section class="card">
+          <div class="card-head">
+            <h2>Price per lot</h2>
+            <div class="seg small-seg">
+              <button data-prange="24h" class="active">24h</button>
+              <button data-prange="7d">7d</button>
+              <button data-prange="30d">30d</button>
+              <button data-prange="all">All</button>
+            </div>
+          </div>
+          <div id="chPrice" class="chart"></div>
+          <p class="small muted" id="chPriceNote"></p>
+        </section>
+
+        <section class="card">
+          <h2>Quick buy</h2>
+          <p class="small muted">Buys the cheapest listings for you in one transaction.</p>
+          <label for="qbLots">Lots to buy</label>
+          <div class="row nowrap stepper">
+            <button id="qbLotsMinus" class="secondary">−</button>
+            <input id="qbLots" class="field" inputmode="numeric" value="1" />
+            <button id="qbLotsPlus" class="secondary">+</button>
+          </div>
+          <p id="qbPreview" class="small">–</p>
+          <button id="qbGo">Quick buy</button>
         </section>
 
         <section class="card hidden" id="mkTrade">
@@ -190,6 +235,39 @@
           <h2>Recent trades</h2>
           <ul id="mkTrades" class="list"></ul>
         </section>
+      </div>
+      <!-- ===================== STATS ===================== -->
+      <div id="tab-stats" class="hidden">
+        <section class="card">
+          <h2>Network</h2>
+          <div class="grid">
+            <div><label>Blocks mined</label><b id="stBlocks">–</b></div>
+            <div><label>Supply mined</label><b id="stMined">–</b></div>
+            <div><label>Blocks left</label><b id="stLeft">–</b></div>
+            <div><label>Avg block time (last 20)</label><b id="stAvgTime">–</b></div>
+            <div><label>Network hashrate (est.)</label><b id="stHashrate">–</b></div>
+            <div><label>Miners (24h)</label><b id="stMiners24">–</b></div>
+          </div>
+        </section>
+
+        <div class="row range-row">
+          <span class="small muted">Range</span>
+          <div class="seg small-seg">
+            <button data-range="24h" class="active">24h</button>
+            <button data-range="7d">7d</button>
+            <button data-range="all">All time</button>
+          </div>
+        </div>
+
+        <section class="card">
+          <h2>Leaderboard</h2>
+          <p class="small" id="myRank"></p>
+          <div class="tablewrap"><table id="leaderboard" class="book"></table></div>
+        </section>
+
+        <section class="card"><h2>Network hashrate</h2><div id="chHashrate" class="chart"></div></section>
+        <section class="card"><h2>Block time</h2><p class="small muted">Target: 2 min</p><div id="chBlockTime" class="chart"></div></section>
+        <section class="card"><h2>Difficulty</h2><p class="small muted">Required leading zero bits (+1 bit = 2× harder)</p><div id="chDifficulty" class="chart"></div></section>
       </div>
     </main>
     <footer class="small muted">Token: <span class="mono" id="contractAddr"></span><br />Market: <span class="mono" id="marketAddr"></span></footer>

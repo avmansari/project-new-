@@ -9,7 +9,9 @@
     "deploy:rh-testnet": "hardhat run scripts/deploy.js --network robinhoodTestnet",
     "fund": "node scripts/fund.js",
     "new-wallet": "node scripts/new-wallet.js",
-    "testnet": "node scripts/setup-testnet.js"
+    "testnet": "node scripts/setup-testnet.js",
+    "set-fee": "hardhat run scripts/set-fee.js --network robinhoodTestnet",
+    "set-fee:local": "hardhat run scripts/set-fee.js --network localhost"
   },
   "devDependencies": {
     "hardhat": "^2.22.0",

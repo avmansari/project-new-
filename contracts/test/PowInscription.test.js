@@ -21,11 +21,12 @@ async function mineAndClaim(c, signer) {
 }
 
 describe("PowInscription", () => {
-  async function deploy(minBits = 4, initBits = 6) {
-    const [alice, bob] = await ethers.getSigners();
+  // fee = 0 for the mining tests; fee behaviour has its own tests below
+  async function deploy(minBits = 4, initBits = 6, fee = 0n) {
+    const [alice, bob, feeWallet] = await ethers.getSigners();
     const C = await ethers.getContractFactory("PowInscription");
-    const c = await C.deploy("Robin PoW", "XYZ", targetForBits(minBits), targetForBits(initBits));
-    return { c, alice, bob };
+    const c = await C.deploy("Robin PoW", "XYZ", targetForBits(minBits), targetForBits(initBits), feeWallet.address, fee);
+    return { c, alice, bob, feeWallet };
   }
 
   it("claim mints exactly 5000 tokens directly into the claiming wallet", async () => {
@@ -119,5 +120,62 @@ describe("PowInscription", () => {
   it("supply cap: 21M / 5000 = 4200 blocks", async () => {
     const { c } = await deploy();
     expect((await c.MAX_SUPPLY()) / (await c.BLOCK_REWARD())).to.equal(4200n);
+  });
+
+  describe("claim fee ($0.10 per lot)", () => {
+    const FEE = ethers.parseEther("0.00003"); // ~$0.10 at ETH = $3,333
+
+    it("claim must pay the fee; fee goes to the fee wallet; extra is refunded", async () => {
+      const { c, alice, feeWallet } = await deploy(4, 6, FEE);
+      const ch = await c.challenge();
+      const { nonce } = mine(ch, alice.address, await c.currentTarget());
+      await expect(c.connect(alice).mint(nonce, ch)).to.be.revertedWithCustomError(c, "InsufficientFee");
+      await expect(c.connect(alice).mint(nonce, ch, { value: FEE - 1n })).to.be.revertedWithCustomError(c, "InsufficientFee");
+
+      const before = await ethers.provider.getBalance(feeWallet.address);
+      const tx = c.connect(alice).mint(nonce, ch, { value: FEE * 10n });
+      await expect(tx).to.changeEtherBalances([alice, feeWallet], [-FEE, FEE]); // 9x FEE refunded
+      await expect(tx).to.emit(c, "BlockMined");
+      expect((await ethers.provider.getBalance(feeWallet.address)) - before).to.equal(FEE);
+      expect(await ethers.provider.getBalance(await c.getAddress())).to.equal(0n);
+      expect(await c.balanceOf(alice.address)).to.equal(REWARD);
+    });
+
+    it("a losing (stale) claim pays nothing", async () => {
+      const { c, alice, bob } = await deploy(4, 6, FEE);
+      const ch = await c.challenge();
+      const t = await c.currentTarget();
+      const a = mine(ch, alice.address, t);
+      const b = mine(ch, bob.address, t);
+      await c.connect(alice).mint(a.nonce, ch, { value: FEE });
+      const bobBefore = await ethers.provider.getBalance(bob.address);
+      await expect(c.connect(bob).mint(b.nonce, ch, { value: FEE })).to.be.revertedWithCustomError(c, "StaleChallenge");
+      // only gas was spent, the fee itself was not taken
+      expect(bobBefore - (await ethers.provider.getBalance(bob.address))).to.be.lt(FEE);
+    });
+
+    it("owner can update the fixed fee and recipient; capped; others cannot", async () => {
+      const { c, alice, bob } = await deploy(4, 6, FEE);
+      await c.connect(alice).setMintFeeWei(FEE * 2n); // alice = deployer = owner
+      expect(await c.mintFee()).to.equal(FEE * 2n);
+      await expect(c.connect(alice).setMintFeeWei(ethers.parseEther("0.02"))).to.be.revertedWithCustomError(c, "FeeTooHigh");
+      await expect(c.connect(bob).setMintFeeWei(1)).to.be.revertedWithCustomError(c, "NotOwner");
+      await c.connect(alice).setFeeRecipient(bob.address);
+      expect(await c.feeRecipient()).to.equal(bob.address);
+    });
+
+    it("USD mode: $0.10 converted with the price feed; stale feed falls back to the fixed fee", async () => {
+      const { c, alice } = await deploy(4, 6, FEE);
+      const Feed = await ethers.getContractFactory("MockPriceFeed");
+      const feed = await Feed.deploy();
+      const now = BigInt(await time.latest());
+      await feed.set(4000n * 10n ** 8n, now); // ETH = $4,000
+      await c.connect(alice).setUsdFee(await feed.getAddress(), 10_000_000n); // $0.10
+      expect(await c.mintFee()).to.equal(ethers.parseEther("0.000025")); // 0.1 / 4000
+
+      await feed.set(4000n * 10n ** 8n, now - 2n * 86400n); // 2 days old
+      expect(await c.mintFee()).to.equal(FEE);
+      await expect(c.connect(alice).setUsdFee(await feed.getAddress(), 2n * 10n ** 8n)).to.be.revertedWithCustomError(c, "FeeTooHigh");
+    });
   });
 });

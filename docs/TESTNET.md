@@ -46,7 +46,9 @@ TOKEN_NAME=Robin PoW
 TOKEN_SYMBOL=XYZ
 MIN_DIFFICULTY_BITS=21
 INITIAL_DIFFICULTY_BITS=27
-MARKET_FEE_BPS=100
+FEE_RECIPIENT=0x<wallet that receives all fees; empty = deployer>
+MINT_FEE_USD=0.1
+MARKET_FEE_BPS=200
 ```
 Then:
 ```bash
@@ -56,8 +58,9 @@ Expected output:
 ```
 Network : robinhoodTestnet (chainId 46630)
 Deployer: 0x...  balance 0.5 ETH
+Fees    : claim $0.1 = 0.0000303 ETH (ETH = $3300) → 0x...
 PowInscription deployed at: 0xABC...
-TokenMarket deployed at:    0xDEF... (1 lot = 5000.0 tokens, fee 1% → 0x...)
+TokenMarket deployed at:    0xDEF... (1 lot = 5000.0 tokens, fee 2% → 0x...)
 Explorer (token):  https://explorer.testnet.chain.robinhood.com/address/0xABC...
 wrote ../web/src/deployment.json
 wrote ../miner-cli/deployment.json
@@ -89,7 +92,9 @@ CLI too: put `PRIVATE_KEY=...` in `miner-cli/.env`, then `npm run mine`.
 - [ ] Block time: difficulty adjusts after every block ("Required zero bits" on the site, `Retarget` events on the explorer) and settles around ~2 min per block
 - [ ] Nobody mines for 20+ min → difficulty eases (stall rescue)
 - [ ] Every claim puts exactly 5,000 tokens in the claiming wallet
-- [ ] Marketplace: only whole lots can be listed/bought/sold, price per lot is correct, fee arrives in the fee wallet
+- [ ] Marketplace: only whole lots can be listed/bought/sold, price per lot is correct, 2% fee arrives in the fee wallet
+- [ ] Claim fee: each claim sends ~$0.10 of ETH to the fee wallet; `npm run set-fee` updates it
+- [ ] Stats tab: leaderboard and charts fill in; Marketplace: price chart, 24h stats, quick buy; Transfer: your activity
 - [ ] Note the gas cost per claim and per trade (how much ETH users need)
 - [ ] Tokens show up in wallets ("Add token to wallet" button, or import the contract address)
 - [ ] GPU names show correctly on different machines
