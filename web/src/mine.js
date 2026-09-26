@@ -3,8 +3,7 @@ import { leadingZeroBits, hexToBytes, expectedHashes } from "@pow/shared";
 import { detectGpu } from "@pow/shared/gpu-name";
 import * as chain from "./chain.js";
 import { createEngine } from "./engine.js";
-import { $, store, on, emit, fmtNum, fmtTok, fmtDur, fmtEth, short, errMsg } from "./store.js";
-import { usdOf } from "./price.js";
+import { $, store, on, emit, fmtNum, fmtTok, fmtDur, short, errMsg } from "./store.js";
 
 const state = {
   info: null,
@@ -55,17 +54,7 @@ function handleSolution(sol) {
   setStatus("block solved!");
   navigator.vibrate?.(200);
   alertFound(state.info.height);
-  showClaimFee();
   if (pref("autoClaim")) claim();
-}
-
-async function showClaimFee() {
-  try {
-    const fee = await chain.mintFee();
-    $("solFee").textContent = `${fmtEth(fee, 8)} ${usdOf(fee)}`.trim();
-  } catch {
-    $("solFee").textContent = "–";
-  }
 }
 
 // ---------- preferences (auto-claim, sound, notifications) ----------
