@@ -8,8 +8,10 @@ const targetForBits = (bits) => (2n ** 256n - 1n) >> BigInt(bits);
 async function main() {
   const name = process.env.TOKEN_NAME || "Robin PoW";
   const symbol = process.env.TOKEN_SYMBOL || "XYZ";
-  const minBits = Number(process.env.MIN_DIFFICULTY_BITS || 16);
-  const initBits = Number(process.env.INITIAL_DIFFICULTY_BITS || 22);
+  // Local chain: easy difficulty by default so you see blocks within seconds
+  const isLocal = ["hardhat", "localhost"].includes(hre.network.name);
+  const minBits = Number(process.env.MIN_DIFFICULTY_BITS || (isLocal ? 8 : 16));
+  const initBits = Number(process.env.INITIAL_DIFFICULTY_BITS || (isLocal ? 16 : 22));
 
   const [deployer] = await hre.ethers.getSigners();
   console.log(`Deploying ${name} (${symbol}) from ${deployer.address} on ${hre.network.name}`);

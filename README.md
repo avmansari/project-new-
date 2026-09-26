@@ -11,15 +11,53 @@ The same user can win any number of blocks.
 - 🖥️ CLI miner: [`miner-cli/`](miner-cli)
 - 🧠 Shared mining core + WebGPU Keccak kernel: [`shared/`](shared)
 
-## Quick start (local)
+## 🚀 Kaise run karein (step by step)
 
-```bash
-npm install
-npm test
-cd contracts && npx hardhat node                     # terminal 1
-MIN_DIFFICULTY_BITS=8 INITIAL_DIFFICULTY_BITS=16 \
-  npx hardhat run scripts/deploy.js --network localhost   # terminal 2 (in contracts/)
-npm run web                                          # terminal 3 → http://localhost:5173
+### 0. Ek baar ka setup
+- **Node.js 20+** install karo: https://nodejs.org (LTS version)
+- **Git** install karo: https://git-scm.com
+- Code download karo:
+  ```bash
+  git clone https://github.com/avmansari/project-new-.git
+  cd project-new-
+  git checkout claude/sweet-mccarthy-0adox4
+  npm install
+  ```
+- Check karne ke liye: `npm test` (sab tests pass hone chahiye)
+
+### 1. Local pe chalao (fake chain, free, sabse pehle yahi karo)
+**3 alag terminal** kholo, sab mein `project-new-` folder ke andar:
+
+| Terminal | Command | Kya hota hai |
+|---|---|---|
+| 1 | `npm run chain` | Local blockchain start (isko chalta rehne do) |
+| 2 | `npm run deploy:local` | Contract deploy (easy difficulty). Address web + CLI mein apne aap save ho jata hai |
+| 3 | `npm run web` | Miner website start → browser mein **http://localhost:5173** kholo |
+
+Browser mein:
+1. **"Use burner (auto-mint)"** dabao. Jo "Miner address" dikhe usko copy karo.
+2. Terminal 2 mein chalao: `npm run fund -- <woh address>` (burner ko gas ke liye 10 fake ETH milega)
+3. **"Start mining"** dabao. Kuch second mein "🎉 Block solved!" aayega aur tokens mint ho jayenge. "My blocks" mein dikhenge.
+
+> ⚠️ `npm run chain` band karke dobara chalaya toh chain reset ho jaati hai. Phir se `npm run deploy:local` karo aur browser refresh karo.
+
+**CLI miner (optional, PC/server ke liye):** `miner-cli/.env` file banao:
 ```
+PRIVATE_KEY=0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d
+```
+(yeh Hardhat ka public test account #1 hai, sirf local ke liye). Phir `npm run mine`.
+
+### 2. Phone se mine karna (same WiFi, local test)
+`npm run web` jo **Network** URL dikhata hai (jaise `http://192.168.x.x:5173`) usko phone ke browser mein kholo.
+- Phone ko local chain bhi dikhni chahiye: chain `cd contracts && npx hardhat node --hostname 0.0.0.0` se chalao, aur `web/.env` file mein `VITE_RPC_URL=http://<PC-ka-IP>:8545` daalo.
+- Plain `http://` pe phone ka GPU (WebGPU) nahi chalega, sirf CPU chalega. GPU ke liye site HTTPS pe deploy karo (step 3).
+
+### 3. Robinhood Chain testnet pe deploy
+1. `contracts/.env.example` ko copy karke `contracts/.env` banao. Usme `PRIVATE_KEY` (testnet ETH waala wallet), `TOKEN_SYMBOL`, aur difficulty bharo.
+2. `npm run deploy:testnet`. Isse contract deploy hota hai aur address web/CLI mein save ho jata hai.
+3. Website host karo: `npm run build -w web`, phir `web/dist` folder ko Vercel/Netlify pe daalo (HTTPS milega, phone pe GPU + wallet chalega).
+4. Users site kholenge → Connect wallet ya Burner → Start mining.
+
+> Chain ID `46630` / RPC `https://rpc.testnet.chain.robinhood.com` official Robinhood Chain docs se verify kar lena.
 
 Project files: https://drive.google.com/drive/folders/1OLUHKGNSBcwCrs_PhZlf9YrtMuk2QPSU?usp=sharing

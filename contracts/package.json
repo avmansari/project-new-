@@ -4,8 +4,10 @@
   "scripts": {
     "compile": "hardhat compile",
     "test": "hardhat test",
-    "deploy:local": "hardhat run scripts/deploy.js --network hardhat",
-    "deploy:rh-testnet": "hardhat run scripts/deploy.js --network robinhoodTestnet"
+    "node": "hardhat node",
+    "deploy:local": "hardhat run scripts/deploy.js --network localhost",
+    "deploy:rh-testnet": "hardhat run scripts/deploy.js --network robinhoodTestnet",
+    "fund": "node scripts/fund.js"
   },
   "devDependencies": {
     "hardhat": "^2.22.0",
