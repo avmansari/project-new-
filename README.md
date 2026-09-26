@@ -2,72 +2,78 @@
 
 Bitcoin-style Proof-of-Work mining for an inscription token on Robinhood Chain (EVM L2).
 Users mine with their **CPU, GPU (WebGPU) or phone browser**. The **first** miner to solve the current block
-claims **5,000 tokens** straight into their connected wallet (21M supply = 4,200 blocks). Difficulty adjusts every block to keep ~2 min per block.
+claims **5,000 tokens** straight into their connected wallet (21M supply = 4,200 blocks). Difficulty adjusts after every block to target ~2 minutes per block.
 The same user can win any number of blocks.
 
-Website mein 3 tabs hain: **Mine** · **Transfer** · **Marketplace** (on-chain order book, sirf poore lots mein: 1 lot = 5,000 tokens, price per lot ETH mein, live updates). Wallet: MetaMask, Rabby, Coinbase, OKX, Trust… + WalletConnect.
+The website has 3 tabs: **Mine** · **Transfer** · **Marketplace** (on-chain order book, whole lots only: 1 lot = 5,000 tokens, priced in ETH per lot, live updates). Wallets: MetaMask, Rabby, Coinbase, OKX, Trust… plus WalletConnect.
 
-- 📐 Full explanation (Hinglish): [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+- 📐 Architecture: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+- 🧪 Testnet launch checklist: [`docs/TESTNET.md`](docs/TESTNET.md)
 - 🚀 Production guide: [`docs/PRODUCTION.md`](docs/PRODUCTION.md)
-- 💡 Feature ideas: [`docs/FEATURES.md`](docs/FEATURES.md)
+- 💡 Feature ideas / roadmap: [`docs/FEATURES.md`](docs/FEATURES.md)
+- 📜 Token contract: [`contracts/contracts/PowInscription.sol`](contracts/contracts/PowInscription.sol)
 - 🛒 Marketplace contract: [`contracts/contracts/TokenMarket.sol`](contracts/contracts/TokenMarket.sol)
-- 📜 Contract: [`contracts/contracts/PowInscription.sol`](contracts/contracts/PowInscription.sol)
-- 🌐 Web miner (phone + desktop): [`web/`](web)
+- 🌐 Web app (phone + desktop): [`web/`](web)
 - 🖥️ CLI miner: [`miner-cli/`](miner-cli)
-- 🧠 Shared mining core + WebGPU Keccak kernel: [`shared/`](shared)
+- 🧠 Shared mining core + WebGPU Keccak kernel + GPU name detection: [`shared/`](shared)
 
-## 🚀 Kaise run karein (step by step)
+## 🚀 Getting started
 
-### 0. Ek baar ka setup
-- **Node.js 20+** install karo: https://nodejs.org (LTS version)
-- **Git** install karo: https://git-scm.com
-- Code download karo:
+### 0. One-time setup
+- Install **Node.js 20+** (LTS): https://nodejs.org
+- Install **Git**: https://git-scm.com
+- Get the code:
   ```bash
   git clone https://github.com/avmansari/project-new-.git
   cd project-new-
   git checkout claude/sweet-mccarthy-0adox4
   npm install
   ```
-- Check karne ke liye: `npm test` (sab tests pass hone chahiye)
+- Sanity check: `npm test` (all tests should pass)
 
-### 1. Local pe chalao (fake chain, free, sabse pehle yahi karo)
-**3 alag terminal** kholo, sab mein `project-new-` folder ke andar:
+### 1. Run locally (fake chain, free: start here)
+Open **3 terminals**, all inside the `project-new-` folder:
 
-| Terminal | Command | Kya hota hai |
+| Terminal | Command | What it does |
 |---|---|---|
-| 1 | `npm run chain` | Local blockchain start (isko chalta rehne do) |
-| 2 | `npm run deploy:local` | Contract deploy (easy difficulty). Address web + CLI mein apne aap save ho jata hai |
-| 3 | `npm run web` | Miner website start → browser mein **http://localhost:5173** kholo |
+| 1 | `npm run chain` | Starts a local blockchain (keep it running) |
+| 2 | `npm run deploy:local` | Deploys the token + marketplace. Addresses are saved for the web app and CLI automatically |
+| 3 | `npm run web` | Starts the website → open **http://localhost:5173** |
 
-Browser mein:
-1. **"Connect wallet"** dabao aur list mein se apna wallet chuno (MetaMask / Rabby / Coinbase…). Website khud "Hardhat Local" network wallet mein add kar degi.
-2. Terminal 2 mein chalao: `npm run fund -- <tera MetaMask address>` (gas ke liye 10 fake ETH)
-3. **"Start mining"** dabao. Block solve hote hi "🎉 Block solved! Tu 5,000 XYZ claim kar sakta hai" aayega.
-4. **"Claim tokens"** dabao → MetaMask mein **Confirm** → 5,000 XYZ seedha tere wallet mein.
+In the browser:
+1. Click **"Connect wallet"** and pick your wallet from the list (MetaMask / Rabby / Coinbase…). The site adds the "Hardhat Local" network to your wallet.
+2. In terminal 2 run `npm run fund -- <your wallet address>` (10 fake ETH for gas).
+3. Click **"Start mining"**. When a block is solved you'll see "🎉 Block solved! You can claim 5,000 XYZ".
+4. Click **"Claim tokens"** → **Confirm** in your wallet → 5,000 XYZ land in your wallet.
 
-> ⚠️ `npm run chain` band karke dobara chalaya toh chain reset ho jaati hai. Phir se `npm run deploy:local` karo aur browser refresh karo.
+> ⚠️ Restarting `npm run chain` resets the chain. Run `npm run deploy:local` again and refresh the browser.
 
-**CLI miner (optional, PC/server ke liye):** `miner-cli/.env` file banao:
+**CLI miner (optional, for PCs/servers):** create `miner-cli/.env`:
 ```
 PRIVATE_KEY=0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d
 ```
-(yeh Hardhat ka public test account #1 hai, sirf local ke liye). Phir `npm run mine`.
+(this is Hardhat's public test account #1, local use only). Then run `npm run mine`.
 
-### 2. Phone se mine karna (same WiFi, local test)
-`npm run web` jo **Network** URL dikhata hai (jaise `http://192.168.x.x:5173`) usko phone ke browser mein kholo.
-- Phone ko local chain bhi dikhni chahiye: chain `cd contracts && npx hardhat node --hostname 0.0.0.0` se chalao, aur `web/.env` file mein `VITE_RPC_URL=http://<PC-ka-IP>:8545` daalo.
-- Plain `http://` pe phone ka GPU (WebGPU) nahi chalega, sirf CPU chalega. GPU ke liye site HTTPS pe deploy karo (step 3).
+### 2. Mining from a phone (same Wi-Fi, local test)
+Open the **Network** URL printed by `npm run web` (e.g. `http://192.168.x.x:5173`) in your phone's browser.
+- The phone must also reach the local chain: start it with `cd contracts && npx hardhat node --hostname 0.0.0.0`, and put `VITE_RPC_URL=http://<your-PC-IP>:8545` in `web/.env`.
+- Over plain `http://` the phone's GPU (WebGPU) is unavailable, so only the CPU mines. For GPU mining, host the site over HTTPS (step 3).
 
-### 3. Robinhood Chain testnet pe deploy
-> ⚡ **Shortcut: sab ek command mein.** `npm install` ke baad `npm run testnet` chalao. Yeh private key poochta hai (ya Enter dabao toh naya wallet banata hai), key `.env` mein save karta hai, faucet ETH aane ka wait karta hai, aur deploy kar deta hai.
+### 3. Deploy to Robinhood Chain testnet
+> ⚡ **Shortcut: one command.** After `npm install`, run `npm run testnet`. It asks for a private key (or press Enter to create a new wallet), saves it to `.env`, waits for faucet ETH, and deploys everything.
 
-👉 **Poori checklist: [`docs/TESTNET.md`](docs/TESTNET.md)**. Faucet: https://faucet.testnet.chain.robinhood.com
+👉 **Full checklist: [`docs/TESTNET.md`](docs/TESTNET.md)**. Faucet: https://faucet.testnet.chain.robinhood.com
 
-1. `contracts/.env.example` ko copy karke `contracts/.env` banao. Usme `PRIVATE_KEY` (testnet ETH waala wallet), `TOKEN_SYMBOL`, aur difficulty bharo.
-2. `npm run deploy:testnet`. Isse contract deploy hota hai aur address web/CLI mein save ho jata hai.
-3. Website host karo: repo ko Vercel pe import karo (`vercel.json` ready hai). HTTPS milega, phone pe GPU + wallet chalega.
-4. Users site kholenge → Connect wallet → Start mining → Claim → approve.
+1. Copy `contracts/.env.example` to `contracts/.env` and fill in `PRIVATE_KEY` (a wallet with testnet ETH), `TOKEN_SYMBOL` and the difficulty settings.
+2. Run `npm run deploy:testnet`. This deploys the contracts and saves their addresses for the web app and CLI.
+3. Host the website: import the repo on Vercel (`vercel.json` is ready). You get HTTPS, so GPU mining and wallets work on phones.
+4. Users open the site → Connect wallet → Start mining → Claim → approve.
 
-> Chain ID `46630` / RPC `https://rpc.testnet.chain.robinhood.com/rpc` official Robinhood Chain docs se verify kar lena.
+> Double-check chain ID `46630` and RPC `https://rpc.testnet.chain.robinhood.com/rpc` against the official Robinhood Chain docs.
+
+## 🧪 Tests
+```bash
+npm test   # 18 Solidity tests (token + marketplace) + 18 JS tests (mining core, GPU names)
+```
 
 Project files: https://drive.google.com/drive/folders/1OLUHKGNSBcwCrs_PhZlf9YrtMuk2QPSU?usp=sharing

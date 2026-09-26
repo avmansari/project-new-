@@ -74,24 +74,24 @@ export function pickWallet() {
     overlay.innerHTML = `
       <div class="sheet" role="dialog" aria-label="Connect a wallet">
         <div class="sheet-head"><h2>Connect a wallet</h2><button class="secondary mini" data-close>✕</button></div>
-        ${wallets.length ? `<p class="small muted">Is browser mein mile:</p>` : ""}
+        ${wallets.length ? `<p class="small muted">Detected in this browser:</p>` : ""}
         <div class="wlist">
           ${wallets.map((w, i) => `<button class="witem" data-inj="${i}">${iconHtml(w.info.icon, w.info.name)}<span>${escapeHtml(w.info.name)}</span></button>`).join("")}
           ${
             WC_PROJECT_ID
-              ? `<button class="witem" data-wc>${iconHtml(null, "W")}<span>WalletConnect<br /><small class="muted">Phone wallet app se QR scan</small></span></button>`
+              ? `<button class="witem" data-wc>${iconHtml(null, "W")}<span>WalletConnect<br /><small class="muted">Scan a QR with your phone wallet</small></span></button>`
               : ""
           }
         </div>
         ${
           !wallets.length && isMobile()
-            ? `<p class="small muted">Phone pe: wallet app ke andar yeh site kholo</p>
+            ? `<p class="small muted">On a phone: open this site inside your wallet app</p>
                <div class="wlist">${deepLinks().map((d) => `<a class="witem" href="${d.url}">${iconHtml(null, d.name)}<span>Open in ${d.name}</span></a>`).join("")}</div>`
             : ""
         }
         ${
           !wallets.length && !isMobile()
-            ? `<p class="small">Koi wallet extension nahi mila. Install karo: <a href="https://metamask.io/download/" target="_blank" rel="noopener">MetaMask</a> · <a href="https://rabby.io" target="_blank" rel="noopener">Rabby</a> · <a href="https://www.coinbase.com/wallet/downloads" target="_blank" rel="noopener">Coinbase Wallet</a></p>`
+            ? `<p class="small">No wallet extension found. Install one: <a href="https://metamask.io/download/" target="_blank" rel="noopener">MetaMask</a> · <a href="https://rabby.io" target="_blank" rel="noopener">Rabby</a> · <a href="https://www.coinbase.com/wallet/downloads" target="_blank" rel="noopener">Coinbase Wallet</a></p>`
             : ""
         }
       </div>`;

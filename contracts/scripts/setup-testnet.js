@@ -37,18 +37,18 @@ async function main() {
   // 1) key
   let pk = /^0x[0-9a-fA-F]{64}$/.test(process.env.PRIVATE_KEY || "") ? process.env.PRIVATE_KEY : null;
   if (pk) {
-    console.log("contracts/.env mein key mili, wahi use kar raha hoon.");
+    console.log("Found a key in contracts/.env, using it.");
   } else {
-    const a = await ask("Private key paste karo (ya Enter dabao naya wallet banane ke liye): ");
+    const a = await ask("Paste your private key (or press Enter to create a new wallet): ");
     if (!a) {
       pk = Wallet.createRandom().privateKey;
-      console.log("Naya wallet bana diya.");
+      console.log("Created a new wallet.");
     } else {
       pk = a.startsWith("0x") ? a : "0x" + a;
-      if (!/^0x[0-9a-fA-F]{64}$/.test(pk)) throw new Error("Key galat hai: 64 hex characters honi chahiye.");
+      if (!/^0x[0-9a-fA-F]{64}$/.test(pk)) throw new Error("Invalid key: it must be 64 hex characters.");
     }
     saveKey(pk);
-    console.log("Key contracts/.env mein save ho gayi (yeh file git mein nahi jaati).");
+    console.log("Key saved to contracts/.env (this file is git-ignored).");
   }
   const wallet = new Wallet(pk);
   console.log("Deployer address:", wallet.address);
@@ -56,13 +56,13 @@ async function main() {
   // 2) chain + balance
   const provider = new JsonRpcProvider(RPC);
   const net = await provider.getNetwork().catch((e) => {
-    throw new Error(`RPC se connect nahi hua (${RPC}): ${e.shortMessage || e.message}`);
+    throw new Error(`Could not connect to RPC (${RPC}): ${e.shortMessage || e.message}`);
   });
   console.log(`Connected: chainId ${net.chainId}`);
   let bal = await provider.getBalance(wallet.address);
   if (bal === 0n) {
-    console.log(`\nBalance 0 ETH hai. Is address pe faucet se testnet ETH lo:\n  ${FAUCET}\n  address: ${wallet.address}\n`);
-    process.stdout.write("ETH ka wait kar raha hoon");
+    console.log(`\nBalance is 0 ETH. Get testnet ETH from the faucet for this address:\n  ${FAUCET}\n  address: ${wallet.address}\n`);
+    process.stdout.write("Waiting for ETH");
     while (bal === 0n) {
       await sleep(5000);
       process.stdout.write(".");
@@ -78,13 +78,13 @@ async function main() {
     stdio: "inherit",
     shell: process.platform === "win32",
   });
-  if (r.status !== 0) throw new Error("Deploy fail hua (upar error dekho).");
+  if (r.status !== 0) throw new Error("Deploy failed (see the error above).");
 
   console.log(`
 🎉 Done! Ab:
-  1) npm run web          → http://localhost:5173 pe mining test karo
-  2) web/src/deployment.json + miner-cli/deployment.json ko git commit + push karo
-  3) Vercel pe repo import karo → phone ke liye HTTPS link milega
+  1) npm run web          → test mining at http://localhost:5173
+  2) git commit + push web/src/deployment.json and miner-cli/deployment.json
+  3) Import the repo on Vercel → you get an HTTPS link for phones
 `);
 }
 

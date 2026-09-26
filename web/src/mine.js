@@ -36,7 +36,7 @@ async function startEngine() {
   if (!state.info || !store.wallet) return;
   const job = { challenge: state.info.challenge, miner: store.wallet.address, target: state.info.target };
   const res = await engine.start(job, { threads: Number($("threads").value), useGpu: $("useGpu").checked });
-  if (!res.gpu && !res.threads) return setStatus("CPU threads ya GPU on karo");
+  if (!res.gpu && !res.threads) return setStatus("Enable CPU threads or the GPU");
   $("gpuStatus").textContent = res.gpu ? "✓ active" : $("useGpu").checked ? "✗ unavailable (CPU only)" : "";
   setStatus(`mining block #${state.info.height}`);
 }
@@ -65,17 +65,17 @@ async function claim() {
   if (!sol || state.claiming) return;
   state.claiming = true;
   $("btnClaim").disabled = true;
-  setStatus("wallet mein approve karo…");
+  setStatus("Approve in your wallet…");
   try {
     const ev = await chain.claimBlock(store.wallet, { nonce: sol.nonce, challenge: sol.challenge });
     state.myBlocks.unshift({ height: ev.height, reward: ev.reward, hash: ev.hash });
     renderMyBlocks();
-    setStatus(`claimed block #${ev.height} ✓ ${fmtTok(ev.reward)} wallet mein aa gaye`);
+    setStatus(`claimed block #${ev.height} ✓ ${fmtTok(ev.reward)} added to your wallet`);
     emit("balances");
   } catch (e) {
     console.error(e);
     const msg = errMsg(e);
-    setStatus(msg.includes("StaleChallenge") ? "late ho gaya — kisi aur ne yeh block claim kar liya" : `claim failed: ${msg}`);
+    setStatus(msg.includes("StaleChallenge") ? "too late — someone else claimed this block" : `claim failed: ${msg}`);
   } finally {
     state.claiming = false;
     $("btnClaim").disabled = false;
@@ -100,7 +100,7 @@ async function refresh(force = false) {
   if (changed || force) {
     if (state.solution && state.solution.challenge !== info.challenge && !state.claiming) {
       clearSolution();
-      setStatus("kisi aur ne yeh block claim kar liya — next block pe mining");
+      setStatus("someone else claimed this block — mining the next one");
     }
     if (state.wantMining && !state.solution) await startEngine();
     loadRecent();
@@ -123,7 +123,7 @@ async function loadRecent() {
     const blocks = await chain.recentBlocks();
     $("recent").innerHTML = blocks.length
       ? blocks.map((b) => `<li>#${b.height} · <span class="mono">${short(b.miner)}</span> · ${fmtTok(b.reward)} · ${b.achievedBits} bits</li>`).join("")
-      : `<li class="muted">Abhi tak koi block nahi — pehle tum bano!</li>`;
+      : `<li class="muted">No blocks yet — be the first!</li>`;
   } catch {
     $("recent").innerHTML = `<li class="muted">Could not load events</li>`;
   }
@@ -154,14 +154,14 @@ async function showDevice() {
   const det = await detectGpu();
   const manual = savedGpu();
   state.gpuName = manual || det.name;
-  $("gpuName").textContent = state.gpuName || "detect nahi hua — 'change' dabao";
-  if (manual) $("gpuName").title = "tumne set kiya";
+  $("gpuName").textContent = state.gpuName || "not detected — click 'change'";
+  if (manual) $("gpuName").title = "set by you";
   $("gpuRaw").textContent = `WebGL:  ${det.raw.webgl ?? "–"}\nWebGPU: ${det.raw.webgpu ? JSON.stringify(det.raw.webgpu) : "–"}\nDetected: ${det.name ?? "–"} (${det.source})${manual ? `\nManual: ${manual}` : ""}`;
-  $("gpuApi").textContent = engine.hasGpuApi() ? "WebGPU ready ✓ (GPU mining available)" : "WebGPU is browser mein nahi hai → sirf CPU mining (Chrome/Edge use karo)";
+  $("gpuApi").textContent = engine.hasGpuApi() ? "WebGPU ready ✓ (GPU mining available)" : "WebGPU is not available in this browser → CPU mining only (use Chrome/Edge)";
 }
 
 function editGpu() {
-  const v = prompt("Apne GPU ka naam likho (e.g. Intel Arc B580). Khaali chhodo toh auto-detect wapas:", savedGpu() || state.gpuName || "");
+  const v = prompt("Type your GPU name (e.g. Intel Arc B580). Leave empty to go back to auto-detect:", savedGpu() || state.gpuName || "");
   if (v === null) return;
   try {
     if (v.trim()) localStorage.setItem(GPU_KEY, v.trim().slice(0, 60));
@@ -182,7 +182,7 @@ export function initMine() {
 
   let wakeLock = null;
   $("btnStart").onclick = async () => {
-    if (!store.wallet) return alert("Pehle upar 'Connect wallet' dabao.");
+    if (!store.wallet) return alert("Please click 'Connect wallet' at the top first.");
     state.wantMining = true;
     $("btnStart").disabled = true;
     $("btnStop").disabled = false;

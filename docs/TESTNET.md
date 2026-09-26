@@ -1,8 +1,8 @@
-# Robinhood Chain Testnet Launch Checklist (Hinglish)
+# Robinhood Chain Testnet Launch Checklist
 
-Pehle testnet → sab theek chala → phir mainnet.
+Testnet first → make sure everything works → then mainnet.
 
-> ⚡ **Shortcut: sab ek command mein.** `npm install` ke baad `npm run testnet` chalao. Yeh private key poochta hai (ya Enter dabao toh naya wallet banata hai), key `.env` mein save karta hai, faucet ETH aane ka wait karta hai, aur deploy kar deta hai.
+> ⚡ **Shortcut: one command.** After `npm install`, run `npm run testnet`. It asks for a private key (or press Enter to create a new wallet), saves it to `.env`, waits for faucet ETH, and deploys the token + marketplace.
 
 ## Network details
 | | |
@@ -13,82 +13,87 @@ Pehle testnet → sab theek chala → phir mainnet.
 | Faucet | https://faucet.testnet.chain.robinhood.com (backup: https://faucet.quicknode.com/robinhood/testnet) |
 | Gas token | ETH |
 
-(Official source: https://docs.robinhood.com/chain/connecting — deploy se pehle ek baar match kar lena.)
+(Official source: https://docs.robinhood.com/chain/connecting. Double-check before deploying.)
 
-## Step 1: Wallet ready karo (private key)
+## Step 1: Prepare a wallet (private key)
 
-**Option A (sabse aasaan): naya wallet command se banao**
+**Option A (easiest): create a new wallet with a command**
 ```bash
 npm run new-wallet
 ```
-Yeh ek naya wallet banata hai, key seedha `contracts/.env` mein save kar deta hai, aur address print karta hai. Us address pe faucet se testnet ETH le lo. Bas.
+This creates a new wallet, saves its key directly into `contracts/.env`, and prints the address. Get testnet ETH for that address from the faucet. Done.
 
-**Option B: MetaMask se key nikaalo**
-1. MetaMask mein **naya alag account** banao, sirf testnet ke liye. Asli paise wala account kabhi use mat karna.
-2. Account ke aage ⋮ → **Account details** → **Show private key** → password daalo → copy.
-3. `contracts/.env` mein `PRIVATE_KEY=0x...` ke aage paste karo (`0x` se shuru honi chahiye; nahi hai toh aage `0x` laga do).
+**Option B: export a key from MetaMask**
+1. Create a **separate new account** in MetaMask for testnet only. Never use an account with real funds.
+2. ⋮ next to the account → **Account details** → **Show private key** → enter password → copy.
+3. Paste it in `contracts/.env` as `PRIVATE_KEY=0x...` (it must start with `0x`; add it if missing).
 
-Dono case mein faucet se ETH lo: https://faucet.testnet.chain.robinhood.com
+Either way, get ETH from the faucet: https://faucet.testnet.chain.robinhood.com
+
+> ⚠️ Never paste a private key into a chat, email or website. Anyone with the key controls the wallet.
 
 ## Step 2: Deploy
 ```bash
 cd project-new-
-npm install                                  # agar pehle nahi kiya
+npm install                                  # if you haven't already
 copy contracts\.env.example contracts\.env   # Windows
 # cp contracts/.env.example contracts/.env   # Mac/Linux
 ```
-`contracts/.env` kholo aur bharo (Option A use kiya toh PRIVATE_KEY already bhari hogi):
+Open `contracts/.env` and fill it in (with Option A, `PRIVATE_KEY` is already set):
 ```
-PRIVATE_KEY=0x<tera testnet private key>
+PRIVATE_KEY=0x<your testnet private key>
 TOKEN_NAME=Robin PoW
 TOKEN_SYMBOL=XYZ
 MIN_DIFFICULTY_BITS=21
 INITIAL_DIFFICULTY_BITS=27
+MARKET_FEE_BPS=100
 ```
-Phir:
+Then:
 ```bash
 npm run deploy:testnet
 ```
-Output aisa aayega:
+Expected output:
 ```
 Network : robinhoodTestnet (chainId 46630)
 Deployer: 0x...  balance 0.5 ETH
 PowInscription deployed at: 0xABC...
-Explorer: https://explorer.testnet.chain.robinhood.com/address/0xABC...
+TokenMarket deployed at:    0xDEF... (1 lot = 5000.0 tokens, fee 1% → 0x...)
+Explorer (token):  https://explorer.testnet.chain.robinhood.com/address/0xABC...
 wrote ../web/src/deployment.json
 wrote ../miner-cli/deployment.json
 ```
-**Contract address save kar lo.** `web/src/deployment.json` aur `miner-cli/deployment.json` ab testnet ko point karte hain. Inko git mein commit karo taaki website live contract use kare.
+**Save the contract addresses.** `web/src/deployment.json` and `miner-cli/deployment.json` now point to testnet. Commit them so the hosted website uses the live contracts.
 
-## Step 3: Apne PC pe test karo
+## Step 3: Test on your PC
 ```bash
 npm run web          # http://localhost:5173
 ```
-- **Connect wallet** (MetaMask testnet pe, wallet mein thoda testnet ETH hona chahiye).
-- **Start mining** → block solve → **Claim tokens** → MetaMask mein Confirm → 5,000 tokens wallet mein, Explorer pe tx dikhega.
+- **Connect wallet** (on the testnet, with a little testnet ETH).
+- **Start mining** → block solved → **Claim tokens** → confirm in wallet → 5,000 tokens in your wallet; the tx shows on the explorer.
+- **Transfer** tab: send some tokens to a second wallet.
+- **Marketplace** tab: list a lot, buy it from a second wallet, place a bid, cancel.
 
-CLI se bhi: `miner-cli/.env` mein `PRIVATE_KEY=...` daalo, phir `npm run mine`.
+CLI too: put `PRIVATE_KEY=...` in `miner-cli/.env`, then `npm run mine`.
 
-## Step 4: Website live karo (phone users ke liye, HTTPS)
+## Step 4: Put the website online (HTTPS, for phone users)
 
-**WalletConnect (phone wallets ke liye, optional par recommended):** https://cloud.reown.com pe free account → New project → **Project ID** copy karo. Local ke liye `web/.env` mein `VITE_WC_PROJECT_ID=<id>`; Vercel pe Settings → Environment Variables mein same.
+**WalletConnect (for phone wallets, optional but recommended):** create a free account at https://cloud.reown.com → New project → copy the **Project ID**. Locally put `VITE_WC_PROJECT_ID=<id>` in `web/.env`; on Vercel add the same under Settings → Environment Variables.
 
 **Vercel (free):**
-1. Code GitHub pe push karo (deployment.json ke saath).
-2. vercel.com → New Project → yeh repo choose karo → Root directory = repo root (`vercel.json` already hai) → Deploy.
-3. Jo `https://...vercel.app` link mile, woh phone pe kholo → mine karo. HTTPS pe phone GPU (WebGPU) bhi chalega.
+1. Push the code to GitHub (including `deployment.json`).
+2. vercel.com → New Project → pick this repo → Root directory = repo root (`vercel.json` is included) → Deploy.
+3. Open the `https://...vercel.app` link on a phone and mine. Over HTTPS the phone GPU (WebGPU) works too.
 
-## Step 5: Testnet pe kya kya check karna hai (mainnet se pehle)
-- [ ] 2-3 alag log (phone + PC) ek saath mine karein. Sirf ek hi jeete har block, baaki ko "someone else mined this block" aaye
-- [ ] Block time dekho. Har block ke baad difficulty adjust honi chahiye (website pe "Required zero bits", Explorer pe `Retarget` event). ~2 min per block pe settle honi chahiye
-- [ ] 10+ min koi mine na kare → difficulty aasaan hoti hai (stall rescue)
-- [ ] Har claim pe exactly 5,000 tokens usi wallet mein aaye
-- [ ] Marketplace: sirf poore lots list/buy/sell ho rahe hain, price per lot sahi
-- [ ] Gas cost per mint note karo (users ko kitna ETH chahiye)
-- [ ] Tokens wallet mein dikh rahe hain (MetaMask → Import token → contract address)
-- [ ] Parameters final karo: reward, block time, max supply, difficulty (inke liye contract constants badalne padenge → naya deploy)
+## Step 5: What to verify on testnet (before mainnet)
+- [ ] 2-3 people (phone + PC) mine at the same time. Only one wins each block; the others see "someone else claimed this block"
+- [ ] Block time: difficulty adjusts after every block ("Required zero bits" on the site, `Retarget` events on the explorer) and settles around ~2 min per block
+- [ ] Nobody mines for 20+ min → difficulty eases (stall rescue)
+- [ ] Every claim puts exactly 5,000 tokens in the claiming wallet
+- [ ] Marketplace: only whole lots can be listed/bought/sold, price per lot is correct, fee arrives in the fee wallet
+- [ ] Note the gas cost per claim and per trade (how much ETH users need)
+- [ ] Tokens show up in wallets ("Add token to wallet" button, or import the contract address)
+- [ ] GPU names show correctly on different machines
+- [ ] Finalise parameters: reward, block time, max supply, difficulty, fee (constants need a new deploy)
 
-## Mainnet (baad mein)
-- Contract ka **audit** karwao
-- `contracts/.env` mein `RH_MAINNET_RPC`, `RH_MAINNET_CHAIN_ID` bharo (official docs se), `hardhat.config.js` mein `robinhood` network ready hai
-- Mainnet ke liye bilkul fresh wallet + hardware wallet recommended
+## Mainnet (later)
+See [`PRODUCTION.md`](PRODUCTION.md). In short: **audit**, fresh hardware wallet, multisig owner, then deploy with `RH_MAINNET_RPC` / `RH_MAINNET_CHAIN_ID` (the `robinhood` network is already in `hardhat.config.js`).

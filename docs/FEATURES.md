@@ -1,55 +1,71 @@
-# Feature ideas: aage kya daal sakte hain
+# Feature ideas / roadmap
 
-✅ = ban chuka hai · ⭐ = sabse zyada recommend
+✅ = done · ⭐ = most recommended · effort: S (hours) · M (1-3 days) · L (a week+)
 
-## Ban chuka hai
-- ✅ PoW mining (CPU + GPU + phone), 5,000 tokens/block, per-block difficulty
-- ✅ Claim seedha connected wallet mein
+## Done
+- ✅ PoW mining (CPU + GPU + phone), 5,000 tokens/block, per-block difficulty (~2 min/block)
+- ✅ Claim straight into the connected wallet
 - ✅ **Transfer** tab (send, Max, "Add token to wallet")
-- ✅ **Marketplace**: sirf poore lots (1 lot = 5,000), price per lot, sell listings + buy bids, cancel, 1% fee, har 4 sec live update
+- ✅ **Marketplace**: whole lots only (1 lot = 5,000), price per lot, listings + bids, cancel, 1% fee, live updates every 4 s
 - ✅ **Multiple wallets**: auto-detect (MetaMask, Rabby, Coinbase, OKX, Trust…), WalletConnect QR, phone deep links
-- ✅ GPU ka poora naam dikhta hai (Intel Arc B580, RTX 3060 Ti, RX 6700 XT, Apple M-series, Adreno…)
+- ✅ Full GPU name (Intel Arc B580, RTX 3060 Ti, RX 6700 XT, Apple M-series, Adreno…), manual override
 
 ## Mining
-| Feature | Kya fayda |
-|---|---|
-| ⭐ **Leaderboard** (top miners, blocks mined, 24h/7d) | Competition = zyada log mine karte hain |
-| ⭐ **Mining stats page** (network hashrate chart, block time chart, difficulty chart) | Transparency + hype |
-| **Benchmark button**: "Tumhara device X H/s karta hai, ek block ~Y min" | Naye user ko turant samajh aata hai |
-| **Auto-claim toggle** (wallet popup turant khule) | Race jeetne ke chances badhenge |
-| **Mining pool mode**: sab milke mine karein, reward hashpower ke hisaab se baantein | Phone users ko bhi regular reward milega (abhi GPU wale zyada jeetenge) |
-| **Sound / notification** jab block mile (tab background mein ho tab bhi) | User miss nahi karega |
-| **Native desktop miner** (CUDA/OpenCL) | GPU ka full power. Browser WebGPU se 3-10× fast |
-| **Halving / reward schedule** (optional) | Bitcoin jaisi scarcity story |
+| Feature | Why | Effort |
+|---|---|---|
+| ⭐ **Leaderboard** (top miners, blocks mined, 24h / 7d / all-time, GPU used) | Competition keeps people mining | M |
+| ⭐ **Network stats page** (hashrate, block time and difficulty charts, blocks left, % supply mined) | Transparency + hype | M |
+| ⭐ **Auto-claim toggle** (wallet popup opens the instant a block is found) | Wins more races | S |
+| **Sound + browser notification** when a block is found (even in a background tab) | Users don't miss a claim | S |
+| **Benchmark button**: "Your device does X H/s → ~Y min per block at current difficulty" | New users instantly get it | S |
+| **Mining pool mode**: everyone mines together, rewards split by submitted shares | Phones get small but regular rewards instead of rarely winning | L |
+| **Native desktop miner** (CUDA / OpenCL / Vulkan) | 3-10× faster than browser WebGPU on big GPUs | L |
+| **Per-address cooldown / anti-bot rules** | Fairer launch vs. GPU farms | S (contract) |
+| **Countdown to launch + "blocks remaining" bar** | Fair launch hype | S |
 
 ## Marketplace
-| Feature | Kya fayda |
-|---|---|
-| ⭐ **Price chart** (candles, 1h/24h/7d) | Traders ko sabse pehle yahi chahiye (indexer lagega) |
-| ⭐ **24h stats**: volume, change %, high/low, holders count | Market "zinda" dikhta hai |
-| **Quick buy**: "5,000 tokens khareedo" → sabse saste orders se auto-fill | 1 click trading |
-| **Order expiry** (24h / 7d baad auto-cancel) | Purane stale orders saaf |
-| **Floor sweep** (saare sasti listings ek tx mein) | Power users ke liye |
-| **DEX liquidity (Uniswap-style pool)** | Instant swap, order ka wait nahi. Launch ke baad pool banana common hai |
-| **USD mein price** (ETH price feed se) | Normal users ko ETH price samajh nahi aata |
+| Feature | Why | Effort |
+|---|---|---|
+| ⭐ **Price chart** (candles 1h / 24h / 7d) | The first thing traders look for (needs an indexer) | M |
+| ⭐ **24h stats**: volume, % change, high/low, holders count | Makes the market feel alive | M |
+| **Quick buy**: "Buy 3 lots" → auto-fills from the cheapest listings | One-click trading | S |
+| **Order expiry** (auto-cancel after 24h / 7d) | Clears stale orders | M (contract) |
+| **Floor sweep** (buy several cheapest listings in one tx) | Power users | M (contract) |
+| **Prices in USD** (via an ETH price feed) | Normal users don't think in ETH | S |
+| **DEX liquidity pool** (Uniswap-style) | Instant swaps without waiting for orders; common after launch | M |
+| **Offers on a specific seller / private listings** | OTC deals | M |
 
 ## Wallet / UX
-| Feature | Kya fayda |
-|---|---|
-| **Transaction history tab** (claims, transfers, trades) | User ko apna record dikhe |
-| **Hindi / English toggle** | Bada audience |
-| **PWA install** ("Add to Home screen" app icon) | Phone pe app jaisa feel |
-| **Gas estimate** har button ke paas | Surprise nahi hoga |
+| Feature | Why | Effort |
+|---|---|---|
+| ⭐ **Activity / history tab** (claims, transfers, trades, with explorer links) | Users see their own record | M |
+| **Gasless claims** (paymaster / sponsored gas via smart accounts) | New users can mine without first buying ETH | L |
+| **Session keys** (EIP-7702 / smart accounts) for popup-free claiming | Faster claims, better race odds | L |
+| **Hindi / English toggle** | Bigger audience | S |
+| **PWA install** ("Add to Home screen" icon, offline shell) | App-like feel on phones | S |
+| **Gas estimate** next to every action button | No surprises | S |
+| **Light / dark theme toggle** | Polish | S |
 
 ## Community / growth
-| Feature | Kya fayda |
-|---|---|
-| ⭐ **Referral**: jiske link se aaya, usko uske mined blocks pe small bonus (marketplace fee se) | Viral growth |
-| **Telegram/Discord bot**: "Block #1234 mined by 0xab… (RTX 4090)" | Hype + FOMO |
-| **Achievements / badges** (first block, 100 blocks, etc.) | Retention |
-| **Inscription gallery**: har mined block ka card/image | Collectible feel |
+| Feature | Why | Effort |
+|---|---|---|
+| ⭐ **Referral links**: referrer earns a share of the marketplace fee from their referrals | Viral growth | M |
+| **Telegram / Discord / X bot**: "Block #1234 mined by 0xab… (RTX 4090)" | Hype + FOMO | S |
+| **Achievements / badges** (first block, 10 blocks, 100 blocks, top-10 miner) | Retention | M |
+| **Inscription gallery**: a generated card/image per mined block | Collectible feel | M |
+| **Public API** (blocks, miners, orders as JSON) | Lets others build dashboards and bots | M |
 
-## Mera suggestion: next 3 kaam (is order mein)
-1. **Leaderboard + stats page**: community ko engaged rakhega.
-2. **Price chart + 24h stats**: marketplace ko serious banayega (indexer chahiye hoga, isliye yeh thoda bada kaam hai).
-3. **Mining pool mode**: phone users ko bhi regular reward.
+## Operations / safety
+| Feature | Why | Effort |
+|---|---|---|
+| ⭐ **Indexer** (The Graph / Goldsky / Ponder) | Powers charts, leaderboard, history; required at scale | M |
+| **Admin dashboard** (fees earned, volume, active miners) | Run the project with data | M |
+| **Error tracking + analytics** (Sentry, Plausible) | Find problems before users complain | S |
+| **Contract verification + public audit report** | Trust | S (+ audit cost) |
+
+## Suggested order for the next steps
+1. **Leaderboard + network stats page + auto-claim**: quick wins that make mining addictive.
+2. **Indexer → price chart + 24h stats + activity tab**: turns the marketplace into a real trading venue.
+3. **Referral links + Telegram/X bot**: growth before mainnet.
+4. **Audit → mainnet** (see [`PRODUCTION.md`](PRODUCTION.md)).
+5. After launch: mining pool, gasless claims, DEX pool.

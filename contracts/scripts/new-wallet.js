@@ -12,7 +12,7 @@ let env = fs.existsSync(envPath) ? fs.readFileSync(envPath, "utf8") : fs.readFil
 const current = env.match(/^PRIVATE_KEY=(0x[0-9a-fA-F]{64})\s*$/m);
 if (current) {
   const w = new Wallet(current[1]);
-  console.log("contracts/.env mein PRIVATE_KEY pehle se hai (overwrite nahi kiya).");
+  console.log("contracts/.env already has a PRIVATE_KEY (not overwritten).");
   console.log("Deployer address:", w.address);
   process.exit(0);
 }
@@ -21,13 +21,13 @@ const w = Wallet.createRandom();
 env = /^PRIVATE_KEY=.*$/m.test(env) ? env.replace(/^PRIVATE_KEY=.*$/m, `PRIVATE_KEY=${w.privateKey}`) : `PRIVATE_KEY=${w.privateKey}\n${env}`;
 fs.writeFileSync(envPath, env);
 
-console.log("✅ Naya testnet wallet bana aur key contracts/.env mein save ho gayi.");
+console.log("✅ New testnet wallet created and its key saved to contracts/.env.");
 console.log("");
 console.log("Deployer address:", w.address);
 console.log("");
-console.log("Ab is address pe testnet ETH lo:");
+console.log("Now get testnet ETH for this address:");
 console.log("  https://faucet.testnet.chain.robinhood.com");
 console.log("  (backup) https://faucet.quicknode.com/robinhood/testnet");
 console.log("");
-console.log("Phir chalao:  npm run deploy:testnet");
-console.log("⚠️  contracts/.env kisi ko share/commit mat karna. Is wallet mein asli paise mat rakhna.");
+console.log("Then run:  npm run deploy:testnet");
+console.log("⚠️  Never share or commit contracts/.env. Do not keep real funds in this wallet.");

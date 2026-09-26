@@ -28,7 +28,7 @@ export const fmtDur = (s) => {
 export const short = (a) => `${a.slice(0, 6)}…${a.slice(-4)}`;
 export const errMsg = (e) => {
   const m = e?.shortMessage || e?.message || String(e);
-  if (/reject|denied/i.test(m)) return "wallet mein reject kiya";
+  if (/reject|denied/i.test(m)) return "rejected in wallet";
   return m;
 };
 export const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -36,6 +36,6 @@ export const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&
 /** Require a connected wallet, otherwise ask the user to connect. */
 export function needWallet() {
   if (store.wallet) return true;
-  alert("Pehle upar 'Connect wallet' dabao.");
+  alert("Please click 'Connect wallet' at the top first.");
   return false;
 }

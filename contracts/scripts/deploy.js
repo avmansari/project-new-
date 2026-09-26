@@ -23,7 +23,7 @@ async function main() {
   console.log(`Token   : ${name} (${symbol}) | min difficulty ${minBits} bits | start difficulty ${initBits} bits`);
   if (balance === 0n) {
     throw new Error(
-      "Deployer has 0 ETH. Testnet ETH lo faucet se: https://faucet.testnet.chain.robinhood.com  (ya https://faucet.quicknode.com/robinhood/testnet)"
+      "Deployer has 0 ETH. Get testnet ETH from the faucet: https://faucet.testnet.chain.robinhood.com  (or https://faucet.quicknode.com/robinhood/testnet)"
     );
   }
 

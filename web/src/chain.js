@@ -49,7 +49,7 @@ export async function recentBlocks(limit = 15) {
 export async function connectProvider(provider, { silent = false } = {}) {
   const client = createWalletClient({ chain: CHAIN, transport: custom(provider) });
   const [address] = silent ? await client.getAddresses() : await client.requestAddresses();
-  if (!address) throw new Error("Wallet ne koi account nahi diya");
+  if (!address) throw new Error("The wallet returned no account");
   const chainId = await client.getChainId().catch(() => null);
   if (chainId !== CHAIN.id) {
     try {
@@ -59,7 +59,7 @@ export async function connectProvider(provider, { silent = false } = {}) {
         await client.addChain({ chain: CHAIN });
         await client.switchChain({ id: CHAIN.id }).catch(() => {});
       } catch {
-        throw new Error(`Wallet mein "${CHAIN.name}" network add/switch nahi hua. Wallet mein manually network add karo (chainId ${CHAIN.id}).`);
+        throw new Error(`Could not add/switch to the "${CHAIN.name}" network. Please add it manually in your wallet (chainId ${CHAIN.id}).`);
       }
     }
   }
@@ -112,9 +112,9 @@ export async function lotSize() {
 async function ensureAllowance(wallet, amount, onStep) {
   const allowed = await publicClient.readContract({ ...token, functionName: "allowance", args: [wallet.address, market.address] });
   if (allowed >= amount) return;
-  onStep?.("Step 1/2: wallet mein token approve karo…");
+  onStep?.("Step 1/2: approve the token in your wallet…");
   await send(wallet, token, "approve", [market.address, amount]);
-  onStep?.("Step 2/2: ab order confirm karo…");
+  onStep?.("Step 2/2: now confirm the order…");
 }
 
 /** All orders (open + closed) — fine for the early market; move to an indexer when it grows. */

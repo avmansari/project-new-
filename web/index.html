@@ -25,7 +25,7 @@
     <main>
       <!-- ===================== MINE ===================== -->
       <div id="tab-mine">
-        <p class="sub">CPU / GPU / phone se block mine karo. Jo block pehle solve kare, woh <b>5,000 <span class="sym">XYZ</span></b> claim kare.</p>
+        <p class="sub">Mine blocks with your CPU / GPU / phone. The first to solve a block claims <b>5,000 <span class="sym">XYZ</span></b>.</p>
 
         <section class="card">
           <h2>Your device</h2>
@@ -71,14 +71,14 @@
 
         <section class="card hidden" id="solutionCard">
           <h2>🎉 Block solved!</h2>
-          <p>Tune block <b id="solHeight"></b> mine kar liya. Difficulty: <b id="solReq"></b> zero bits required, tere hash mein <b id="solBits"></b>.</p>
-          <p class="big">Tu claim kar sakta hai: <b id="solReward"></b></p>
+          <p>You mined block <b id="solHeight"></b>. Difficulty: <b id="solReq"></b> zero bits required, your hash has <b id="solBits"></b>.</p>
+          <p class="big">You can claim: <b id="solReward"></b></p>
           <p class="mono small" id="solDigest"></p>
           <div class="row">
             <button id="btnClaim">Claim tokens</button>
             <button id="btnDiscard" class="secondary">Discard</button>
           </div>
-          <p class="small">Claim dabao → wallet mein approve karo → tokens seedha tere wallet mein. Jaldi karo: agar kisi aur ne yeh block pehle claim kar liya toh yeh solution expire ho jayega.</p>
+          <p class="small">Click Claim → approve in your wallet → tokens go straight to your wallet. Be quick: if someone else claims this block first, your solution expires.</p>
         </section>
 
         <section class="card">
@@ -128,7 +128,7 @@
             <div><label>Your lots</label><b id="mkBal">–</b></div>
             <div><label>Your ETH</label><b id="mkBalEth">–</b></div>
           </div>
-          <p class="small muted">Live · har 4 sec update. <b>1 lot = <span class="lotsize">5,000</span> <span class="sym">XYZ</span></b> · sirf poore lots mein trade · price = ETH per lot.</p>
+          <p class="small muted">Live · updates every 4 s. <b>1 lot = <span class="lotsize">5,000</span> <span class="sym">XYZ</span></b> · whole lots only · price = ETH per lot.</p>
         </section>
 
         <section class="card hidden" id="mkTrade">
@@ -150,11 +150,11 @@
 
         <div class="two">
           <section class="card">
-            <h2>🔴 Sell orders <span class="small muted">(tum khareed sakte ho)</span></h2>
+            <h2>🔴 Sell orders <span class="small muted">(you can buy)</span></h2>
             <div class="tablewrap"><table id="mkAsks" class="book"></table></div>
           </section>
           <section class="card">
-            <h2>🟢 Buy orders <span class="small muted">(tum bech sakte ho)</span></h2>
+            <h2>🟢 Buy orders <span class="small muted">(you can sell)</span></h2>
             <div class="tablewrap"><table id="mkBids" class="book"></table></div>
           </section>
         </div>

@@ -1,72 +1,72 @@
-# Production mein kaise le jaayein (Hinglish guide)
+# Going to production
 
-Order: **Local → Testnet → Audit → Mainnet**. Beech ka koi step skip mat karna.
+Order: **Local → Testnet → Audit → Mainnet**. Don't skip a step.
 
 ---
 
-## Phase 1: Testnet (abhi)
+## Phase 1: Testnet (now)
 Details: [`TESTNET.md`](TESTNET.md)
 
-1. `npm run testnet`. Isse token + marketplace dono deploy hote hain.
-2. `web/src/deployment.json` aur `miner-cli/deployment.json` commit + push karo.
-3. Vercel pe host karo (neeche Phase 3 dekho), aur link doston/community ko do.
-4. **Kam se kam 1-2 hafte** testnet chalao:
-   - 10-20 log alag devices (phone, laptop, GPU PC) se mine karein
-   - Marketplace mein buy/sell/bid/cancel sab try karein
-   - Block time ~2 min pe settle ho raha hai? Gas kitna lag raha hai per claim?
-   - Bugs aur feedback ek jagah note karo (GitHub Issues / Google Form)
+1. `npm run testnet` deploys the token and the marketplace.
+2. Commit + push `web/src/deployment.json` and `miner-cli/deployment.json`.
+3. Host on Vercel (see Phase 3) and share the link with friends/community.
+4. Run the testnet for **at least 1-2 weeks**:
+   - 10-20 people mining from different devices (phones, laptops, GPU PCs)
+   - Everyone tries buy / sell / bid / cancel on the marketplace
+   - Does the block time settle around ~2 min? How much gas does a claim cost?
+   - Collect bugs and feedback in one place (GitHub Issues / a form)
 
-## Phase 2: Mainnet se pehle (zaroori)
+## Phase 2: Before mainnet (mandatory)
 
-| Kaam | Kyun | Kaise |
+| Task | Why | How |
 |---|---|---|
-| **Final parameters lock karo** | Deploy ke baad contract badal nahi sakta | `PowInscription.sol` constants: `BLOCK_REWARD`, `TARGET_BLOCK_TIME`, `MAX_SUPPLY`; `.env`: difficulty bits, market fee |
-| **Smart contract audit** | Asli paisa lagega. Ek bug = sab funds khatam | Audit firm (Cantina, Code4rena contest, Sherlock, Hacken), ya kam budget mein ek experienced freelance auditor. Minimum: 2 independent reviews |
-| **Explorer pe verify** | Log contract code padh sakein → trust | Blockscout verify (hardhat-verify plugin) |
-| **Fresh deployer wallet** | Testnet wali key chat mein share ho chuki hai | Naya wallet, ideally hardware wallet (Ledger/Trezor) |
-| **Fee wallet = multisig** | Ek key leak = saari fee chori | Safe (safe.global) multisig, 2-of-3 signers. Market `setFee` / `transferOwnership` se owner multisig ko do |
-| **Legal check** | Token + marketplace = regulations lag sakte hain | Apne desh ke crypto lawyer se ek baar baat karo (India: VDA tax / TDS rules) |
-| **Terms + disclaimer page** | "Financial advice nahi hai", "risk apna" | Website footer mein link |
+| **Lock final parameters** | Contracts can't be changed after deploy | `PowInscription.sol` constants: `BLOCK_REWARD`, `TARGET_BLOCK_TIME`, `MAX_SUPPLY`; `.env`: difficulty bits, market fee |
+| **Smart contract audit** | Real money will be at stake; one bug can drain everything | An audit firm (Cantina, Code4rena contest, Sherlock, Hacken), or on a smaller budget an experienced freelance auditor. At least 2 independent reviews |
+| **Verify on the explorer** | Users can read the contract code → trust | Blockscout verification (hardhat-verify plugin) |
+| **Fresh deployer wallet** | The testnet key has been shared | New wallet, ideally a hardware wallet (Ledger/Trezor) |
+| **Fee wallet = multisig** | One leaked key = all fees stolen | Safe (safe.global) multisig, 2-of-3 signers. Use `setFee` / `transferOwnership` to hand the market to the multisig |
+| **Legal check** | A token + marketplace may fall under regulations | Talk to a crypto lawyer in your country once (India: VDA tax / TDS rules) |
+| **Terms + disclaimer page** | "Not financial advice", "use at your own risk" | Link in the website footer |
 
 ## Phase 3: Website hosting (HTTPS)
 
 **Vercel (free, recommended):**
-1. GitHub repo Vercel se connect karo → New Project → repo select karo.
-2. Root directory = repo root. `vercel.json` already bana hua hai (build: `npm run build -w web`, output: `web/dist`).
-3. Deploy. `https://<naam>.vercel.app` mil jayega.
-4. Apna domain (jaise `xyzmine.com`) Vercel → Settings → Domains mein add karo.
+1. Connect the GitHub repo to Vercel → New Project → select the repo.
+2. Root directory = repo root. `vercel.json` is already there (build: `npm run build -w web`, output: `web/dist`).
+3. Deploy. You get `https://<name>.vercel.app`.
+4. Add your own domain (e.g. `xyzmine.com`) under Vercel → Settings → Domains.
 
 **Environment variables (Vercel → Settings → Environment Variables):**
-- `VITE_WC_PROJECT_ID`: WalletConnect project ID (free, https://cloud.reown.com). Isse phone wallets QR se connect hote hain.
-- `VITE_RPC_URL`: apna private RPC (neeche dekho). Public RPC pe traffic badhne pe rate limit lagegi.
-- `VITE_CONTRACT_ADDRESS` / `VITE_MARKET_ADDRESS`: optional override. Warna `deployment.json` se aata hai.
+- `VITE_WC_PROJECT_ID`: WalletConnect project ID (free, https://cloud.reown.com), so phone wallets can connect via QR.
+- `VITE_RPC_URL`: your private RPC (see below). The public RPC will rate-limit you as traffic grows.
+- `VITE_CONTRACT_ADDRESS` / `VITE_MARKET_ADDRESS`: optional overrides; otherwise they come from `deployment.json`.
 
-**Private RPC:** Alchemy, QuickNode ya Chainstack mein Robinhood Chain ka endpoint lo. Free tier se shuru karo, users badhne pe paid.
+**Private RPC:** get a Robinhood Chain endpoint from Alchemy, QuickNode or Chainstack. Start on the free tier, upgrade as users grow.
 
 ## Phase 4: Mainnet launch
-1. `contracts/.env` mein `RH_MAINNET_RPC`, `RH_MAINNET_CHAIN_ID` bharo (official docs se), aur naya `PRIVATE_KEY`.
-2. `web/src/config.js` mein mainnet chain add karo (testnet jaisa hi block, naya chainId/RPC/explorer).
-3. `npx hardhat run scripts/deploy.js --network robinhood` (contracts folder mein).
-4. Market ownership multisig ko transfer karo.
-5. Website ka `deployment.json` mainnet wala commit karo → Vercel auto-deploy.
-6. Launch announce karo: exact **launch time** batao, taaki sab ek saath start karein (fair launch).
+1. Fill `RH_MAINNET_RPC`, `RH_MAINNET_CHAIN_ID` (from the official docs) and a new `PRIVATE_KEY` in `contracts/.env`.
+2. Add the mainnet chain in `web/src/config.js` (same shape as the testnet block, with the new chainId/RPC/explorer).
+3. Run `npx hardhat run scripts/deploy.js --network robinhood` (inside `contracts/`).
+4. Transfer market ownership to the multisig.
+5. Commit the mainnet `deployment.json` → Vercel redeploys automatically.
+6. Announce the launch with an exact **start time** so everyone starts together (fair launch).
 
-## Phase 5: Launch ke baad (monitoring)
-- **Uptime:** UptimeRobot (free) se website + RPC ping.
-- **Errors:** Sentry (free tier) web app mein add karo. Users ke browser errors dikhenge.
-- **Analytics:** Plausible ya Umami (privacy-friendly). Kitne log mine kar rahe hain.
-- **Indexer:** jab orders/trades hazaaron mein ho jayein, toh browser se saare events padhna slow hoga. Tab **The Graph / Goldsky / Ponder** se indexer banao (price chart, 24h volume, leaderboard ke liye bhi chahiye).
-- **Community:** Telegram / Discord + X (Twitter) pe block milestones auto-post karne wala bot.
+## Phase 5: After launch (monitoring)
+- **Uptime:** UptimeRobot (free) pinging the website and RPC.
+- **Errors:** add Sentry (free tier) to the web app to see users' browser errors.
+- **Analytics:** Plausible or Umami (privacy-friendly): how many people are mining.
+- **Indexer:** once orders/trades reach the thousands, reading all events from the browser gets slow. Build an indexer with **The Graph / Goldsky / Ponder** (also needed for price charts, 24h volume and leaderboards).
+- **Community:** Telegram / Discord + X (Twitter) with a bot auto-posting block milestones.
 
 ---
 
-## Checklist (print karke rakh lo)
-- [ ] Testnet pe 1-2 hafte, 10+ users
+## Checklist
+- [ ] 1-2 weeks on testnet with 10+ users
 - [ ] Parameters final
 - [ ] Audit done + issues fixed
 - [ ] Fresh mainnet wallet (hardware)
 - [ ] Market owner = multisig
-- [ ] Contracts verified on explorer
+- [ ] Contracts verified on the explorer
 - [ ] Private RPC + Vercel env vars
 - [ ] Custom domain + HTTPS
 - [ ] Terms/disclaimer page

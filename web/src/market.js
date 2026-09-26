@@ -65,8 +65,8 @@ function render() {
       <td>${mine(o) ? `<button class="mini secondary" data-cancel="${o.id}">Cancel</button>` : `<button class="mini" data-pick="${o.id}">${action}</button>`}</td>
     </tr>`;
   const head = `<tr><th>Price / lot (ETH)</th><th>Lots</th><th>Total ETH</th><th>By</th><th></th></tr>`;
-  $("mkAsks").innerHTML = head + (asks.map((o) => row(o, "Buy")).join("") || `<tr><td colspan="5" class="muted">Koi sell order nahi</td></tr>`);
-  $("mkBids").innerHTML = head + (bids.map((o) => row(o, "Sell")).join("") || `<tr><td colspan="5" class="muted">Koi buy order nahi</td></tr>`);
+  $("mkAsks").innerHTML = head + (asks.map((o) => row(o, "Buy")).join("") || `<tr><td colspan="5" class="muted">No sell orders</td></tr>`);
+  $("mkBids").innerHTML = head + (bids.map((o) => row(o, "Sell")).join("") || `<tr><td colspan="5" class="muted">No buy orders</td></tr>`);
 
   const my = open.filter(mine);
   $("mkMine").innerHTML = my.length
@@ -76,7 +76,7 @@ function render() {
             `<li>${o.isBid ? "🟢 Buying" : "🔴 Selling"} ${lotsLabel(o.lots)} @ ${fmtEth(o.pricePerLot)} / lot <button class="mini secondary" data-cancel="${o.id}">Cancel</button></li>`
         )
         .join("")
-    : `<li class="muted">${store.wallet ? "Koi open order nahi" : "Wallet connect karo"}</li>`;
+    : `<li class="muted">${store.wallet ? "No open orders" : "Connect your wallet"}</li>`;
 
   $("mkTrades").innerHTML = state.trades.length
     ? state.trades
@@ -85,11 +85,11 @@ function render() {
           return `<li>${lotsLabel(t.lots)} @ ${fmtEth(t.pricePerLot)} / lot · <span class="mono small">${short(t.seller)} → ${short(t.buyer)}</span> ${url ? `· <a href="${url}" target="_blank" rel="noopener">tx</a>` : ""}</li>`;
         })
         .join("")
-    : `<li class="muted">Abhi tak koi trade nahi</li>`;
+    : `<li class="muted">No trades yet</li>`;
 
   if (state.selected) {
     const fresh = open.find((o) => o.id === state.selected.id);
-    if (!fresh) closeTrade("Yeh order ab available nahi hai (fill ya cancel ho gaya)");
+    if (!fresh) closeTrade("This order is no longer available (filled or cancelled)");
     else state.selected = fresh;
   }
   updateTradeCost();
@@ -127,30 +127,30 @@ function updateTradeCost() {
   const o = state.selected;
   if (!o) return;
   const lots = parseLots($("mkTradeLots").value);
-  if (lots <= 0n) return ($("mkTradeCost").textContent = "Lots 1 ya zyada (poore number) daalo");
+  if (lots <= 0n) return ($("mkTradeCost").textContent = "Enter 1 or more whole lots");
   const eth = chain.costOf(lots, o.pricePerLot);
   const fee = (eth * state.feeBps) / 10_000n;
   const tokens = `${fmtAmt(lots * state.lotSize, 0)} ${store.symbol}`;
   $("mkTradeCost").textContent = o.isBid
-    ? `${lotsLabel(lots)} (${tokens}) becho → tumhe milega ${fmtEth(eth - fee)} (fee ${fmtEth(fee)})`
-    : `${lotsLabel(lots)} (${tokens}) lo → tum pay karoge ${fmtEth(eth)}`;
+    ? `Sell ${lotsLabel(lots)} (${tokens}) → you receive ${fmtEth(eth - fee)} (fee ${fmtEth(fee)})`
+    : `Buy ${lotsLabel(lots)} (${tokens}) → you pay ${fmtEth(eth)}`;
 }
 
 async function doTrade() {
   const o = state.selected;
   if (!o || state.busy) return;
-  if (!store.wallet) return alert("Pehle upar 'Connect wallet' dabao.");
+  if (!store.wallet) return alert("Please click 'Connect wallet' at the top first.");
   const lots = parseLots($("mkTradeLots").value);
-  if (lots <= 0n) return setStatus("Lots poore number mein daalo (1, 2, 3…)");
-  if (lots > o.lots) return setStatus(`Is order mein sirf ${lotsLabel(o.lots)} available hai`);
-  if (o.isBid && lots > myLots()) return setStatus(`Tumhare paas sirf ${lotsLabel(myLots())} hai`);
-  if (!o.isBid && chain.costOf(lots, o.pricePerLot) > store.ethBalance) return setStatus("ETH balance kam hai");
+  if (lots <= 0n) return setStatus("Enter whole lots (1, 2, 3…)");
+  if (lots > o.lots) return setStatus(`This order only has ${lotsLabel(o.lots)} available`);
+  if (o.isBid && lots > myLots()) return setStatus(`You only have ${lotsLabel(myLots())}`);
+  if (!o.isBid && chain.costOf(lots, o.pricePerLot) > store.ethBalance) return setStatus("Not enough ETH");
 
   await busy(async () => {
-    setStatus("wallet mein confirm karo…");
+    setStatus("Confirm in your wallet…");
     if (o.isBid) await chain.sellIntoBid(store.wallet, o.id, lots, setStatus);
     else await chain.buyFromListing(store.wallet, o.id, lots, o.pricePerLot);
-    closeTrade(`✓ Trade ho gaya: ${lotsLabel(lots)}`);
+    closeTrade(`✓ Trade done: ${lotsLabel(lots)}`);
   });
 }
 
@@ -162,8 +162,8 @@ function setSide(side) {
   $("mkCreate").textContent = side === "sell" ? "List lots for sale" : "Place buy order";
   $("mkCreateHint").textContent =
     side === "sell"
-      ? "Tumhare lots market contract mein lock honge jab tak koi khareed na le ya tum cancel na karo. (2 wallet confirmations: approve + list)"
-      : "Tumhara ETH lock hoga jab tak koi lots bech na de ya tum cancel na karo.";
+      ? "Your lots are locked in the market contract until someone buys them or you cancel. (2 wallet confirmations: approve + list)"
+      : "Your ETH is locked until someone sells you lots or you cancel.";
   updateCreateTotal();
 }
 
@@ -172,34 +172,34 @@ function updateCreateTotal() {
   const price = parsePrice($("mkPrice").value);
   $("mkTotal").textContent =
     lots > 0n && price > 0n ? `${fmtEth(chain.costOf(lots, price))} for ${lotsLabel(lots)} (${fmtAmt(lots * state.lotSize, 0)} ${store.symbol})` : "–";
-  if (state.side === "sell") $("mkLotsHint").textContent = store.wallet ? `Tumhare paas ${lotsLabel(myLots())} hai` : "";
+  if (state.side === "sell") $("mkLotsHint").textContent = store.wallet ? `You have ${lotsLabel(myLots())}` : "";
   else $("mkLotsHint").textContent = "";
 }
 
 async function createOrder() {
   if (state.busy) return;
-  if (!store.wallet) return alert("Pehle upar 'Connect wallet' dabao.");
+  if (!store.wallet) return alert("Please click 'Connect wallet' at the top first.");
   const lots = parseLots($("mkLots").value);
   const price = parsePrice($("mkPrice").value);
-  if (lots <= 0n) return setStatus("Lots poore number mein daalo (1, 2, 3…)");
-  if (price <= 0n) return setStatus("Price per lot (ETH) daalo");
-  if (state.side === "sell" && lots > myLots()) return setStatus(`Tumhare paas sirf ${lotsLabel(myLots())} hai`);
-  if (state.side === "buy" && chain.costOf(lots, price) > store.ethBalance) return setStatus("ETH balance kam hai");
+  if (lots <= 0n) return setStatus("Enter whole lots (1, 2, 3…)");
+  if (price <= 0n) return setStatus("Enter a price per lot (ETH)");
+  if (state.side === "sell" && lots > myLots()) return setStatus(`You only have ${lotsLabel(myLots())}`);
+  if (state.side === "buy" && chain.costOf(lots, price) > store.ethBalance) return setStatus("Not enough ETH");
 
   await busy(async () => {
-    setStatus("wallet mein confirm karo…");
+    setStatus("Confirm in your wallet…");
     if (state.side === "sell") await chain.listForSale(store.wallet, lots, price, setStatus);
     else await chain.placeBid(store.wallet, lots, price);
     $("mkLots").value = "1";
-    setStatus(state.side === "sell" ? "✓ Sell order live hai" : "✓ Buy order live hai");
+    setStatus(state.side === "sell" ? "✓ Sell order is live" : "✓ Buy order is live");
   });
 }
 
 async function cancel(id) {
   await busy(async () => {
-    setStatus("wallet mein confirm karo…");
+    setStatus("Confirm in your wallet…");
     await chain.cancelOrder(store.wallet, id);
-    setStatus(`✓ Order #${id} cancel ho gaya, funds wapas`);
+    setStatus(`✓ Order #${id} cancelled, funds returned`);
   });
 }
 
@@ -235,7 +235,7 @@ function stepper(inputId, max) {
 // ---------------- init ----------------
 export function initMarket() {
   if (!chain.hasMarket) {
-    $("tab-market").innerHTML = `<section class="card"><p class="muted">Marketplace contract deploy nahi hua. <code>npm run deploy:testnet</code> dobara chalao.</p></section>`;
+    $("tab-market").innerHTML = `<section class="card"><p class="muted">Marketplace contract is not deployed. Run <code>npm run deploy:testnet</code> again.</p></section>`;
     return { show() {}, hide() {} };
   }
   $("mkSideSell").onclick = () => setSide("sell");
