@@ -2,10 +2,10 @@
 //
 // Flow:
 //   poll chain -> new challenge? -> (re)start engine
-//   engine finds nonce -> show "you can mint N tokens" (or auto-mint)
-//   user mints -> tx confirms -> chain has a new challenge -> mining resumes
-import { formatEther, isAddress } from "viem";
-import { leadingZeroBits, hexToBytes, rewardFor, expectedHashes } from "@pow/shared";
+//   engine finds nonce -> show "you can claim 5000 tokens"
+//   user clicks Claim -> approves in wallet -> tokens land in the same wallet -> chain has a new challenge -> mining resumes
+import { formatEther } from "viem";
+import { leadingZeroBits, hexToBytes, expectedHashes } from "@pow/shared";
 import { CONTRACT_ADDRESS, POLL_MS } from "./config.js";
 import * as chain from "./chain.js";
 import { createEngine } from "./engine.js";
@@ -16,8 +16,8 @@ const state = {
   symbol: "XYZ",
   wallet: null,
   wantMining: false,
-  solution: null, // pending solution waiting for mint
-  minting: false,
+  solution: null, // pending solution waiting for claim
+  claiming: false,
   hashrate: 0,
   myBlocks: [],
 };
@@ -72,7 +72,7 @@ async function startEngine() {
 // ---------- solution handling ----------
 function handleSolution(sol) {
   const bits = leadingZeroBits(hexToBytes(sol.digest));
-  const reward = rewardFor(state.info.height, state.info.requiredBits, bits);
+  const reward = state.info.reward; // fixed 5000 per block
   state.solution = { ...sol, bits, reward, height: state.info.height };
   $("solHeight").textContent = `#${state.info.height}`;
   $("solBits").textContent = bits;
@@ -82,7 +82,6 @@ function handleSolution(sol) {
   $("solutionCard").classList.remove("hidden");
   setStatus("block solved!");
   navigator.vibrate?.(200);
-  if ($("autoMint").checked) mint();
 }
 
 function clearSolution() {
@@ -90,26 +89,25 @@ function clearSolution() {
   $("solutionCard").classList.add("hidden");
 }
 
-async function mint() {
+async function claim() {
   const sol = state.solution;
-  if (!sol || state.minting) return;
-  state.minting = true;
-  $("btnMint").disabled = true;
-  setStatus("submitting mint…");
+  if (!sol || state.claiming) return;
+  state.claiming = true;
+  $("btnClaim").disabled = true;
+  setStatus("wallet mein approve karo…");
   try {
-    const payout = $("payout").value.trim();
-    const to = isAddress(payout) ? payout : state.wallet.address;
-    const ev = await chain.submitMint(state.wallet, { nonce: sol.nonce, challenge: sol.challenge, to });
+    const ev = await chain.claimBlock(state.wallet, { nonce: sol.nonce, challenge: sol.challenge });
     state.myBlocks.unshift({ height: ev.height, reward: ev.reward, hash: ev.hash });
     renderMyBlocks();
-    setStatus(`minted block #${ev.height} ✓`);
+    setStatus(`claimed block #${ev.height} ✓ ${fmtTok(ev.reward)} wallet mein aa gaye`);
   } catch (e) {
     console.error(e);
     const msg = e.shortMessage || e.message || String(e);
-    setStatus(msg.includes("StaleChallenge") ? "too late — someone else mined this block" : `mint failed: ${msg}`);
+    if (/reject|denied/i.test(msg)) setStatus("claim cancel kiya (wallet mein reject)");
+    else setStatus(msg.includes("StaleChallenge") ? "late ho gaya — kisi aur ne yeh block claim kar liya" : `claim failed: ${msg}`);
   } finally {
-    state.minting = false;
-    $("btnMint").disabled = false;
+    state.claiming = false;
+    $("btnClaim").disabled = false;
     clearSolution();
     await refresh(true);
   }
@@ -130,7 +128,7 @@ async function refresh(force = false) {
 
   if (changed || force) {
     // pending solution for an old block is now useless
-    if (state.solution && state.solution.challenge !== info.challenge && !state.minting) {
+    if (state.solution && state.solution.challenge !== info.challenge && !state.claiming) {
       clearSolution();
       setStatus("block was mined by someone else — moving on");
     }
@@ -145,7 +143,7 @@ function renderInfo() {
   $("height").textContent = `#${i.height}`;
   $("difficulty").textContent = fmtNum(Number(i.difficulty));
   $("bits").textContent = i.requiredBits;
-  $("reward").textContent = `${fmtTok(i.baseReward)} (up to 2×)`;
+  $("reward").textContent = fmtTok(i.reward);
   $("supply").textContent = fmtTok(i.totalSupply);
   $("lastBlock").textContent = `${fmtDur(Math.max(0, Date.now() / 1000 - Number(i.lastBlockTime)))} ago`;
   $("challenge").textContent = `challenge: ${i.challenge}`;
@@ -167,10 +165,8 @@ async function loadRecent() {
 
 async function loadBalance() {
   if (!state.wallet) return;
-  const payout = $("payout").value.trim();
-  const who = isAddress(payout) ? payout : state.wallet.address;
-  $("balance").textContent = fmtTok(await chain.balanceOf(who));
-  if (state.wallet.kind === "burner") $("burnerGas").textContent = await chain.ethBalance(state.wallet.address);
+  $("balance").textContent = fmtTok(await chain.balanceOf(state.wallet.address));
+  $("gasBal").textContent = Number(await chain.ethBalance(state.wallet.address)).toFixed(5);
 }
 
 function renderMyBlocks() {
@@ -187,23 +183,27 @@ function onWallet(w) {
   state.wallet = w;
   $("walletInfo").classList.remove("hidden");
   $("minerAddr").textContent = w.address;
-  $("walletKind").textContent = w.kind;
-  $("burnerNote").classList.toggle("hidden", w.kind !== "burner");
-  if (w.kind === "burner") $("autoMint").checked = true;
+  $("btnConnect").textContent = "Connected ✓";
   $("btnStart").disabled = false;
   loadBalance();
 }
 
-$("btnInjected").onclick = async () => {
+$("btnConnect").onclick = async () => {
   try {
     onWallet(await chain.connectInjected());
   } catch (e) {
     alert(e.shortMessage || e.message);
   }
 };
-$("btnBurner").onclick = () => onWallet(chain.connectBurner());
-$("btnExport").onclick = () => prompt("Burner private key (keep secret!)", state.wallet.exportKey());
-$("payout").onchange = loadBalance;
+
+// Wallet account switched: the hash is bound to the address, so restart mining for the new one.
+chain.onAccountChange(async (addr) => {
+  if (!addr || !state.wallet) return;
+  state.wallet = { ...state.wallet, address: addr };
+  onWallet(state.wallet);
+  clearSolution();
+  if (state.wantMining) await startEngine();
+});
 
 // ---------- miner controls ----------
 let wakeLock = null;
@@ -224,7 +224,7 @@ $("btnStop").onclick = () => {
   $("btnStop").disabled = true;
   setStatus("stopped");
 };
-$("btnMint").onclick = mint;
+$("btnClaim").onclick = claim;
 $("btnDiscard").onclick = () => {
   clearSolution();
   refresh(true);

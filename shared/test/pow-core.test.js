@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { keccak_256 } from "@noble/hashes/sha3";
-import { buildInput, mineBatch, bigToBytes32, digestFor, leadingZeroBits, rewardFor, bytesToHex, writeU32BE } from "../pow-core.js";
+import { buildInput, mineBatch, bigToBytes32, digestFor, leadingZeroBits, bytesToHex, writeU32BE } from "../pow-core.js";
 import { packParams } from "../keccak-wgsl.js";
 
 const challenge = "0x" + "ab".repeat(32);
@@ -16,14 +16,6 @@ test("mineBatch finds a nonce whose digest matches digestFor()", () => {
   assert.equal(bytesToHex(d), bytesToHex(r.digest));
   assert.ok(BigInt(bytesToHex(d)) <= target);
   assert.ok(leadingZeroBits(d) >= 12);
-});
-
-test("rewardFor mirrors contract", () => {
-  const e = 10n ** 18n;
-  assert.equal(rewardFor(0, 20, 20), 50n * e);
-  assert.equal(rewardFor(0, 20, 24), 75n * e);
-  assert.equal(rewardFor(0, 20, 40), 100n * e);
-  assert.equal(rewardFor(210000, 20, 20), 25n * e);
 });
 
 test("packParams lays out keccak padding correctly", () => {

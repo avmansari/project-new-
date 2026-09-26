@@ -11,7 +11,7 @@
   <body>
     <header>
       <h1>⛏️ <span id="sym">XYZ</span> PoW Miner</h1>
-      <p class="sub">Mine blocks with your CPU / GPU / phone. First to solve the block mints the inscription.</p>
+      <p class="sub">Mine blocks with your CPU / GPU / phone. Jo block pehle solve kare, woh 5,000 tokens claim kare.</p>
     </header>
 
     <main>
@@ -31,18 +31,12 @@
       <section class="card" id="walletCard">
         <h2>Wallet</h2>
         <div class="row">
-          <button id="btnInjected">Connect wallet</button>
-          <button id="btnBurner" class="secondary">Use burner (auto-mint)</button>
+          <button id="btnConnect">Connect wallet</button>
         </div>
         <div id="walletInfo" class="hidden">
-          <p>Miner address: <span class="mono" id="minerAddr"></span> <span class="tag" id="walletKind"></span></p>
-          <p id="burnerNote" class="small hidden">
-            Burner wallet lives in this browser. Send it a little ETH for gas: <span class="mono" id="burnerGas"></span> ETH now.
-            <button id="btnExport" class="link">export key</button>
-          </p>
-          <label for="payout">Send minted tokens to</label>
-          <input id="payout" class="mono" placeholder="0x… (defaults to miner address)" />
-          <p>Balance: <b id="balance">–</b></p>
+          <p>Connected: <span class="mono" id="minerAddr"></span></p>
+          <p>Balance: <b id="balance">–</b> · Gas: <span id="gasBal">–</span> ETH</p>
+          <p class="small muted">Isi wallet se mining hogi aur claim karne pe tokens seedha isi wallet mein aayenge.</p>
         </div>
       </section>
 
@@ -53,9 +47,6 @@
         </div>
         <div class="row">
           <label><input type="checkbox" id="useGpu" /> Use GPU (WebGPU) <span id="gpuStatus" class="small"></span></label>
-        </div>
-        <div class="row">
-          <label><input type="checkbox" id="autoMint" /> Auto-mint as soon as a block is solved</label>
         </div>
         <div class="row">
           <button id="btnStart" disabled>Start mining</button>
@@ -71,14 +62,14 @@
 
       <section class="card hidden" id="solutionCard">
         <h2>🎉 Block solved!</h2>
-        <p>You solved block <b id="solHeight"></b>. Your hash has <b id="solBits"></b> leading zero bits (required <b id="solReq"></b>).</p>
-        <p class="big">You can mint <b id="solReward"></b></p>
+        <p>Tune block <b id="solHeight"></b> mine kar liya. Difficulty: <b id="solReq"></b> zero bits required, tere hash mein <b id="solBits"></b>.</p>
+        <p class="big">Tu claim kar sakta hai: <b id="solReward"></b></p>
         <p class="mono small" id="solDigest"></p>
         <div class="row">
-          <button id="btnMint">Mint now</button>
+          <button id="btnClaim">Claim tokens</button>
           <button id="btnDiscard" class="secondary">Discard</button>
         </div>
-        <p class="small">Hurry — if someone else submits this block first, your solution expires and mining restarts on the next block.</p>
+        <p class="small">Claim dabao → wallet mein approve karo → tokens seedha tere wallet mein. Jaldi karo: agar kisi aur ne yeh block pehle claim kar liya toh yeh solution expire ho jayega aur mining next block pe chalu ho jayegi.</p>
       </section>
 
       <section class="card">

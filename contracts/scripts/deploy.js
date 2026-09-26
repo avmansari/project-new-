@@ -10,8 +10,8 @@ async function main() {
   const symbol = process.env.TOKEN_SYMBOL || "XYZ";
   // Local chain: easy difficulty by default so you see blocks within seconds
   const isLocal = ["hardhat", "localhost"].includes(hre.network.name);
-  const minBits = Number(process.env.MIN_DIFFICULTY_BITS || (isLocal ? 8 : 16));
-  const initBits = Number(process.env.INITIAL_DIFFICULTY_BITS || (isLocal ? 16 : 22));
+  const minBits = Number(process.env.MIN_DIFFICULTY_BITS || (isLocal ? 18 : 20));
+  const initBits = Number(process.env.INITIAL_DIFFICULTY_BITS || (isLocal ? 24 : 26));
 
   const signers = await hre.ethers.getSigners();
   if (!signers.length) throw new Error("No deployer key. Put PRIVATE_KEY=0x... in contracts/.env");

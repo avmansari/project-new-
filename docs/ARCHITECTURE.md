@@ -12,7 +12,7 @@ SHA256(SHA256(block_header + nonce)) <= target
 - Is equation ko ulta solve karne ka koi shortcut nahi hai. Miners bas `nonce = 0, 1, 2, …` try karte rehte hain. Isi guessing ko **Proof-of-Work** kehte hain.
 - Jo miner **sabse pehle** valid nonce dhoondh ke network ko bhejta hai, wahi block jeet ta hai aur usko **block reward** milta hai.
 - Har 2016 blocks ke baad **difficulty adjust** hoti hai taaki average block time ~10 min rahe. Hashpower badhe toh difficulty badhti hai, ghate toh ghat-ti hai.
-- Har 210,000 blocks pe reward **half** ho jata hai (halving). Isse max supply 21M pe fixed rehti hai.
+- Har 210,000 blocks pe reward **half** ho jata hai (halving). Isse max supply 21M pe fixed rehti hai. (Apne project mein halving nahi hai: har block fixed 5,000 tokens, 4,200 blocks.)
 
 Apan bilkul yahi model ek **smart contract** ke andar bana rahe hain, Robinhood Chain (EVM L2, Arbitrum Orbit) pe.
 
@@ -28,8 +28,8 @@ Apan bilkul yahi model ek **smart contract** ke andar bana rahe hain, Robinhood 
 │  WebGPU kernel    ─┼─▶ keccak256(challenge,addr,nonce)    │  • verify PoW                │
 │  Node CLI threads ─┘     │   <= target ?                  │  • first solver wins block   │
 │                          │                                │  • mint ERC-20 reward        │
-│  "Block solved! Tu 62.5  │   mint(nonce, challenge, to)   │  • emit Inscription JSON     │
-│   XYZ mint kar sakta hai"│ ─────────────────────────────▶ │  • new challenge + retarget  │
+│  "Block solved! Tu 5000  │   mint(nonce, challenge)       │  • emit Inscription JSON     │
+│   XYZ claim kar sakta"   │ ─────────────────────────────▶ │  • new challenge + retarget  │
 └──────────────────────────┘                                └──────────────────────────────┘
                                                                         │ events
                                                                         ▼
@@ -42,7 +42,7 @@ Apan bilkul yahi model ek **smart contract** ke andar bana rahe hain, Robinhood 
 |---|---|---|
 | `contracts/` | PoW + ERC-20 + inscription contract, tests, deploy script | Solidity 0.8.28, Hardhat |
 | `shared/` | Mining core (hash input layout, batch miner, reward calc) + **WebGPU Keccak kernel** | Pure JS, WGSL |
-| `web/` | Browser miner (phone + desktop). CPU workers + GPU, wallet connect, burner wallet, mint UI | Vite, viem |
+| `web/` | Browser miner (phone + desktop). CPU workers + GPU, wallet connect, claim UI | Vite, viem |
 | `miner-cli/` | Headless multi-thread miner for PCs/servers | Node.js, worker_threads, viem |
 
 ---
@@ -82,27 +82,30 @@ Hash input exactly **84 bytes** ka hai. Isliye Keccak ka sirf **ek block** (136-
 
 ---
 
-## 5. Difficulty → kitne token milenge
+## 5. Reward aur difficulty
 
-UI yeh dikhata hai: *"Tune block #N solve kiya. Tere hash mein 19 zero bits hain (required 16). Tu **68.75 XYZ** mint kar sakta hai."*
+UI yeh dikhata hai: *"Tune block #N mine kar liya. Difficulty: 26 zero bits required, tere hash mein 27. Tu claim kar sakta hai: **5,000 XYZ**"*, saath mein **Claim tokens** button.
 
-```
-baseReward  = 50 XYZ >> (height / 210_000)          // Bitcoin jaisa halving
-requiredBits = leading zero bits of target
-achievedBits = leading zero bits of your hash
-extra        = min(achievedBits - requiredBits, 8)
-reward       = baseReward * (8 + extra) / 8          // har extra bit = +12.5%, max 2x
-```
+- **Har block = fixed 5,000 tokens.** Max supply 21,000,000 hai, matlab total **4,200 blocks**.
+- Reward difficulty se nahi badalta. Difficulty yeh decide karti hai ki block **kitna mushkil** hai aur **kitni der** mein aayega.
+- Aakhri block mein jitna supply bacha hai utna hi milega. Uske baad mining band.
 
-- Jitna "lucky"/strong hash, utna zyada reward (max 2×). Yeh contract mein `_reward()` hai aur JS mein `shared/pow-core.js → rewardFor()` mein mirror hai, taaki UI tx bhejne se pehle hi exact amount dikha sake.
-- On-chain check ke liye `previewReward(miner, nonce)` view function bhi hai.
-- Max supply: **21,000,000**. Last block mein bacha hua hi milega.
+### Difficulty adjustment (har block pe)
+- Target: **~60 sec mein ek block** (`TARGET_BLOCK_TIME`).
+- Har block ke baad: `newTarget = oldTarget × (3T + laga_hua_time) / 4T`, jahan laga hua time max 5T tak count hota hai.
+  - Block turant aaya → **25% mushkil** (har block pe). Isse zyada miners aaye toh difficulty jaldi upar jaati hai.
+  - Block theek 60 sec mein aaya → difficulty same.
+  - Block 5 min ya zyada mein aaya → **2× aasaan**.
+- **Stall rescue:** agar 10 min (`STALL_PERIOD`) tak koi block nahi aaya, toh `currentTarget()` har 10 min pe 2× aasaan hota jaata hai. Isse chain kabhi atakti nahi.
+- Deploy ke time set hota hai: `MIN_DIFFICULTY_BITS` (isse aasaan kabhi nahi hogi) aur `INITIAL_DIFFICULTY_BITS` (shuruaat). Testnet defaults: 20 / 26 bits.
 
-### Difficulty adjustment (retarget)
-- `TARGET_BLOCK_TIME = 60s`, `RETARGET_INTERVAL = 32 blocks`.
-- Har 32 blocks pe: `newTarget = oldTarget * actualTime / expectedTime`, clamp **4×** (Bitcoin jaisa). Isse zyada miners aaye toh mushkil, kam hue toh aasaan.
-- **Stall rescue:** agar 10 min (`STALL_PERIOD`) tak koi block nahi aaya toh `currentTarget()` har 10 min pe 2× aasaan hota jaata hai. Isse chain kabhi atakti nahi (Bitcoin mein yeh nahi hai, par chhote project ke liye zaroori hai).
-- `maxTarget` (minimum difficulty) aur initial difficulty deploy ke time set hoti hai (`MIN_DIFFICULTY_BITS`, `INITIAL_DIFFICULTY_BITS`).
+| Difficulty | Hashes chahiye (avg) | 10-core PC (browser CPU, ~1-3M H/s) | Phone (~0.2-0.5M H/s) |
+|---|---|---|---|
+| 20 bits | 1M | < 1 sec | 2-5 sec |
+| 26 bits | 67M | 20-60 sec | 2-5 min |
+| 28 bits | 268M | 1.5-4 min | 9-20 min |
+
+Jitne zyada miners, utni zyada difficulty. Upar wali table sirf ek miner ke liye hai.
 
 ---
 
@@ -111,7 +114,7 @@ reward       = baseReward * (8 + extra) / 8          // har extra bit = +12.5%, 
 Har mint pe contract yeh event emit karta hai:
 
 ```
-Inscribed(height, to, 'data:,{"p":"prc-20","op":"mint","tick":"XYZ","blk":"42","amt":"62.5"}')
+Inscribed(height, miner, 'data:,{"p":"prc-20","op":"mint","tick":"XYZ","blk":"42","amt":"5000"}')
 ```
 
 - Format bilkul EVM inscriptions (ethscriptions / "xrc-20") jaisa `data:,{json}` hai, isliye indexers seedha padh sakte hain.
@@ -128,17 +131,19 @@ Inscribed(height, to, 'data:,{"p":"prc-20","op":"mint","tick":"XYZ","blk":"42","
   - Android Chrome, desktop Chrome/Edge: WebGPU chalta hai. iOS Safari (newer versions) mein bhi aa raha hai. Nahi mila toh automatically CPU pe fallback.
 - **Screen wake lock** mining ke time phone ki screen on rakhta hai (background tab mein browsers mining slow kar dete hain).
 
-### Wallet options
-1. **Connect wallet** (MetaMask / Rabby / Coinbase / wallet app ka in-app browser): har mint pe popup aata hai.
-2. **Burner (auto-mint):** browser ke andar ek key banti hai jo turant sign karti hai. Popup ka wait nahi, isliye race jeetne ke chances zyada. Isme thoda ETH gas ke liye daalna padta hai. `to` field mein apna main wallet daal do, tokens seedha wahan jayenge. (Contract `mint(nonce, challenge, to)` isi liye hai: hash burner address se bound hai, reward kisi bhi address ko ja sakta hai.)
+### Wallet: same wallet se mine + claim
+- User **Connect wallet** karta hai (MetaMask / Rabby / Coinbase / phone wallet app ka in-app browser).
+- Mining usi wallet ke address ke saath hoti hai, kyunki address hash ke andar hai.
+- Block solve hote hi **Claim tokens** button aata hai → wallet mein **approve** popup → tokens **seedha usi wallet mein**. Koi transfer ya dusra wallet nahi.
+- Wallet mein account switch kiya toh mining naye account ke saath restart ho jaati hai.
 
 ### Solution milne ke baad flow
 ```
 engine nonce dhoondhta hai
-   → UI: "🎉 Block solved! 19 bits → 68.75 XYZ mint kar sakta hai"  [Mint now]
-   → (auto-mint ON ho toh turant tx)
-   → tx confirm → "My blocks" mein add → naya challenge → mining resume
-   → agar beech mein kisi aur ne block le liya → solution expire, mining next block pe
+   → UI: "🎉 Block solved! Tu 5,000 XYZ claim kar sakta hai"  [Claim tokens]
+   → user Claim dabata hai → wallet mein approve → tx confirm
+   → 5,000 XYZ usi wallet mein → "My blocks" mein add → naya challenge → mining resume
+   → agar beech mein kisi aur ne block claim kar liya → solution expire, mining next block pe
 ```
 
 ### CLI (miner-cli/)
@@ -155,7 +160,7 @@ Server/PC ke liye headless: `PRIVATE_KEY=0x.. THREADS=8 npm run mine`. Same logi
 | Bots / GPU farms | Phone users ke against bade miners jeetenge (Bitcoin jaisa hi) | Per-address cooldown, ya "shares/pool" model jahan har valid share ko proportional reward mile |
 | Stale tx gas loss | Loser ka tx `StaleChallenge` pe sasta revert hota hai | Private mempool / simulate before send |
 | Keccak ASIC/GPU advantage | GPU ≫ phone CPU | Memory-hard hash (Argon2-type) off-chain verify karna mushkil hai. Trade-off hai |
-| Burner key localStorage mein | Sirf gas wallet ke liye, tokens `to` pe jaate hain | Session keys / smart accounts |
+| Claim approve karne mein time | Popup approve karne tak koi aur block le sakta hai | Jaldi approve karo; baad mein "auto-claim" option |
 | Audit | ❌ Nahi hua | Mainnet se pehle audit zaroor |
 
 ---
@@ -170,11 +175,11 @@ npm test                         # contract tests + shared tests
 cd contracts && npx hardhat node
 
 # terminal 2: deploy (easy difficulty) → web/src & miner-cli mein deployment.json likh deta hai
-cd contracts && MIN_DIFFICULTY_BITS=8 INITIAL_DIFFICULTY_BITS=16 npx hardhat run scripts/deploy.js --network localhost
+npm run deploy:local
 
 # terminal 3: web miner
-npm run web                      # http://localhost:5173 → "Use burner" → Start mining
-# (local test ke liye burner ko hardhat account se ETH bhejo, ya export key waala flow use karo)
+npm run web                      # http://localhost:5173 → Connect wallet → Start mining → Claim
+npm run fund -- <tera MetaMask address>   # local chain pe gas ke liye fake ETH
 
 # terminal 4 (optional): CLI miner
 cd miner-cli && PRIVATE_KEY=<hardhat account key> npm start
@@ -196,7 +201,7 @@ npm run web                                # ya `npm run build -w web` karke Ver
 
 ```
 contracts/contracts/PowInscription.sol   ← core logic (PoW verify, reward, retarget, inscription, ERC-20)
-contracts/test/PowInscription.test.js    ← 11 tests (first-wins, anti-theft, bonus, retarget, stall…)
+contracts/test/PowInscription.test.js    ← 11 tests (first-wins, anti-theft, 5000/block, retarget, stall…)
 contracts/scripts/deploy.js              ← deploy + ABI/address export to web & cli
 shared/pow-core.js                       ← input layout, batch miner, reward mirror
 shared/keccak-wgsl.js                    ← WebGPU Keccak-256 kernel (tested == CPU output)

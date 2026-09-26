@@ -4,9 +4,9 @@ import "dotenv/config";
 import os from "node:os";
 import fs from "node:fs";
 import { Worker } from "node:worker_threads";
-import { createPublicClient, createWalletClient, http, defineChain, formatEther, parseEventLogs, isAddress } from "viem";
+import { createPublicClient, createWalletClient, http, defineChain, formatEther, parseEventLogs } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { leadingZeroBits, hexToBytes, rewardFor, expectedHashes } from "@pow/shared";
+import { leadingZeroBits, hexToBytes, expectedHashes } from "@pow/shared";
 
 const deployment = JSON.parse(fs.readFileSync(new URL("./deployment.json", import.meta.url)));
 const RPC_URL = process.env.RPC_URL || (deployment.chainId === 31337 ? "http://127.0.0.1:8545" : "https://rpc.testnet.chain.robinhood.com/rpc");
@@ -14,7 +14,7 @@ const CONTRACT = process.env.CONTRACT || deployment.address;
 const THREADS = Number(process.env.THREADS || Math.max(1, os.cpus().length - 1));
 const MAX_BLOCKS = Number(process.env.MAX_BLOCKS || Infinity); // stop after N mined blocks (testing)
 if (!process.env.PRIVATE_KEY) {
-  console.error("Set PRIVATE_KEY (the miner/gas wallet). Optional: PAYOUT, RPC_URL, CONTRACT, THREADS");
+  console.error("Set PRIVATE_KEY (tokens go to this wallet). Optional: RPC_URL, CONTRACT, THREADS");
   process.exit(1);
 }
 
@@ -25,7 +25,6 @@ const chain = defineChain({
   rpcUrls: { default: { http: [RPC_URL] } },
 });
 const account = privateKeyToAccount(process.env.PRIVATE_KEY);
-const PAYOUT = isAddress(process.env.PAYOUT || "") ? process.env.PAYOUT : account.address;
 const pub = createPublicClient({ chain, transport: http() });
 const wallet = createWalletClient({ account, chain, transport: http() });
 const c = { address: CONTRACT, abi: deployment.abi };
@@ -39,8 +38,8 @@ let submitting = false;
 const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
 
 async function info() {
-  const [challenge, target, height, baseReward, requiredBits] = await pub.readContract({ ...c, functionName: "getMiningInfo" });
-  return { challenge, target, height, baseReward, requiredBits: Number(requiredBits) };
+  const [challenge, target, height, reward, requiredBits] = await pub.readContract({ ...c, functionName: "getMiningInfo" });
+  return { challenge, target, height, reward, requiredBits: Number(requiredBits) };
 }
 
 function stopWorkers() {
@@ -68,10 +67,9 @@ async function onFound(job, nonce, digest) {
   stopWorkers();
   submitting = true;
   const bits = leadingZeroBits(hexToBytes(digest));
-  const expected = rewardFor(job.height, job.requiredBits, bits);
-  log(`💎 solved #${job.height}: ${bits} zero bits (need ${job.requiredBits}) → can mint ${formatEther(expected)} tokens. Submitting…`);
+  log(`💎 solved #${job.height}: ${bits} zero bits (need ${job.requiredBits}) → claiming ${formatEther(job.reward)} tokens…`);
   try {
-    const hash = await wallet.writeContract({ ...c, functionName: "mint", args: [nonce, job.challenge, PAYOUT] });
+    const hash = await wallet.writeContract({ ...c, functionName: "mint", args: [nonce, job.challenge] });
     const receipt = await pub.waitForTransactionReceipt({ hash });
     const [ev] = parseEventLogs({ abi: deployment.abi, logs: receipt.logs, eventName: "BlockMined" });
     mined++;
@@ -101,7 +99,7 @@ async function tick() {
   }
 }
 
-log(`miner ${account.address} → payout ${PAYOUT} | contract ${CONTRACT} | rpc ${RPC_URL}`);
+log(`miner wallet ${account.address} | contract ${CONTRACT} | rpc ${RPC_URL}`);
 setInterval(tick, 2000);
 setInterval(() => {
   if (!current) return;

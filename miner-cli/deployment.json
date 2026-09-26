@@ -1,7 +1,8 @@
 {
   "address": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
   "chainId": 31337,
-  "network": "localhost",
+  "network": "hardhat",
+  "deployBlock": 1,
   "abi": [
     {
       "inputs": [
@@ -127,12 +128,6 @@
           "type": "address"
         },
         {
-          "indexed": true,
-          "internalType": "address",
-          "name": "to",
-          "type": "address"
-        },
-        {
           "indexed": false,
           "internalType": "uint256",
           "name": "reward",
@@ -172,7 +167,7 @@
         {
           "indexed": true,
           "internalType": "address",
-          "name": "to",
+          "name": "miner",
           "type": "address"
         },
         {
@@ -209,7 +204,7 @@
         {
           "indexed": false,
           "internalType": "uint256",
-          "name": "windowSeconds",
+          "name": "blockSeconds",
           "type": "uint256"
         }
       ],
@@ -243,33 +238,7 @@
     },
     {
       "inputs": [],
-      "name": "BASE_REWARD",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "HALVING_INTERVAL",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "MAX_BONUS_BITS",
+      "name": "BLOCK_REWARD",
       "outputs": [
         {
           "internalType": "uint256",
@@ -296,19 +265,6 @@
     {
       "inputs": [],
       "name": "MIN_TARGET",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "RETARGET_INTERVAL",
       "outputs": [
         {
           "internalType": "uint256",
@@ -414,7 +370,7 @@
     },
     {
       "inputs": [],
-      "name": "baseReward",
+      "name": "blockReward",
       "outputs": [
         {
           "internalType": "uint256",
@@ -504,7 +460,7 @@
         },
         {
           "internalType": "uint256",
-          "name": "_baseReward",
+          "name": "_reward",
           "type": "uint256"
         },
         {
@@ -594,11 +550,6 @@
           "internalType": "bytes32",
           "name": "expectedChallenge",
           "type": "bytes32"
-        },
-        {
-          "internalType": "address",
-          "name": "to",
-          "type": "address"
         }
       ],
       "name": "mint",
@@ -736,19 +687,6 @@
         }
       ],
       "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "windowStartTime",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
       "type": "function"
     }
   ]

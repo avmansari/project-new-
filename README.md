@@ -2,7 +2,7 @@
 
 Bitcoin-style Proof-of-Work mining for an inscription token on Robinhood Chain (EVM L2).
 Users mine with their **CPU, GPU (WebGPU) or phone browser**. The **first** miner to solve the current block
-mints the reward, and the reward depends on the difficulty they solved (up to 2× luck bonus).
+claims **5,000 tokens** straight into their connected wallet (21M supply = 4,200 blocks). Difficulty adjusts every block to keep ~60s per block.
 The same user can win any number of blocks.
 
 - 📐 Full explanation (Hinglish): [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
@@ -35,9 +35,10 @@ The same user can win any number of blocks.
 | 3 | `npm run web` | Miner website start → browser mein **http://localhost:5173** kholo |
 
 Browser mein:
-1. **"Use burner (auto-mint)"** dabao. Jo "Miner address" dikhe usko copy karo.
-2. Terminal 2 mein chalao: `npm run fund -- <woh address>` (burner ko gas ke liye 10 fake ETH milega)
-3. **"Start mining"** dabao. Kuch second mein "🎉 Block solved!" aayega aur tokens mint ho jayenge. "My blocks" mein dikhenge.
+1. **"Connect wallet"** dabao (MetaMask). Website khud "Hardhat Local" network MetaMask mein add kar degi.
+2. Terminal 2 mein chalao: `npm run fund -- <tera MetaMask address>` (gas ke liye 10 fake ETH)
+3. **"Start mining"** dabao. Block solve hote hi "🎉 Block solved! Tu 5,000 XYZ claim kar sakta hai" aayega.
+4. **"Claim tokens"** dabao → MetaMask mein **Confirm** → 5,000 XYZ seedha tere wallet mein.
 
 > ⚠️ `npm run chain` band karke dobara chalaya toh chain reset ho jaati hai. Phir se `npm run deploy:local` karo aur browser refresh karo.
 
@@ -60,7 +61,7 @@ PRIVATE_KEY=0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d
 1. `contracts/.env.example` ko copy karke `contracts/.env` banao. Usme `PRIVATE_KEY` (testnet ETH waala wallet), `TOKEN_SYMBOL`, aur difficulty bharo.
 2. `npm run deploy:testnet`. Isse contract deploy hota hai aur address web/CLI mein save ho jata hai.
 3. Website host karo: repo ko Vercel pe import karo (`vercel.json` ready hai). HTTPS milega, phone pe GPU + wallet chalega.
-4. Users site kholenge → Connect wallet ya Burner → Start mining.
+4. Users site kholenge → Connect wallet → Start mining → Claim → approve.
 
 > Chain ID `46630` / RPC `https://rpc.testnet.chain.robinhood.com/rpc` official Robinhood Chain docs se verify kar lena.
 

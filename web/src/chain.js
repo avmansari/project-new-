@@ -1,6 +1,5 @@
 // Everything that talks to the blockchain: reading mining info, wallets, submitting mints.
 import { createPublicClient, createWalletClient, custom, http, formatEther, parseEventLogs } from "viem";
-import { privateKeyToAccount, generatePrivateKey } from "viem/accounts";
 import { CHAIN, CONTRACT_ADDRESS, ABI, DEPLOY_BLOCK } from "./config.js";
 
 export const publicClient = createPublicClient({ chain: CHAIN, transport: http() });
@@ -8,8 +7,8 @@ const contract = { address: CONTRACT_ADDRESS, abi: ABI };
 
 export async function getMiningInfo() {
   const r = await publicClient.readContract({ ...contract, functionName: "getMiningInfo" });
-  const [challenge, target, height, baseReward, requiredBits, difficulty, totalSupply, lastBlockTime] = r;
-  return { challenge, target, height, baseReward, requiredBits: Number(requiredBits), difficulty, totalSupply, lastBlockTime };
+  const [challenge, target, height, reward, requiredBits, difficulty, totalSupply, lastBlockTime] = r;
+  return { challenge, target, height, reward, requiredBits: Number(requiredBits), difficulty, totalSupply, lastBlockTime };
 }
 
 export async function getSymbol() {
@@ -34,10 +33,11 @@ export async function recentBlocks(limit = 15) {
   return logs.slice(-limit).reverse().map((l) => l.args);
 }
 
-// ---------------- Wallets ----------------
-// 1) Injected wallet (MetaMask / Rabby / Coinbase / any in-app mobile browser wallet)
+// ---------------- Wallet ----------------
+// Injected wallet (MetaMask / Rabby / Coinbase / any wallet app's in-app browser).
+// The SAME wallet mines (its address is inside the hash) and claims (approves the tx) -> tokens land in it.
 export async function connectInjected() {
-  if (!window.ethereum) throw new Error("No wallet found. Open this page inside a wallet app browser, or use Burner mode.");
+  if (!window.ethereum) throw new Error("Wallet nahi mila. MetaMask install karo, ya phone pe wallet app ke browser mein yeh page kholo.");
   const client = createWalletClient({ chain: CHAIN, transport: custom(window.ethereum) });
   const [address] = await client.requestAddresses();
   try {
@@ -45,39 +45,24 @@ export async function connectInjected() {
   } catch {
     await client.addChain({ chain: CHAIN });
   }
-  return { kind: "injected", address, client };
+  return { address, client };
 }
 
-// 2) Burner wallet: key lives in this browser, signs mints instantly (no popups = wins races).
-//    Only needs a little ETH for gas; tokens can be sent to your main wallet via `payout`.
-const BURNER_KEY = "pow-burner-key";
-export function connectBurner() {
-  let pk = null;
-  try {
-    pk = localStorage.getItem(BURNER_KEY);
-  } catch {}
-  if (!pk) {
-    pk = generatePrivateKey();
-    try {
-      localStorage.setItem(BURNER_KEY, pk);
-    } catch {}
-  }
-  const account = privateKeyToAccount(pk);
-  const client = createWalletClient({ account, chain: CHAIN, transport: http() });
-  return { kind: "burner", address: account.address, client, exportKey: () => pk };
+export function onAccountChange(cb) {
+  window.ethereum?.on?.("accountsChanged", (accs) => cb(accs[0]));
 }
 
 export async function ethBalance(addr) {
   return formatEther(await publicClient.getBalance({ address: addr }));
 }
 
-/** Send the PoW solution. Returns parsed BlockMined event args. */
-export async function submitMint(wallet, { nonce, challenge, to }) {
+/** Claim the mined block: wallet pops up for approval, tokens go straight into that wallet. */
+export async function claimBlock(wallet, { nonce, challenge }) {
   const hash = await wallet.client.writeContract({
     ...contract,
-    account: wallet.kind === "burner" ? wallet.client.account : wallet.address,
+    account: wallet.address,
     functionName: "mint",
-    args: [nonce, challenge, to],
+    args: [nonce, challenge],
   });
   const receipt = await publicClient.waitForTransactionReceipt({ hash });
   if (receipt.status !== "success") throw new Error("Transaction reverted (someone else probably won this block)");

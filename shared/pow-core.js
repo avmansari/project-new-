@@ -12,9 +12,6 @@
 import { keccak_256 } from "@noble/hashes/sha3";
 
 export const INPUT_LEN = 84;
-export const MAX_BONUS_BITS = 8n;
-export const HALVING_INTERVAL = 210_000n;
-export const BASE_REWARD = 50n * 10n ** 18n;
 
 export function hexToBytes(hex) {
   const h = hex.startsWith("0x") ? hex.slice(2) : hex;
@@ -103,17 +100,6 @@ export function mineBatch(input, targetBytes, start, count) {
     }
   }
   return { found: false, hashes: count };
-}
-
-/** Mirrors PowInscription._reward (height -> halving, luck bonus on extra zero bits). */
-export function rewardFor(height, requiredBits, achievedBits) {
-  const halvings = BigInt(height) / HALVING_INTERVAL;
-  if (halvings >= 64n) return 0n;
-  const base = BASE_REWARD >> halvings;
-  let extra = BigInt(achievedBits) - BigInt(requiredBits);
-  if (extra < 0n) extra = 0n;
-  if (extra > MAX_BONUS_BITS) extra = MAX_BONUS_BITS;
-  return (base * (MAX_BONUS_BITS + extra)) / MAX_BONUS_BITS;
 }
 
 /** Expected hashes to find a block at `target` (for ETA display). */

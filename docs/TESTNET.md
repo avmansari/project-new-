@@ -42,8 +42,8 @@ copy contracts\.env.example contracts\.env   # Windows
 PRIVATE_KEY=0x<tera testnet private key>
 TOKEN_NAME=Robin PoW
 TOKEN_SYMBOL=XYZ
-MIN_DIFFICULTY_BITS=16
-INITIAL_DIFFICULTY_BITS=22
+MIN_DIFFICULTY_BITS=20
+INITIAL_DIFFICULTY_BITS=26
 ```
 Phir:
 ```bash
@@ -64,8 +64,8 @@ wrote ../miner-cli/deployment.json
 ```bash
 npm run web          # http://localhost:5173
 ```
-- **Connect wallet** (MetaMask testnet pe) ya **Use burner**. Burner ho toh uske address pe faucet se ya MetaMask se thoda ETH bhejo.
-- **Start mining** → block solve → mint → Explorer pe tx dikhega.
+- **Connect wallet** (MetaMask testnet pe, wallet mein thoda testnet ETH hona chahiye).
+- **Start mining** → block solve → **Claim tokens** → MetaMask mein Confirm → 5,000 tokens wallet mein, Explorer pe tx dikhega.
 
 CLI se bhi: `miner-cli/.env` mein `PRIVATE_KEY=...` daalo, phir `npm run mine`.
 
@@ -77,9 +77,9 @@ CLI se bhi: `miner-cli/.env` mein `PRIVATE_KEY=...` daalo, phir `npm run mine`.
 
 ## Step 5: Testnet pe kya kya check karna hai (mainnet se pehle)
 - [ ] 2-3 alag log (phone + PC) ek saath mine karein. Sirf ek hi jeete har block, baaki ko "someone else mined this block" aaye
-- [ ] Block time dekho. 32 blocks ke baad difficulty adjust honi chahiye (Explorer pe `Retarget` event)
+- [ ] Block time dekho. Har block ke baad difficulty adjust honi chahiye (website pe "Required zero bits", Explorer pe `Retarget` event). ~60 sec per block pe settle honi chahiye
 - [ ] 10+ min koi mine na kare → difficulty aasaan hoti hai (stall rescue)
-- [ ] Reward amounts sahi (bonus bits ke hisaab se)
+- [ ] Har claim pe exactly 5,000 tokens usi wallet mein aaye
 - [ ] Gas cost per mint note karo (users ko kitna ETH chahiye)
 - [ ] Tokens wallet mein dikh rahe hain (MetaMask → Import token → contract address)
 - [ ] Parameters final karo: reward, block time, max supply, difficulty (inke liye contract constants badalne padenge → naya deploy)
