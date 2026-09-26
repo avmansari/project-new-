@@ -53,11 +53,13 @@ PRIVATE_KEY=0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d
 - Plain `http://` pe phone ka GPU (WebGPU) nahi chalega, sirf CPU chalega. GPU ke liye site HTTPS pe deploy karo (step 3).
 
 ### 3. Robinhood Chain testnet pe deploy
+👉 **Poori checklist: [`docs/TESTNET.md`](docs/TESTNET.md)**. Faucet: https://faucet.testnet.chain.robinhood.com
+
 1. `contracts/.env.example` ko copy karke `contracts/.env` banao. Usme `PRIVATE_KEY` (testnet ETH waala wallet), `TOKEN_SYMBOL`, aur difficulty bharo.
 2. `npm run deploy:testnet`. Isse contract deploy hota hai aur address web/CLI mein save ho jata hai.
-3. Website host karo: `npm run build -w web`, phir `web/dist` folder ko Vercel/Netlify pe daalo (HTTPS milega, phone pe GPU + wallet chalega).
+3. Website host karo: repo ko Vercel pe import karo (`vercel.json` ready hai). HTTPS milega, phone pe GPU + wallet chalega.
 4. Users site kholenge → Connect wallet ya Burner → Start mining.
 
-> Chain ID `46630` / RPC `https://rpc.testnet.chain.robinhood.com` official Robinhood Chain docs se verify kar lena.
+> Chain ID `46630` / RPC `https://rpc.testnet.chain.robinhood.com/rpc` official Robinhood Chain docs se verify kar lena.
 
 Project files: https://drive.google.com/drive/folders/1OLUHKGNSBcwCrs_PhZlf9YrtMuk2QPSU?usp=sharing

@@ -6,7 +6,7 @@ const robinhoodTestnet = defineChain({
   id: 46630,
   name: "Robinhood Chain Testnet",
   nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
-  rpcUrls: { default: { http: [import.meta.env.VITE_RPC_URL || "https://rpc.testnet.chain.robinhood.com"] } },
+  rpcUrls: { default: { http: [import.meta.env.VITE_RPC_URL || "https://rpc.testnet.chain.robinhood.com/rpc"] } },
   blockExplorers: { default: { name: "Explorer", url: "https://explorer.testnet.chain.robinhood.com" } },
   testnet: true,
 });
@@ -23,4 +23,5 @@ const CHAINS = { [robinhoodTestnet.id]: robinhoodTestnet, [localhost.id]: localh
 export const CHAIN = CHAINS[deployment.chainId] ?? robinhoodTestnet;
 export const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || deployment.address;
 export const ABI = deployment.abi;
+export const DEPLOY_BLOCK = BigInt(deployment.deployBlock ?? 0);
 export const POLL_MS = 2500;

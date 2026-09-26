@@ -1,7 +1,7 @@
 // Everything that talks to the blockchain: reading mining info, wallets, submitting mints.
 import { createPublicClient, createWalletClient, custom, http, formatEther, parseEventLogs } from "viem";
 import { privateKeyToAccount, generatePrivateKey } from "viem/accounts";
-import { CHAIN, CONTRACT_ADDRESS, ABI } from "./config.js";
+import { CHAIN, CONTRACT_ADDRESS, ABI, DEPLOY_BLOCK } from "./config.js";
 
 export const publicClient = createPublicClient({ chain: CHAIN, transport: http() });
 const contract = { address: CONTRACT_ADDRESS, abi: ABI };
@@ -27,7 +27,9 @@ export async function previewReward(miner, nonce) {
 
 export async function recentBlocks(limit = 15) {
   const latest = await publicClient.getBlockNumber();
-  const fromBlock = latest > 50_000n ? latest - 50_000n : 0n;
+  // L2 blocks are fast; only scan a recent window (RPCs limit log ranges), never before deployment
+  let fromBlock = latest > 50_000n ? latest - 50_000n : 0n;
+  if (fromBlock < DEPLOY_BLOCK) fromBlock = DEPLOY_BLOCK;
   const logs = await publicClient.getContractEvents({ ...contract, eventName: "BlockMined", fromBlock });
   return logs.slice(-limit).reverse().map((l) => l.args);
 }

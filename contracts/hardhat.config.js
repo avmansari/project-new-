@@ -23,11 +23,13 @@ module.exports = {
     settings: { optimizer: { enabled: true, runs: 1000 }, evmVersion: "cancun" },
   },
   networks: {
-    // Robinhood Chain (Arbitrum Orbit L2). Verify chainId/RPC from official docs before mainnet use.
+    // Robinhood Chain (Arbitrum Orbit L2). Testnet faucet: https://faucet.testnet.chain.robinhood.com
+    // Mainnet: fill RH_MAINNET_RPC / RH_MAINNET_CHAIN_ID from https://docs.robinhood.com/chain/connecting
     robinhoodTestnet: {
-      url: process.env.RH_TESTNET_RPC || "https://rpc.testnet.chain.robinhood.com",
+      url: process.env.RH_TESTNET_RPC || "https://rpc.testnet.chain.robinhood.com/rpc",
       chainId: Number(process.env.RH_TESTNET_CHAIN_ID || 46630),
       accounts,
+      explorer: "https://explorer.testnet.chain.robinhood.com",
     },
     robinhood: {
       url: process.env.RH_MAINNET_RPC || "",

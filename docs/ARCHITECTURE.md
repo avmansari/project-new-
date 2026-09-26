@@ -186,7 +186,7 @@ cp contracts/.env.example contracts/.env   # PRIVATE_KEY, TOKEN_SYMBOL, difficul
 npm run deploy:testnet
 npm run web                                # ya `npm run build -w web` karke Vercel/Netlify pe host karo
 ```
-> Chain ID / RPC (`46630`, `https://rpc.testnet.chain.robinhood.com`) official docs se ek baar verify kar lena. `contracts/hardhat.config.js` aur `web/src/config.js` mein env se override ho sakte hain.
+> Chain ID / RPC (`46630`, `https://rpc.testnet.chain.robinhood.com/rpc`) official docs se ek baar verify kar lena. `contracts/hardhat.config.js` aur `web/src/config.js` mein env se override ho sakte hain.
 >
 > Phone pe WebGPU + wallet ke liye site **HTTPS** pe honi chahiye (localhost ke alawa), isliye testing ke liye deploy kar dena.
 

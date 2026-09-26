@@ -9,7 +9,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import { leadingZeroBits, hexToBytes, rewardFor, expectedHashes } from "@pow/shared";
 
 const deployment = JSON.parse(fs.readFileSync(new URL("./deployment.json", import.meta.url)));
-const RPC_URL = process.env.RPC_URL || (deployment.chainId === 31337 ? "http://127.0.0.1:8545" : "https://rpc.testnet.chain.robinhood.com");
+const RPC_URL = process.env.RPC_URL || (deployment.chainId === 31337 ? "http://127.0.0.1:8545" : "https://rpc.testnet.chain.robinhood.com/rpc");
 const CONTRACT = process.env.CONTRACT || deployment.address;
 const THREADS = Number(process.env.THREADS || Math.max(1, os.cpus().length - 1));
 const MAX_BLOCKS = Number(process.env.MAX_BLOCKS || Infinity); // stop after N mined blocks (testing)
