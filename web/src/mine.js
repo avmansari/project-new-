@@ -3,6 +3,7 @@ import { leadingZeroBits, hexToBytes, expectedHashes } from "@pow/shared";
 import { detectGpu } from "@pow/shared/gpu-name";
 import * as chain from "./chain.js";
 import { createEngine } from "./engine.js";
+import { showShareCard, initShare } from "./share.js";
 import { $, store, on, emit, fmtNum, fmtTok, fmtDur, short, errMsg } from "./store.js";
 
 const state = {
@@ -117,6 +118,16 @@ async function claim() {
     state.myBlocks.unshift({ height: ev.height, reward: ev.reward, hash: ev.hash });
     renderMyBlocks();
     setStatus(`claimed block #${ev.height} ✓ ${fmtTok(ev.reward)} added to your wallet`);
+    showShareCard({
+      height: ev.height.toString(),
+      gpu: $("useGpu").checked ? state.gpuName : null,
+      symbol: store.symbol,
+      reward: Number(ev.reward / 10n ** 18n).toLocaleString("en"),
+      bits: sol.bits,
+      hashrate: state.hashrate ? `${fmtNum(state.hashrate)} H/s` : null,
+      site: location.host,
+      siteUrl: location.origin,
+    }).catch(() => {});
     emit("balances");
   } catch (e) {
     console.error(e);
@@ -214,7 +225,6 @@ function editGpu() {
     else localStorage.removeItem(GPU_KEY);
   } catch {}
   showDevice();
-  $("gpuEdit").onclick = editGpu;
 }
 
 // ---------- init ----------
@@ -225,6 +235,8 @@ export function initMine() {
   $("threadsVal").textContent = $("threads").value;
   $("useGpu").checked = engine.hasGpuApi();
   showDevice();
+  $("gpuEdit").onclick = editGpu;
+  initShare();
 
   // auto-claim / sound / notification toggles (remembered per browser)
   $("autoClaim").checked = pref("autoClaim");

@@ -40,7 +40,8 @@ Details: [`TESTNET.md`](TESTNET.md)
 **Environment variables (Vercel → Settings → Environment Variables):**
 - `VITE_WC_PROJECT_ID`: WalletConnect project ID (free, https://cloud.reown.com), so phone wallets can connect via QR.
 - `VITE_RPC_URL`: your private RPC (see below). The public RPC will rate-limit you as traffic grows.
-- `VITE_CONTRACT_ADDRESS` / `VITE_MARKET_ADDRESS`: optional overrides; otherwise they come from `deployment.json`.
+- `VITE_INDEXER_URL`: URL of the hosted indexer (see Phase 5).
+- `VITE_CONTRACT_ADDRESS` / `VITE_MARKET_ADDRESS` / `VITE_POOL_ADDRESS`: optional overrides; otherwise they come from `deployment.json`.
 
 **Private RPC:** get a Robinhood Chain endpoint from Alchemy, QuickNode or Chainstack. Start on the free tier, upgrade as users grow.
 
@@ -48,15 +49,16 @@ Details: [`TESTNET.md`](TESTNET.md)
 1. Fill `RH_MAINNET_RPC`, `RH_MAINNET_CHAIN_ID` (from the official docs) and a new `PRIVATE_KEY` in `contracts/.env`.
 2. Add the mainnet chain in `web/src/config.js` (same shape as the testnet block, with the new chainId/RPC/explorer).
 3. Run `npx hardhat run scripts/deploy.js --network robinhood` (inside `contracts/`).
-4. Transfer ownership of **both** contracts (token: fee settings; market: fee) to the multisig, and set `FEE_RECIPIENT` to the wallet you want the revenue in.
-5. Commit the mainnet `deployment.json` → Vercel redeploys automatically.
-6. Announce the launch with an exact **start time** so everyone starts together (fair launch).
+4. **Open the DEX pool:** add the first liquidity (ETH + lots) from the Marketplace tab; this sets the starting price.
+5. Transfer ownership of **all three** contracts (token: claim fee; market + pool: trading fees) to the multisig, and set `FEE_RECIPIENT` to the wallet you want the revenue in.
+6. Commit the mainnet `deployment.json` → Vercel redeploys automatically.
+7. Announce the launch with an exact **start time** so everyone starts together (fair launch).
 
 ## Phase 5: After launch (monitoring)
 - **Uptime:** UptimeRobot (free) pinging the website and RPC.
 - **Errors:** add Sentry (free tier) to the web app to see users' browser errors.
 - **Analytics:** Plausible or Umami (privacy-friendly): how many people are mining.
-- **Indexer:** once orders/trades reach the thousands, reading all events from the browser gets slow. Build an indexer with **The Graph / Goldsky / Ponder** (also needed for price charts, 24h volume and leaderboards).
+- **Indexer:** deploy the Ponder app in [`indexer/`](../indexer/README.md) (Railway / Render + Postgres) and set `VITE_INDEXER_URL` on Vercel. Without it every visitor scans the chain history in their browser, which gets slow as the history grows.
 - **Community:** Telegram / Discord + X (Twitter) with a bot auto-posting block milestones.
 
 ---

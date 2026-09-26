@@ -89,6 +89,17 @@
           <p class="small">Click Claim → approve in your wallet → tokens go straight to your wallet. Be quick: if someone else claims this block first, your solution expires.</p>
         </section>
 
+        <section class="card hidden share-card" id="shareCard">
+          <div class="card-head"><h2>Share your block 🎉</h2><button id="shareClose" class="mini secondary">✕</button></div>
+          <img id="shareImg" alt="Share card: the block you mined" />
+          <div class="row">
+            <button id="shareX">Share on X</button>
+            <button id="shareNative" class="secondary hidden">Share…</button>
+            <button id="shareDownload" class="secondary">Download image</button>
+          </div>
+          <p class="small muted">On desktop, "Share on X" opens the post and saves the image: attach it to your post. On phones, "Share…" sends the image straight to the X app.</p>
+        </section>
+
         <section class="card">
           <h2>My blocks</h2>
           <ul id="myBlocks" class="list"><li class="muted">None yet</li></ul>
@@ -175,6 +186,43 @@
           <button id="qbGo">Quick buy</button>
         </section>
 
+        <section class="card" id="swapCard">
+          <div class="card-head">
+            <h2>Instant swap (DEX pool)</h2>
+            <div class="seg small-seg">
+              <button id="swBuySide" class="active">Buy</button>
+              <button id="swSellSide">Sell</button>
+            </div>
+          </div>
+          <p class="small muted" id="swPoolInfo">Loading pool…</p>
+          <label for="swLots">Lots</label>
+          <div class="row nowrap stepper">
+            <button id="swLotsMinus" class="secondary">−</button>
+            <input id="swLots" class="field" inputmode="numeric" value="1" />
+            <button id="swLotsPlus" class="secondary">+</button>
+          </div>
+          <p id="swQuote" class="small">–</p>
+          <button id="swGo">Buy instantly</button>
+          <p class="small muted">No waiting for a seller: the pool trades with you at the current price (1% slippage protection).</p>
+        </section>
+
+        <section class="card" id="lpCard">
+          <h2>Pool liquidity</h2>
+          <p class="small" id="lpInfo">–</p>
+          <label for="lpEth">Add liquidity: ETH amount</label>
+          <input id="lpEth" class="field" inputmode="decimal" placeholder="e.g. 0.5" />
+          <div id="lpFirstRow" class="hidden">
+            <label for="lpLots">Lots to pair (you're the first provider: this sets the starting price)</label>
+            <input id="lpLots" class="field" inputmode="numeric" placeholder="e.g. 4" />
+          </div>
+          <p class="small" id="lpPreview">–</p>
+          <div class="row">
+            <button id="lpAdd">Add liquidity</button>
+            <button id="lpRemove" class="secondary">Remove all my liquidity</button>
+          </div>
+          <p class="small muted">Liquidity providers earn 0.3% of every swap. You can remove your share any time.</p>
+        </section>
+
         <section class="card hidden" id="mkTrade">
           <h2 id="mkTradeTitle"></h2>
           <p class="small" id="mkTradeInfo"></p>
@@ -189,6 +237,19 @@
           <div class="row">
             <button id="mkTradeGo">Confirm</button>
             <button id="mkTradeClose" class="secondary">Close</button>
+          </div>
+          <div id="mkOfferBox" class="offer-box">
+            <p class="small"><b>Or make an offer</b> at your own price. Your ETH is locked; the seller can accept, or you can cancel any time.</p>
+            <div class="row nowrap">
+              <input id="mkOfferPrice" class="field" inputmode="decimal" placeholder="Your price per lot (ETH)" />
+              <select id="mkOfferExpiry" class="field select">
+              <option value="0">Never</option>
+              <option value="86400" selected>24 hours</option>
+              <option value="604800">7 days</option>
+              <option value="2592000">30 days</option>
+              </select>
+            </div>
+            <button id="mkOfferGo" class="secondary">Make offer</button>
           </div>
         </section>
 
@@ -218,6 +279,13 @@
           <p class="small muted" id="mkLotsHint"></p>
           <label for="mkPrice">Price per lot (ETH)</label>
           <input id="mkPrice" class="field" inputmode="decimal" placeholder="e.g. 0.05" />
+          <label for="mkExpiry">Expires after</label>
+          <select id="mkExpiry" class="field select">
+              <option value="0">Never</option>
+              <option value="86400">24 hours</option>
+              <option value="604800" selected>7 days</option>
+              <option value="2592000">30 days</option>
+          </select>
           <p>Total: <b id="mkTotal">–</b></p>
           <button id="mkCreate">List for sale</button>
           <p class="small muted" id="mkCreateHint"></p>
@@ -228,6 +296,11 @@
         <section class="card">
           <h2>My open orders</h2>
           <ul id="mkMine" class="list"></ul>
+          <h3>Offers on my listings</h3>
+          <ul id="mkOffersIn" class="list"></ul>
+          <h3>My offers</h3>
+          <ul id="mkOffersMine" class="list"></ul>
+          <p class="small muted">Expired orders/offers can't be filled. Click Reclaim to get your lots/ETH back (anyone can also return them to you).</p>
         </section>
 
         <section class="card">

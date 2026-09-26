@@ -1,11 +1,13 @@
 // Everything that talks to the blockchain: mining info, wallet, claim, transfer, marketplace.
 import { createPublicClient, createWalletClient, custom, http, formatEther, parseEventLogs } from "viem";
-import { CHAIN, CONTRACT_ADDRESS, ABI, DEPLOY_BLOCK, MARKET } from "./config.js";
+import { CHAIN, CONTRACT_ADDRESS, ABI, DEPLOY_BLOCK, MARKET, POOL } from "./config.js";
 
 export const publicClient = createPublicClient({ chain: CHAIN, transport: http() });
 const token = { address: CONTRACT_ADDRESS, abi: ABI };
 const market = MARKET ? { address: MARKET.address, abi: MARKET.abi } : null;
+const pool = POOL ? { address: POOL.address, abi: POOL.abi } : null;
 export const hasMarket = !!market;
+export const hasPool = !!pool;
 
 // ---------------- Mining reads ----------------
 export async function getMiningInfo() {
@@ -115,12 +117,12 @@ export async function lotSize() {
   return _lotSize;
 }
 
-async function ensureAllowance(wallet, amount, onStep) {
-  const allowed = await publicClient.readContract({ ...token, functionName: "allowance", args: [wallet.address, market.address] });
+async function ensureAllowance(wallet, amount, onStep, spender = market.address) {
+  const allowed = await publicClient.readContract({ ...token, functionName: "allowance", args: [wallet.address, spender] });
   if (allowed >= amount) return;
   onStep?.("Step 1/2: approve the token in your wallet…");
-  await send(wallet, token, "approve", [market.address, amount]);
-  onStep?.("Step 2/2: now confirm the order…");
+  await send(wallet, token, "approve", [spender, amount]);
+  onStep?.("Step 2/2: now confirm…");
 }
 
 /** All orders (open + closed) — fine for the early market; move to an indexer when it grows. */
@@ -143,14 +145,66 @@ export async function marketFeeBps() {
   return publicClient.readContract({ ...market, functionName: "feeBps" });
 }
 
-export async function listForSale(wallet, lots, pricePerLot, onStep) {
+/** expiry: unix seconds (0 = never) */
+export async function listForSale(wallet, lots, pricePerLot, onStep, expiry = 0n) {
   await ensureAllowance(wallet, BigInt(lots) * (await lotSize()), onStep);
-  return send(wallet, market, "list", [BigInt(lots), pricePerLot]);
+  return send(wallet, market, "list", [BigInt(lots), pricePerLot, BigInt(expiry)]);
 }
 
-export async function placeBid(wallet, lots, pricePerLot) {
-  return send(wallet, market, "bid", [BigInt(lots), pricePerLot], costOf(lots, pricePerLot));
+export async function placeBid(wallet, lots, pricePerLot, expiry = 0n) {
+  return send(wallet, market, "bid", [BigInt(lots), pricePerLot, BigInt(expiry)], costOf(lots, pricePerLot));
 }
+
+// ---- offers on a specific listing
+export async function getOffers() {
+  const n = await publicClient.readContract({ ...market, functionName: "offersCount" });
+  const out = [];
+  for (let from = 0n; from < n; from += 200n) {
+    const page = await publicClient.readContract({ ...market, functionName: "getOffers", args: [from, 200n] });
+    page.forEach((o, i) => out.push({ id: from + BigInt(i), ...o }));
+  }
+  return out;
+}
+export const makeOffer = (wallet, listingId, lots, pricePerLot, expiry = 0n) =>
+  send(wallet, market, "makeOffer", [listingId, BigInt(lots), pricePerLot, BigInt(expiry)], costOf(lots, pricePerLot));
+export const acceptOffer = (wallet, offerId) => send(wallet, market, "acceptOffer", [offerId]);
+export const cancelOffer = (wallet, offerId) => send(wallet, market, "cancelOffer", [offerId]);
+export const reclaimExpired = (wallet, id) => send(wallet, market, "reclaimExpired", [id]);
+export const reclaimExpiredOffer = (wallet, offerId) => send(wallet, market, "reclaimExpiredOffer", [offerId]);
+
+// ---------------- DEX pool (whole lots) ----------------
+const deadline = () => BigInt(Math.floor(Date.now() / 1000) + 600);
+
+export async function poolState(addr) {
+  const r = (fn, args = []) => publicClient.readContract({ ...pool, functionName: fn, args });
+  const [reserveToken, reserveEth, totalSupply, feeBps, price] = await Promise.all([
+    r("reserveToken"),
+    r("reserveEth"),
+    r("totalSupply"),
+    r("protocolFeeBps"),
+    r("priceOfLot"),
+  ]);
+  const lp = addr ? await r("balanceOf", [addr]) : 0n;
+  return { reserveToken, reserveEth, totalSupply, feeBps, price, lp };
+}
+export const quotePoolBuy = (lots) => publicClient.readContract({ ...pool, functionName: "quoteBuy", args: [BigInt(lots)] });
+export const quotePoolSell = (lots) => publicClient.readContract({ ...pool, functionName: "quoteSell", args: [BigInt(lots)] });
+
+/** slippageBps: extra ETH allowed on buys / less ETH accepted on sells (default 1%). */
+export async function poolBuy(wallet, lots, slippageBps = 100n) {
+  const [total] = await quotePoolBuy(lots);
+  return send(wallet, pool, "buyLots", [BigInt(lots), deadline()], (total * (10_000n + slippageBps)) / 10_000n);
+}
+export async function poolSell(wallet, lots, onStep, slippageBps = 100n) {
+  await ensureAllowance(wallet, BigInt(lots) * (await lotSize()), onStep, pool.address);
+  const [net] = await quotePoolSell(lots);
+  return send(wallet, pool, "sellLots", [BigInt(lots), (net * (10_000n - slippageBps)) / 10_000n, deadline()]);
+}
+export async function poolAdd(wallet, ethWei, maxTokens, onStep) {
+  await ensureAllowance(wallet, maxTokens, onStep, pool.address);
+  return send(wallet, pool, "addLiquidity", [maxTokens, 0n, deadline()], ethWei);
+}
+export const poolRemove = (wallet, liquidity) => send(wallet, pool, "removeLiquidity", [liquidity, 0n, 0n, deadline()]);
 
 export async function buyFromListing(wallet, id, lots, pricePerLot) {
   return send(wallet, market, "buy", [id, BigInt(lots)], costOf(lots, pricePerLot));
@@ -179,9 +233,36 @@ export function explorerTx(hash) {
 // ---------------- raw logs (used by the indexer) ----------------
 export const TOKEN = token;
 export const MARKET_CONTRACT = market;
+export const POOL_CONTRACT = pool;
 
 /** All logs of `address` in [fromBlock, toBlock], decoded with `abi`. */
 export async function getDecodedLogs(address, abi, fromBlock, toBlock) {
   const logs = await publicClient.getLogs({ address, fromBlock, toBlock });
   return parseEventLogs({ abi, logs, strict: false });
+}
+
+// ---------------- owner / admin ----------------
+const CONTRACTS = () => ({ token, market, pool });
+
+/** Read owner + fee settings of all contracts. */
+export async function adminInfo() {
+  const r = (c, fn, args = []) => (c ? publicClient.readContract({ ...c, functionName: fn, args }) : null);
+  const [tokenOwner, feeRecipient, mintFeeWei, fee, marketOwner, marketFee, marketRecipient, poolOwner, poolFee, poolRecipient] = await Promise.all([
+    r(token, "owner"),
+    r(token, "feeRecipient"),
+    r(token, "mintFeeWei"),
+    r(token, "mintFee"),
+    r(market, "owner"),
+    r(market, "feeBps"),
+    r(market, "feeRecipient"),
+    r(pool, "owner"),
+    r(pool, "protocolFeeBps"),
+    r(pool, "feeRecipient"),
+  ]);
+  return { tokenOwner, feeRecipient, mintFeeWei, mintFee: fee, marketOwner, marketFee, marketRecipient, poolOwner, poolFee, poolRecipient };
+}
+
+/** Owner-only transaction on "token" | "market" | "pool". */
+export function adminCall(wallet, which, functionName, args) {
+  return send(wallet, CONTRACTS()[which], functionName, args);
 }

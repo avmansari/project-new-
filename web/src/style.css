@@ -117,3 +117,10 @@ table.book tr.sel td { background: color-mix(in srgb, var(--accent) 12%, transpa
 .viz-table summary { cursor: pointer; color: var(--muted); }
 .viz-table table { margin-top: 6px; }
 .viz-empty { padding: 24px 0; text-align: center; }
+
+/* ---------- offers / swap ---------- */
+h3 { font-size: 0.9rem; margin: 14px 0 6px; color: var(--muted); font-weight: 600; }
+.offer-box { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 10px; }
+.select { appearance: auto; }
+.row.nowrap .select { max-width: 150px; }
+.share-card img { width: 100%; height: auto; border-radius: 10px; border: 1px solid var(--line); margin-bottom: 10px; display: block; }

@@ -12,6 +12,7 @@
 - ✅ **Fees:** $0.10 per claimed lot + 2% marketplace fee, both to one wallet
 - ✅ **Leaderboard**, **network stats page** (hashrate / block time / difficulty charts), **auto-claim**, **sound + notification**
 - ✅ **In-browser indexer**, **price chart**, **24h stats + holders**, **activity history**, **quick buy**, **USD estimates**
+- ✅ **Share card** (Share on X), **order expiry**, **make offer**, **DEX pool** (instant swap + liquidity), **owner dashboard**, **hosted indexer (Ponder)**
 
 ## Mining
 | Feature | Why | Effort |

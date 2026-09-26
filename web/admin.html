@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0b0f0c" />
+    <meta name="robots" content="noindex" />
+    <title>Owner dashboard · PoW Miner</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <header class="top">
+      <div class="brand">⛏️ <span class="sym">XYZ</span> · Owner dashboard</div>
+      <div class="wallet">
+        <a href="/" class="small">← back to app</a>
+        <button id="btnConnect">Connect wallet</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="card" id="gate">
+        <p>Connect the <b>owner</b> or <b>fee wallet</b> to open the dashboard.</p>
+        <p class="small muted">Note: all numbers here come from public blockchain data. The page only hides them from other visitors; the admin buttons work only for the contract owner.</p>
+      </section>
+
+      <div id="dash" class="hidden">
+        <div class="row range-row">
+          <span class="small muted">Range</span>
+          <div class="seg small-seg">
+            <button data-arange="1" class="active">Today (24h)</button>
+            <button data-arange="7">7 days</button>
+            <button data-arange="30">30 days</button>
+            <button data-arange="0">All time</button>
+          </div>
+        </div>
+
+        <section class="card">
+          <h2>Revenue</h2>
+          <div class="grid">
+            <div><label>Total revenue</label><b id="adTotal">–</b><div class="small muted" id="adTotalUsd"></div></div>
+            <div><label>Claim fees</label><b id="adClaim">–</b><div class="small muted" id="adClaimN"></div></div>
+            <div><label>Marketplace fees</label><b id="adMarket">–</b><div class="small muted" id="adMarketN"></div></div>
+            <div><label>DEX fees</label><b id="adDex">–</b><div class="small muted" id="adDexN"></div></div>
+            <div><label>Fee wallet balance</label><b id="adWallet">–</b><div class="small muted mono" id="adWalletAddr"></div></div>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>Revenue per day</h2>
+          <div id="chRevenue" class="chart"></div>
+        </section>
+
+        <section class="card">
+          <h2>Users & volume</h2>
+          <div class="grid">
+            <div><label>Active users</label><b id="adUsers">–</b></div>
+            <div><label>Miners</label><b id="adMiners">–</b></div>
+            <div><label>Traders</label><b id="adTraders">–</b></div>
+            <div><label>Holders (now)</label><b id="adHolders">–</b></div>
+            <div><label>Order-book volume</label><b id="adBookVol">–</b></div>
+            <div><label>DEX volume</label><b id="adDexVol">–</b></div>
+            <div><label>Blocks mined</label><b id="adBlocks">–</b></div>
+            <div><label>Trades</label><b id="adTrades">–</b></div>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>Settings (owner only)</h2>
+          <p class="small" id="adSettings">–</p>
+          <div class="row">
+            <button id="adSyncFee">Set claim fee to $0.10 at today's ETH price</button>
+          </div>
+          <label for="adMarketFee">Marketplace fee (%)</label>
+          <div class="row nowrap"><input id="adMarketFee" class="field" inputmode="decimal" placeholder="2" /><button id="adMarketFeeGo" class="secondary">Update</button></div>
+          <label for="adDexFee">DEX protocol fee (%)</label>
+          <div class="row nowrap"><input id="adDexFee" class="field" inputmode="decimal" placeholder="2" /><button id="adDexFeeGo" class="secondary">Update</button></div>
+          <label for="adRecipient">Fee wallet (all 3 contracts)</label>
+          <div class="row nowrap"><input id="adRecipient" class="field mono" placeholder="0x…" /><button id="adRecipientGo" class="secondary">Update</button></div>
+          <p class="small" id="adStatus"></p>
+        </section>
+      </div>
+    </main>
+    <script type="module" src="/src/admin.js"></script>
+  </body>
+</html>

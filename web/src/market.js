@@ -5,12 +5,29 @@ import { $, store, on, emit, fmtAmt, fmtEth, short, errMsg } from "./store.js";
 import { indexer } from "./indexer.js";
 import { candleChart, onResize } from "./charts.js";
 import { usdOf, ethUsd } from "./price.js";
+import { initSwap } from "./swap.js";
+
+let swapUi = { refresh() {} };
 
 const REFRESH_MS = 4000;
-const state = { orders: [], trades: [], feeBps: 0n, lotSize: 0n, side: "sell", selected: null, busy: false, timer: null };
+const state = { orders: [], offers: [], trades: [], feeBps: 0n, lotSize: 0n, side: "sell", selected: null, busy: false, timer: null };
 
 const setStatus = (s) => ($("mkStatus").textContent = s);
-const mine = (o) => store.wallet && o.maker.toLowerCase() === store.wallet.address.toLowerCase();
+const me = () => store.wallet?.address.toLowerCase();
+const mine = (o) => store.wallet && o.maker.toLowerCase() === me();
+const nowSec = () => Math.floor(Date.now() / 1000);
+/** expiry 0 = never */
+const isExpired = (x) => x.expiry > 0n && Number(x.expiry) <= nowSec();
+function timeLeft(x) {
+  if (!x.expiry) return "never";
+  const s = Number(x.expiry) - nowSec();
+  if (s <= 0) return "expired";
+  if (s < 3600) return `${Math.ceil(s / 60)}m`;
+  if (s < 86400) return `${Math.round(s / 3600)}h`;
+  return `${Math.round(s / 86400)}d`;
+}
+/** expiry select value (seconds from now, "0" = never) -> unix seconds */
+const expiryFrom = (sel) => (Number(sel) > 0 ? BigInt(nowSec() + Number(sel)) : 0n);
 const lotsLabel = (n) => `${n} lot${BigInt(n) === 1n ? "" : "s"}`;
 /** Whole lots the connected wallet can sell right now. */
 const myLots = () => (state.lotSize ? store.tokenBalance / state.lotSize : 0n);
@@ -34,8 +51,10 @@ async function refresh() {
       state.lotSize = await chain.lotSize();
       document.querySelectorAll(".lotsize").forEach((el) => (el.textContent = fmtAmt(state.lotSize, 0)));
     }
-    const [orders, feeBps] = await Promise.all([chain.getOrders(), chain.marketFeeBps(), ethUsd()]);
+    const [orders, offers, feeBps] = await Promise.all([chain.getOrders(), chain.getOffers(), chain.marketFeeBps(), ethUsd()]);
     state.orders = orders;
+    state.offers = offers;
+    swapUi.refresh();
     state.feeBps = feeBps;
     render();
   } catch (e) {
@@ -45,7 +64,7 @@ async function refresh() {
 
 // ---------------- rendering ----------------
 function render() {
-  const open = state.orders.filter((o) => o.active && o.lots > 0n);
+  const open = state.orders.filter((o) => o.active && o.lots > 0n && !isExpired(o));
   const cmp = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
   const asks = open.filter((o) => !o.isBid).sort((a, b) => cmp(a.pricePerLot, b.pricePerLot));
   const bids = open.filter((o) => o.isBid).sort((a, b) => cmp(b.pricePerLot, a.pricePerLot));
@@ -68,28 +87,58 @@ function render() {
       <td>${o.lots}</td>
       <td>${fmtAmt(chain.costOf(o.lots, o.pricePerLot), 6)}</td>
       <td class="mono small">${mine(o) ? "you" : short(o.maker)}</td>
+      <td class="small muted">${timeLeft(o)}</td>
       <td>${mine(o) ? `<button class="mini secondary" data-cancel="${o.id}">Cancel</button>` : `<button class="mini" data-pick="${o.id}">${action}</button>`}</td>
     </tr>`;
-  const head = `<tr><th>Price / lot (ETH)</th><th>Lots</th><th>Total ETH</th><th>By</th><th></th></tr>`;
-  $("mkAsks").innerHTML = head + (asks.map((o) => row(o, "Buy")).join("") || `<tr><td colspan="5" class="muted">No sell orders</td></tr>`);
-  $("mkBids").innerHTML = head + (bids.map((o) => row(o, "Sell")).join("") || `<tr><td colspan="5" class="muted">No buy orders</td></tr>`);
+  const head = `<tr><th>Price / lot (ETH)</th><th>Lots</th><th>Total ETH</th><th>By</th><th>Expires</th><th></th></tr>`;
+  $("mkAsks").innerHTML = head + (asks.map((o) => row(o, "Buy")).join("") || `<tr><td colspan="6" class="muted">No sell orders</td></tr>`);
+  $("mkBids").innerHTML = head + (bids.map((o) => row(o, "Sell")).join("") || `<tr><td colspan="6" class="muted">No buy orders</td></tr>`);
 
-  const my = open.filter(mine);
+  // my orders (expired ones stay here until reclaimed)
+  const my = state.orders.filter((o) => o.active && o.lots > 0n && mine(o));
   $("mkMine").innerHTML = my.length
     ? my
-        .map(
-          (o) =>
-            `<li>${o.isBid ? "🟢 Buying" : "🔴 Selling"} ${lotsLabel(o.lots)} @ ${fmtEth(o.pricePerLot)} / lot <button class="mini secondary" data-cancel="${o.id}">Cancel</button></li>`
-        )
+        .map((o) => {
+          const exp = isExpired(o);
+          return `<li>${o.isBid ? "🟢 Buying" : "🔴 Selling"} ${lotsLabel(o.lots)} @ ${fmtEth(o.pricePerLot)} / lot · <span class="muted">${exp ? "expired" : `expires: ${timeLeft(o)}`}</span> <button class="mini secondary" data-cancel="${o.id}">${exp ? "Reclaim" : "Cancel"}</button></li>`;
+        })
         .join("")
     : `<li class="muted">${store.wallet ? "No open orders" : "Connect your wallet"}</li>`;
+
+  // offers
+  const byId = new Map(state.orders.map((o) => [o.id, o]));
+  const liveOffers = state.offers.filter((f) => f.active);
+  const incoming = liveOffers.filter((f) => {
+    const l = byId.get(BigInt(f.listingId));
+    return l && mine(l) && l.active && !isExpired(l) && !isExpired(f);
+  });
+  $("mkOffersIn").innerHTML = incoming.length
+    ? incoming
+        .map((f) => {
+          const l = byId.get(BigInt(f.listingId));
+          const value = chain.costOf(f.lots, f.pricePerLot);
+          const fee = (value * state.feeBps) / 10_000n;
+          return `<li>${lotsLabel(f.lots)} @ <b>${fmtEth(f.pricePerLot)}</b> / lot (you ask ${fmtEth(l.pricePerLot)}) · you get ${fmtEth(value - fee)} · by <span class="mono small">${short(f.buyer)}</span> · <span class="muted">${timeLeft(f)}</span> <button class="mini" data-accept="${f.id}"${f.lots > l.lots ? " disabled title=\"listing has fewer lots now\"" : ""}>Accept</button></li>`;
+        })
+        .join("")
+    : `<li class="muted">No offers on your listings</li>`;
+  const myOffers = liveOffers.filter((f) => f.buyer.toLowerCase() === me());
+  $("mkOffersMine").innerHTML = myOffers.length
+    ? myOffers
+        .map((f) => {
+          const exp = isExpired(f);
+          return `<li>Offer on listing #${f.listingId}: ${lotsLabel(f.lots)} @ ${fmtEth(f.pricePerLot)} / lot · <span class="muted">${exp ? "expired" : `expires: ${timeLeft(f)}`}</span> <button class="mini secondary" data-${exp ? "reclaim-offer" : "cancel-offer"}="${f.id}">${exp ? "Reclaim" : "Cancel"}</button></li>`;
+        })
+        .join("")
+    : `<li class="muted">${store.wallet ? "You have no open offers" : "Connect your wallet"}</li>`;
 
   $("mkTrades").innerHTML = state.trades.length
     ? state.trades
         .slice(0, 30)
         .map((t) => {
           const url = chain.explorerTx(t.tx);
-          return `<li>${lotsLabel(t.lots)} @ ${fmtEth(t.pricePerLot)} / lot · <span class="mono small">${short(t.seller)} → ${short(t.buyer)}</span> ${url ? `· <a href="${url}" target="_blank" rel="noopener">tx</a>` : ""}</li>`;
+          const who = t.src === "dex" ? `DEX ${t.buyer === chain.POOL_CONTRACT?.address ? "sell" : "buy"} by ${short(t.buyer === chain.POOL_CONTRACT?.address ? t.seller : t.buyer)}` : `${short(t.seller)} → ${short(t.buyer)}`;
+          return `<li>${lotsLabel(t.lots)} @ ${fmtEth(t.pricePerLot)} / lot · <span class="mono small">${who}</span> ${url ? `· <a href="${url}" target="_blank" rel="noopener">tx</a>` : ""}</li>`;
         })
         .join("")
     : `<li class="muted">No trades yet</li>`;
@@ -113,6 +162,9 @@ function pickOrder(id) {
   $("mkTradeInfo").textContent = `${fmtEth(o.pricePerLot)} per lot · ${lotsLabel(o.lots)} available`;
   $("mkTradeLots").value = "1";
   $("mkTradeGo").textContent = o.isBid ? "Sell lots" : "Buy lots";
+  // offers are only for sell listings
+  $("mkOfferBox").classList.toggle("hidden", o.isBid);
+  $("mkOfferPrice").value = "";
   render();
   $("mkTrade").scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
@@ -197,8 +249,9 @@ async function createOrder() {
 
   await busy(async () => {
     setStatus("Confirm in your wallet…");
-    if (state.side === "sell") await chain.listForSale(store.wallet, lots, price, setStatus);
-    else await chain.placeBid(store.wallet, lots, price);
+    const expiry = expiryFrom($("mkExpiry").value);
+    if (state.side === "sell") await chain.listForSale(store.wallet, lots, price, setStatus, expiry);
+    else await chain.placeBid(store.wallet, lots, price, expiry);
     $("mkLots").value = "1";
     setStatus(state.side === "sell" ? "✓ Sell order is live" : "✓ Buy order is live");
   });
@@ -242,22 +295,65 @@ function stepper(inputId, max) {
   $(`${inputId}Plus`).onclick = () => set(parseLots(input.value) + 1n);
 }
 
+// ---------------- offers ----------------
+async function makeOffer() {
+  const o = state.selected;
+  if (!o || o.isBid || state.busy) return;
+  if (!store.wallet) return alert("Please click 'Connect wallet' at the top first.");
+  const lots = parseLots($("mkTradeLots").value);
+  const price = parsePrice($("mkOfferPrice").value);
+  if (lots <= 0n || lots > o.lots) return setStatus(`Enter 1–${o.lots} whole lots`);
+  if (price <= 0n) return setStatus("Enter your offer price per lot (ETH)");
+  if (chain.costOf(lots, price) > store.ethBalance) return setStatus("Not enough ETH");
+  await busy(async () => {
+    setStatus("Confirm in your wallet…");
+    await chain.makeOffer(store.wallet, o.id, lots, price, expiryFrom($("mkOfferExpiry").value));
+    closeTrade(`✓ Offer sent: ${lotsLabel(lots)} @ ${fmtEth(price)} / lot. The seller can accept it; your ETH is locked until then.`);
+  });
+}
+
+const offerAction = (fn, done) => (id) =>
+  busy(async () => {
+    setStatus("Confirm in your wallet…");
+    await fn(store.wallet, id);
+    setStatus(done);
+  });
+const acceptOffer = offerAction(chain.acceptOffer, "✓ Offer accepted: lots sent, ETH received");
+const cancelOffer = offerAction(chain.cancelOffer, "✓ Offer cancelled, ETH returned");
+const reclaimOffer = offerAction(chain.reclaimExpiredOffer, "✓ Expired offer closed, ETH returned");
+
 // ---------------- history: 24h stats, holders, price chart (from the indexer) ----------------
 const PRANGES = { "24h": [86400, 3600], "7d": [7 * 86400, 4 * 3600], "30d": [30 * 86400, 86400], all: [Infinity, 86400] };
 let prange = "24h";
 const ethNum = (wei) => Number(wei) / 1e18;
 
 function tradesFromIndex() {
-  return indexer
-    .events("market", "Trade")
-    .map((e) => ({ ...e.args, t: Number(e.args.timestamp) * 1000, tx: e.tx, block: e.block, logIndex: e.logIndex }))
+  const book = indexer.events("market", "Trade").map((e) => ({ ...e.args, src: "book", t: Number(e.args.timestamp) * 1000, tx: e.tx, block: e.block, logIndex: e.logIndex }));
+  // DEX swaps count as trades too (price per lot = ETH amount / lots)
+  const dex = indexer.events("pool", "Swap").map((e) => {
+    const a = e.args;
+    return {
+      src: "dex",
+      lots: a.lots,
+      pricePerLot: a.ethAmount / a.lots,
+      ethPaid: a.ethAmount,
+      fee: a.protocolFee,
+      buyer: a.isBuy ? a.trader : chain.POOL_CONTRACT.address,
+      seller: a.isBuy ? chain.POOL_CONTRACT.address : a.trader,
+      t: Number(a.timestamp) * 1000,
+      tx: e.tx,
+      block: e.block,
+      logIndex: e.logIndex,
+    };
+  });
+  return [...book, ...dex]
     // newest first; trades inside one tx (quick buy) keep their on-chain order
     .sort((a, b) => (a.block === b.block ? b.logIndex - a.logIndex : a.block < b.block ? 1 : -1));
 }
 
 function holdersCount() {
   const bal = new Map();
-  const skip = new Set(["0x0000000000000000000000000000000000000000", chain.MARKET_CONTRACT?.address.toLowerCase()]);
+  const skip = new Set(["0x0000000000000000000000000000000000000000", chain.MARKET_CONTRACT?.address.toLowerCase(), chain.POOL_CONTRACT?.address.toLowerCase()]);
   for (const e of indexer.events("token", "Transfer")) {
     const { from, to, value } = e.args;
     const f = from.toLowerCase();
@@ -367,6 +463,7 @@ export function initMarket() {
     $("tab-market").innerHTML = `<section class="card"><p class="muted">Marketplace contract is not deployed. Run <code>npm run deploy:testnet</code> again.</p></section>`;
     return { show() {}, hide() {} };
   }
+  swapUi = initSwap();
   $("mkSideSell").onclick = () => setSide("sell");
   $("mkSideBuy").onclick = () => setSide("buy");
   $("mkLots").oninput = updateCreateTotal;
@@ -374,6 +471,7 @@ export function initMarket() {
   $("mkCreate").onclick = createOrder;
   $("mkTradeLots").oninput = updateTradeCost;
   $("mkTradeGo").onclick = doTrade;
+  $("mkOfferGo").onclick = makeOffer;
   $("mkTradeClose").onclick = () => closeTrade();
   $("mkTradeMax").onclick = () => {
     $("mkTradeLots").value = String(tradeMax());
@@ -394,10 +492,12 @@ export function initMarket() {
   onResize($("chPrice"), renderChart);
   stepper("mkTradeLots", tradeMax);
   $("tab-market").addEventListener("click", (e) => {
-    const pick = e.target.closest("[data-pick]");
-    const cxl = e.target.closest("[data-cancel]");
-    if (pick) pickOrder(BigInt(pick.dataset.pick));
-    if (cxl) cancel(BigInt(cxl.dataset.cancel));
+    const t = (sel) => e.target.closest(sel);
+    if (t("[data-pick]")) pickOrder(BigInt(t("[data-pick]").dataset.pick));
+    if (t("[data-cancel]")) cancel(BigInt(t("[data-cancel]").dataset.cancel));
+    if (t("[data-accept]")) acceptOffer(BigInt(t("[data-accept]").dataset.accept));
+    if (t("[data-cancel-offer]")) cancelOffer(BigInt(t("[data-cancel-offer]").dataset.cancelOffer));
+    if (t("[data-reclaim-offer]")) reclaimOffer(BigInt(t("[data-reclaim-offer]").dataset.reclaimOffer));
   });
   on("wallet", render);
   on("balances:updated", () => {

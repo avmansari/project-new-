@@ -5,9 +5,9 @@ Users mine with their **CPU, GPU (WebGPU) or phone browser**. The **first** mine
 claims **5,000 tokens** straight into their connected wallet (21M supply = 4,200 blocks). Difficulty adjusts after every block to target ~2 minutes per block.
 The same user can win any number of blocks.
 
-The website has 4 tabs: **Mine** · **Transfer** (+ your activity) · **Marketplace** (on-chain order book, whole lots only: 1 lot = 5,000 tokens, priced in ETH per lot, price chart, 24h stats, quick buy) · **Stats** (leaderboard, hashrate / block time / difficulty charts). Wallets: MetaMask, Rabby, Coinbase, OKX, Trust… plus WalletConnect.
+The website has 4 tabs: **Mine** · **Transfer** (+ your activity) · **Marketplace** (on-chain order book, whole lots only: 1 lot = 5,000 tokens, priced in ETH per lot, order expiry, make offer, quick buy, instant DEX swap + liquidity, price chart, 24h stats) · **Stats** (leaderboard, hashrate / block time / difficulty charts). Wallets: MetaMask, Rabby, Coinbase, OKX, Trust… plus WalletConnect.
 
-**Fees (project revenue, both to one wallet):** $0.10 in ETH per claimed lot + 2% of marketplace volume. See [Fees](docs/ARCHITECTURE.md#8b-fees-project-revenue).
+**Fees (project revenue, all to one wallet):** $0.10 in ETH per claimed lot + 2% of marketplace volume + 2% DEX protocol fee. Owner dashboard at `/admin.html`. Hosted indexer in [`indexer/`](indexer). See [Fees](docs/ARCHITECTURE.md#8b-fees-project-revenue).
 
 - 📐 Architecture: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 - 🧪 Testnet launch checklist: [`docs/TESTNET.md`](docs/TESTNET.md)
@@ -75,7 +75,7 @@ Open the **Network** URL printed by `npm run web` (e.g. `http://192.168.x.x:5173
 
 ## 🧪 Tests
 ```bash
-npm test   # 25 Solidity tests (token + fees + marketplace) + 18 JS tests (mining core, GPU names)
+npm test   # 37 Solidity tests (token, fees, marketplace, DEX pool) + 18 JS tests (mining core, GPU names)
 ```
 
 Project files: https://drive.google.com/drive/folders/1OLUHKGNSBcwCrs_PhZlf9YrtMuk2QPSU?usp=sharing

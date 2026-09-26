@@ -159,11 +159,19 @@ On-chain **order book** traded in ETH, **whole lots only**:
 - **Price = ETH per lot.** Every trade costs exactly `lots × pricePerLot`, no rounding.
 - **Sell order (listing):** the seller locks N lots (approve + list = 2 confirmations). Anyone can buy 1…N whole lots.
 - **Buy order (bid):** the buyer locks `lots × price` ETH. Any holder can sell whole lots into it.
-- **Quick buy (`buyMany`):** fills the cheapest listings for the requested number of lots in **one transaction** (all-or-nothing, payment checked before any transfer).
-- **Cancel:** unsold lots / unused ETH are returned.
-- **Fee:** `MARKET_FEE_BPS` (default **2%**, max 5%) of the ETH side, sent to `FEE_RECIPIENT`. The owner can change it with `setFee`.
-- **Safety:** reentrancy guard, overpayment refunds, only the maker can cancel.
-- **Realtime:** orders refresh every 4 s; trades, charts and 24h stats come from the indexer (every 8 s).
+- **Order expiry:** every listing/bid can expire after 24h / 7d / 30d (or never). Expired orders can't be filled; the maker clicks **Reclaim**, and **anyone** can call `reclaimExpired` to send the funds back to the maker (auto-cancel by keepers/bots).
+- **Make offer:** a buyer can offer their own price for N lots of a specific listing (ETH escrowed, optional expiry). The seller sees it under "Offers on my listings" and can **Accept**; the buyer can cancel any time; expired offers can be reclaimed by anyone.
+- **Quick buy (`buyMany`):** fills the cheapest listings for the requested number of lots in **one transaction** (all-or-nothing).
+- **Fee:** `MARKET_FEE_BPS` (default **2%**, max 5%) of the ETH side, sent to `FEE_RECIPIENT` (also on accepted offers).
+- **Safety:** reentrancy guard, payment checked before any transfer, overpayment refunds.
+
+## 8a. DEX pool (`TokenPool.sol`)
+
+Uniswap-V2-style constant-product pool (`x × y = k`) for TOKEN ↔ ETH, for **instant** trades without waiting for an order:
+- **Whole lots only:** `buyLots(n)` pays ETH for exactly n lots, `sellLots(n)` sells exactly n lots. 1% slippage protection in the UI.
+- **Fees (ETH):** 0.3% stays in the pool for liquidity providers + **protocol fee** `DEX_PROTOCOL_FEE_BPS` (default **2%**, max 5%) to `FEE_RECIPIENT`.
+- **Liquidity:** anyone can add ETH + tokens at the current ratio and get LP tokens (`POW-LP`); remove any time. The **first provider sets the starting price** ("open the pool after launch"). 1,000 wei of LP is locked forever (standard V2 protection).
+- Reserves are tracked internally, so donations can't move the price.
 
 ## 8b. Fees (project revenue)
 
@@ -172,24 +180,31 @@ Both fees go to the same wallet: `FEE_RECIPIENT` in `contracts/.env` (empty = th
 | Fee | Amount | Paid by | When |
 |---|---|---|---|
 | **Claim fee** | **$0.10 per lot** (in ETH) | the miner | on every successful claim (1 claim = 1 lot = 5,000 tokens). A losing (stale) claim reverts, so it pays nothing |
-| **Marketplace fee** | **2%** of trade volume (in ETH) | taken from the ETH side of every trade | on every buy / sell / quick buy |
+| **Marketplace fee** | **2%** of trade volume (in ETH) | taken from the ETH side of every trade | on every buy / sell / quick buy / accepted offer |
+| **DEX fee** | **2%** protocol fee (in ETH) + 0.3% to LPs | taken from the ETH side of every swap | on every instant buy / sell |
 
 How the $0.10 is turned into ETH (the contract can't read USD by itself):
 - **Fixed mode (default):** at deploy, `MINT_FEE_USD` (0.1) is converted with the live ETH price into `mintFeeWei`. Run **`npm run set-fee`** from time to time (e.g. daily) to re-sync it with the ETH price. Only the owner can change it; it is capped at 0.01 ETH.
 - **USD mode (optional):** if the chain has a Chainlink-style ETH/USD feed, set `PRICE_FEED` in `.env` (or call `setUsdFee`). The fee is then always exactly $0.10, and falls back to the fixed fee if the feed is older than 1 day. Capped at $1.
 
-Owner functions (hand them to a multisig for mainnet): `setMintFeeWei`, `setUsdFee`, `setFeeRecipient`, `transferOwnership` on the token; `setFee`, `transferOwnership` on the market.
+Owner functions (hand them to a multisig for mainnet): `setMintFeeWei`, `setUsdFee`, `setFeeRecipient`, `transferOwnership` on the token; `setFee`, `transferOwnership` on the market and the pool.
+
+**Owner dashboard (`/admin.html`):** connect the owner or fee wallet to see revenue per source (claims / marketplace / DEX) for 24h / 7d / 30d / all time, revenue per day, users (miners, traders, holders), order-book + DEX volume, and to update fees (claim fee → $0.10 at today's ETH price, marketplace %, DEX %, fee wallet for all 3 contracts). The numbers are public on-chain data; the page only hides them from other visitors, and settings only work for the owner.
 
 ## 8c. Indexer, stats and charts
 
-`web/src/indexer.js` is a small in-browser indexer: it loads every token + market event from the deploy block (in adaptive chunks), caches them in `localStorage`, and fetches only new blocks every 8 s. It powers:
-- **Stats tab:** network tiles (blocks mined, % supply, blocks left, avg block time, estimated hashrate, miners 24h), **leaderboard** (24h / 7d / all time) and **hashrate / block time / difficulty charts**.
-- **Marketplace:** **price-per-lot candlestick chart** (24h / 7d / 30d / all), **24h volume / change / high / low**, **holders count**, recent trades.
-- **Transfer tab → Your activity:** the wallet's claims, transfers and trades with explorer links.
+Two interchangeable data sources feed the same UI (`web/src/indexer.js`):
+- **Hosted indexer (production):** the Ponder app in `/indexer` stores every event in Postgres and serves `GET /events?contract=…&after=<block>`. Set `VITE_INDEXER_URL` and the site fetches everything from one fast API. See [`indexer/README.md`](../indexer/README.md).
+- **In-browser indexer (fallback / launch):** without `VITE_INDEXER_URL`, the site loads events from the RPC in adaptive chunks and caches them in `localStorage`.
 
-Charts are dependency-free SVG (`web/src/charts.js`) with crosshair/tooltips, keyboard focus and a data-table view. Up/down candles use a colour-blind-safe blue/red pair. When the project outgrows the browser indexer, replace `indexer.load` with a hosted indexer (The Graph / Goldsky / Ponder) returning the same arrays.
+It powers:
+- **Stats tab:** network tiles, **leaderboard** (24h / 7d / all time) and **hashrate / block time / difficulty charts**.
+- **Marketplace:** **price-per-lot candlestick chart** (order book + DEX trades), **24h volume / change / high / low**, **holders count**, recent trades.
+- **Transfer tab → Your activity**, and the **owner dashboard**.
 
-Other Mine-tab helpers: **auto-claim** (wallet opens as soon as a block is found), **sound** and **browser notification** toggles, and the claim fee shown in ETH + USD before claiming.
+Charts are dependency-free SVG (`web/src/charts.js`) with crosshair/tooltips, keyboard focus and a data-table view. Up/down candles use a colour-blind-safe blue/red pair.
+
+Mine-tab extras: **auto-claim**, **sound** and **browser notification** toggles, and a **share card**: after each claim a 1200×630 image ("I mined block #123 with RTX 3060 Ti ⛏️") with **Share on X** (opens the post + saves the image to attach), **Share…** on phones (sends the image straight to the X app) and **Download**.
 
 ## 9. Wallets
 
@@ -252,9 +267,11 @@ npm run web                      # or host it on Vercel (vercel.json is included
 
 ```
 contracts/contracts/PowInscription.sol   ← token: PoW verify, 5,000/block, per-block retarget, inscription, ERC-20
-contracts/contracts/TokenMarket.sol      ← marketplace: whole-lot listings + ETH bids, cancel, fee
+contracts/contracts/TokenMarket.sol      ← marketplace: whole-lot listings + ETH bids, expiry, offers, quick buy, fee
+contracts/contracts/TokenPool.sol        ← DEX pool (x*y=k), whole-lot swaps, LP token, protocol fee
+contracts/test/TokenPool.test.js         ← 6 tests (pricing, fees, slippage, liquidity)
 contracts/test/PowInscription.test.js    ← 15 tests (first-wins, anti-theft, 5,000/block, retarget, stall, claim fee…)
-contracts/test/TokenMarket.test.js       ← 10 tests (lots only, 2% fee, quick buy, escrow, cancel…)
+contracts/test/TokenMarket.test.js       ← 16 tests (lots only, 2% fee, quick buy, expiry, offers, escrow, cancel…)
 contracts/scripts/deploy.js              ← deploys token + market, exports ABIs/addresses to web & CLI
 contracts/scripts/setup-testnet.js       ← `npm run testnet`: key → faucet wait → deploy
 contracts/scripts/new-wallet.js          ← `npm run new-wallet`: fresh deployer key into .env
@@ -273,6 +290,10 @@ web/src/cpu-worker.js                    ← CPU worker
 web/src/chain.js                         ← viem: reads, claim (+fee), transfer, marketplace txs, quick buy
 web/src/indexer.js                       ← in-browser event indexer (cached, incremental)
 web/src/stats.js                         ← Stats tab: tiles, leaderboard, charts
+web/src/swap.js                          ← DEX swap + liquidity UI
+web/src/share.js                         ← share card image + Share on X
+web/src/admin.js, web/admin.html         ← owner dashboard
+indexer/                                 ← hosted Ponder indexer (events API + GraphQL)
 web/src/charts.js                        ← SVG line + candlestick charts
 web/src/price.js                         ← ETH/USD price for USD estimates
 contracts/scripts/set-fee.js             ← `npm run set-fee`: keep the claim fee at ~$0.10
