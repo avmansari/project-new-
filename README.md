@@ -5,7 +5,12 @@ Users mine with their **CPU, GPU (WebGPU) or phone browser**. The **first** mine
 claims **5,000 tokens** straight into their connected wallet (21M supply = 4,200 blocks). Difficulty adjusts every block to keep ~60s per block.
 The same user can win any number of blocks.
 
+Website mein 3 tabs hain: **Mine** · **Transfer** · **Marketplace** (on-chain order book, ETH mein buy/sell, live updates).
+
 - 📐 Full explanation (Hinglish): [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+- 🚀 Production guide: [`docs/PRODUCTION.md`](docs/PRODUCTION.md)
+- 💡 Feature ideas: [`docs/FEATURES.md`](docs/FEATURES.md)
+- 🛒 Marketplace contract: [`contracts/contracts/TokenMarket.sol`](contracts/contracts/TokenMarket.sol)
 - 📜 Contract: [`contracts/contracts/PowInscription.sol`](contracts/contracts/PowInscription.sol)
 - 🌐 Web miner (phone + desktop): [`web/`](web)
 - 🖥️ CLI miner: [`miner-cli/`](miner-cli)

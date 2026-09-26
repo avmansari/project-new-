@@ -9,80 +9,182 @@
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
-    <header>
-      <h1>⛏️ <span id="sym">XYZ</span> PoW Miner</h1>
-      <p class="sub">Mine blocks with your CPU / GPU / phone. Jo block pehle solve kare, woh 5,000 tokens claim kare.</p>
+    <header class="top">
+      <div class="brand">⛏️ <span class="sym">XYZ</span></div>
+      <nav class="tabs">
+        <button data-tab="mine" class="active">Mine</button>
+        <button data-tab="transfer">Transfer</button>
+        <button data-tab="market">Marketplace</button>
+      </nav>
+      <div class="wallet">
+        <span id="hdrBal" class="small muted hidden"></span>
+        <button id="btnConnect">Connect wallet</button>
+      </div>
     </header>
 
     <main>
-      <section class="card" id="network">
-        <h2>Network</h2>
-        <div class="grid">
-          <div><label>Block height</label><b id="height">–</b></div>
-          <div><label>Difficulty</label><b id="difficulty">–</b></div>
-          <div><label>Required zero bits</label><b id="bits">–</b></div>
-          <div><label>Block reward</label><b id="reward">–</b></div>
-          <div><label>Minted supply</label><b id="supply">–</b></div>
-          <div><label>Last block</label><b id="lastBlock">–</b></div>
-        </div>
-        <p class="mono small" id="challenge">challenge: –</p>
-      </section>
+      <!-- ===================== MINE ===================== -->
+      <div id="tab-mine">
+        <p class="sub">CPU / GPU / phone se block mine karo. Jo block pehle solve kare, woh <b>5,000 <span class="sym">XYZ</span></b> claim kare.</p>
 
-      <section class="card" id="walletCard">
-        <h2>Wallet</h2>
-        <div class="row">
-          <button id="btnConnect">Connect wallet</button>
-        </div>
-        <div id="walletInfo" class="hidden">
-          <p>Connected: <span class="mono" id="minerAddr"></span></p>
-          <p>Balance: <b id="balance">–</b> · Gas: <span id="gasBal">–</span> ETH</p>
-          <p class="small muted">Isi wallet se mining hogi aur claim karne pe tokens seedha isi wallet mein aayenge.</p>
-        </div>
-      </section>
+        <section class="card">
+          <h2>Your device</h2>
+          <div class="grid">
+            <div><label>GPU</label><b id="gpuName">detecting…</b></div>
+            <div><label>CPU</label><b id="cpuName">–</b></div>
+          </div>
+          <p class="small muted" id="gpuApi"></p>
+        </section>
 
-      <section class="card" id="minerCard">
-        <h2>Miner</h2>
-        <div class="row">
-          <label>CPU threads <input type="range" id="threads" min="0" max="16" value="2" /> <b id="threadsVal">2</b></label>
-        </div>
-        <div class="row">
-          <label><input type="checkbox" id="useGpu" /> Use GPU (WebGPU) <span id="gpuStatus" class="small"></span></label>
-        </div>
-        <div class="row">
-          <button id="btnStart" disabled>Start mining</button>
-          <button id="btnStop" class="secondary" disabled>Stop</button>
-        </div>
-        <div class="grid">
-          <div><label>Hashrate</label><b id="hashrate">0 H/s</b></div>
-          <div><label>Total hashes</label><b id="totalHashes">0</b></div>
-          <div><label>Expected time / block</label><b id="eta">–</b></div>
-          <div><label>Status</label><b id="status">idle</b></div>
-        </div>
-      </section>
+        <section class="card">
+          <h2>Network</h2>
+          <div class="grid">
+            <div><label>Block height</label><b id="height">–</b></div>
+            <div><label>Difficulty</label><b id="difficulty">–</b></div>
+            <div><label>Required zero bits</label><b id="bits">–</b></div>
+            <div><label>Block reward</label><b id="reward">–</b></div>
+            <div><label>Minted supply</label><b id="supply">–</b></div>
+            <div><label>Last block</label><b id="lastBlock">–</b></div>
+          </div>
+        </section>
 
-      <section class="card hidden" id="solutionCard">
-        <h2>🎉 Block solved!</h2>
-        <p>Tune block <b id="solHeight"></b> mine kar liya. Difficulty: <b id="solReq"></b> zero bits required, tere hash mein <b id="solBits"></b>.</p>
-        <p class="big">Tu claim kar sakta hai: <b id="solReward"></b></p>
-        <p class="mono small" id="solDigest"></p>
-        <div class="row">
-          <button id="btnClaim">Claim tokens</button>
-          <button id="btnDiscard" class="secondary">Discard</button>
+        <section class="card">
+          <h2>Miner</h2>
+          <div class="row">
+            <label>CPU threads <input type="range" id="threads" min="0" max="16" value="2" /> <b id="threadsVal">2</b></label>
+          </div>
+          <div class="row">
+            <label><input type="checkbox" id="useGpu" /> Use GPU (WebGPU) <span id="gpuStatus" class="small"></span></label>
+          </div>
+          <div class="row">
+            <button id="btnStart">Start mining</button>
+            <button id="btnStop" class="secondary" disabled>Stop</button>
+          </div>
+          <div class="grid">
+            <div><label>Hashrate</label><b id="hashrate">0 H/s</b></div>
+            <div><label>Total hashes</label><b id="totalHashes">0</b></div>
+            <div><label>Expected time / block</label><b id="eta">–</b></div>
+            <div><label>Status</label><b id="status">idle</b></div>
+          </div>
+        </section>
+
+        <section class="card hidden" id="solutionCard">
+          <h2>🎉 Block solved!</h2>
+          <p>Tune block <b id="solHeight"></b> mine kar liya. Difficulty: <b id="solReq"></b> zero bits required, tere hash mein <b id="solBits"></b>.</p>
+          <p class="big">Tu claim kar sakta hai: <b id="solReward"></b></p>
+          <p class="mono small" id="solDigest"></p>
+          <div class="row">
+            <button id="btnClaim">Claim tokens</button>
+            <button id="btnDiscard" class="secondary">Discard</button>
+          </div>
+          <p class="small">Claim dabao → wallet mein approve karo → tokens seedha tere wallet mein. Jaldi karo: agar kisi aur ne yeh block pehle claim kar liya toh yeh solution expire ho jayega.</p>
+        </section>
+
+        <section class="card">
+          <h2>My blocks</h2>
+          <ul id="myBlocks" class="list"><li class="muted">None yet</li></ul>
+        </section>
+
+        <section class="card">
+          <h2>Recent blocks</h2>
+          <ul id="recent" class="list"><li class="muted">Loading…</li></ul>
+        </section>
+      </div>
+
+      <!-- ===================== TRANSFER ===================== -->
+      <div id="tab-transfer" class="hidden">
+        <section class="card">
+          <h2>Send <span class="sym">XYZ</span></h2>
+          <p>Balance: <b id="txBalance">–</b></p>
+          <label for="txTo">To address</label>
+          <input id="txTo" class="field mono" placeholder="0x…" autocomplete="off" />
+          <label for="txAmount">Amount</label>
+          <div class="row nowrap">
+            <input id="txAmount" class="field" inputmode="decimal" placeholder="0.0" />
+            <button id="txMax" class="secondary">Max</button>
+          </div>
+          <div class="row">
+            <button id="txSend">Send</button>
+            <button id="txWatch" class="secondary">Add token to wallet</button>
+          </div>
+          <p class="small" id="txStatus"></p>
+        </section>
+        <section class="card">
+          <h2>Sent (this session)</h2>
+          <ul id="txSent" class="list"></ul>
+        </section>
+      </div>
+
+      <!-- ===================== MARKETPLACE ===================== -->
+      <div id="tab-market" class="hidden">
+        <section class="card">
+          <div class="grid">
+            <div><label>Floor (lowest sell)</label><b id="mkFloor">–</b></div>
+            <div><label>Best bid</label><b id="mkBestBid">–</b></div>
+            <div><label>Last trade</label><b id="mkLast">–</b></div>
+            <div><label>Volume (recent)</label><b id="mkVolume">–</b></div>
+            <div><label>Fee</label><b id="mkFee">–</b></div>
+            <div><label>Your <span class="sym">XYZ</span></label><b id="mkBal">–</b></div>
+            <div><label>Your ETH</label><b id="mkBalEth">–</b></div>
+          </div>
+          <p class="small muted">Live · har 4 sec update. Prices = ETH per 1 token.</p>
+        </section>
+
+        <section class="card hidden" id="mkTrade">
+          <h2 id="mkTradeTitle"></h2>
+          <p class="small" id="mkTradeInfo"></p>
+          <label for="mkTradeAmt">Amount (tokens)</label>
+          <div class="row nowrap">
+            <input id="mkTradeAmt" class="field" inputmode="decimal" />
+            <button id="mkTradeMax" class="secondary">Max</button>
+          </div>
+          <p><b id="mkTradeCost">–</b></p>
+          <div class="row">
+            <button id="mkTradeGo">Confirm</button>
+            <button id="mkTradeClose" class="secondary">Close</button>
+          </div>
+        </section>
+
+        <div class="two">
+          <section class="card">
+            <h2>🔴 Sell orders <span class="small muted">(tum khareed sakte ho)</span></h2>
+            <div class="tablewrap"><table id="mkAsks" class="book"></table></div>
+          </section>
+          <section class="card">
+            <h2>🟢 Buy orders <span class="small muted">(tum bech sakte ho)</span></h2>
+            <div class="tablewrap"><table id="mkBids" class="book"></table></div>
+          </section>
         </div>
-        <p class="small">Claim dabao → wallet mein approve karo → tokens seedha tere wallet mein. Jaldi karo: agar kisi aur ne yeh block pehle claim kar liya toh yeh solution expire ho jayega aur mining next block pe chalu ho jayegi.</p>
-      </section>
 
-      <section class="card">
-        <h2>My blocks</h2>
-        <ul id="myBlocks" class="list"><li class="muted">None yet</li></ul>
-      </section>
+        <section class="card">
+          <h2>Create order</h2>
+          <div class="seg">
+            <button id="mkSideSell" class="active">Sell</button>
+            <button id="mkSideBuy">Buy</button>
+          </div>
+          <label for="mkAmt">Amount (<span class="sym">XYZ</span>)</label>
+          <input id="mkAmt" class="field" inputmode="decimal" placeholder="e.g. 5000" />
+          <label for="mkPrice">Price per token (ETH)</label>
+          <input id="mkPrice" class="field" inputmode="decimal" placeholder="e.g. 0.000001" />
+          <p>Total: <b id="mkTotal">–</b></p>
+          <button id="mkCreate">List for sale</button>
+          <p class="small muted" id="mkCreateHint"></p>
+        </section>
 
-      <section class="card">
-        <h2>Recent blocks</h2>
-        <ul id="recent" class="list"><li class="muted">Loading…</li></ul>
-      </section>
+        <p class="small" id="mkStatus"></p>
+
+        <section class="card">
+          <h2>My open orders</h2>
+          <ul id="mkMine" class="list"></ul>
+        </section>
+
+        <section class="card">
+          <h2>Recent trades</h2>
+          <ul id="mkTrades" class="list"></ul>
+        </section>
+      </div>
     </main>
-    <footer class="small muted">Contract: <span class="mono" id="contractAddr"></span></footer>
+    <footer class="small muted">Token: <span class="mono" id="contractAddr"></span><br />Market: <span class="mono" id="marketAddr"></span></footer>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

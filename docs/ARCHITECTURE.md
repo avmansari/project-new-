@@ -201,14 +201,33 @@ npm run web                                # ya `npm run build -w web` karke Ver
 
 ```
 contracts/contracts/PowInscription.sol   ← core logic (PoW verify, reward, retarget, inscription, ERC-20)
+contracts/contracts/TokenMarket.sol       ← marketplace: sell listings + buy bids (ETH), partial fills, cancel, fee
+contracts/test/TokenMarket.test.js       ← 6 marketplace tests
 contracts/test/PowInscription.test.js    ← 11 tests (first-wins, anti-theft, 5000/block, retarget, stall…)
 contracts/scripts/deploy.js              ← deploy + ABI/address export to web & cli
 shared/pow-core.js                       ← input layout, batch miner, reward mirror
 shared/keccak-wgsl.js                    ← WebGPU Keccak-256 kernel (tested == CPU output)
-web/src/main.js                          ← UI + state machine
+web/src/main.js                          ← app shell: wallet, balances, tabs
+web/src/mine.js                          ← Mine tab (mining state machine + claim)
+web/src/transfer.js                      ← Transfer tab
+web/src/market.js                        ← Marketplace tab (order book, live polling)
+shared/gpu-name.js                       ← GPU ka poora naam (WebGL renderer string → "NVIDIA GeForce RTX 3060 Ti")
 web/src/engine.js                        ← CPU workers + GPU orchestration
 web/src/gpu-miner.js                     ← WebGPU host code
 web/src/cpu-worker.js                    ← CPU worker
 web/src/chain.js                         ← viem: read info, wallets, submit mint
 miner-cli/index.js, worker.js            ← headless miner
 ```
+
+---
+
+## 11. Marketplace (TokenMarket.sol)
+
+On-chain **order book**, ETH mein trading:
+
+- **Sell order (listing):** seller apne tokens contract mein lock karta hai (approve + list = 2 confirmations). Koi bhi poora ya thoda sa khareed sakta hai.
+- **Buy order (bid):** buyer apna ETH lock karta hai. Jiske paas tokens hain woh usme bech sakta hai.
+- **Cancel:** jo hissa bika nahi, woh wapas (tokens ya ETH).
+- **Fee:** `MARKET_FEE_BPS` (default 1%, max 5%), ETH side se kat ke `FEE_RECIPIENT` ko jaati hai. Owner baad mein `setFee` se badal sakta hai.
+- **Safety:** reentrancy guard, bid escrow exact track hota hai (rounding se kabhi zyada ETH nahi nikalta), extra ETH refund.
+- **Realtime:** website har 4 sec pe orders + trades refresh karti hai (sirf jab Marketplace tab khula ho).

@@ -34,12 +34,33 @@ async function main() {
   console.log("PowInscription deployed at:", address);
 
   const deployBlock = (await c.deploymentTransaction().wait()).blockNumber;
-  const explorer = hre.network.config.explorer;
-  if (explorer) console.log("Explorer:", `${explorer}/address/${address}`);
 
-  // Share address + ABI with the web app and CLI miner
+  // Marketplace (order book: listings + bids, paid in ETH)
+  const feeBps = Number(process.env.MARKET_FEE_BPS ?? 100); // 100 = 1%
+  const feeRecipient = process.env.FEE_RECIPIENT || deployer.address;
+  const M = await hre.ethers.getContractFactory("TokenMarket");
+  const m = await M.deploy(address, feeBps, feeRecipient);
+  await m.waitForDeployment();
+  const marketAddress = await m.getAddress();
+  console.log(`TokenMarket deployed at:    ${marketAddress} (fee ${feeBps / 100}% → ${feeRecipient})`);
+
+  const explorer = hre.network.config.explorer;
+  if (explorer) {
+    console.log("Explorer (token): ", `${explorer}/address/${address}`);
+    console.log("Explorer (market):", `${explorer}/address/${marketAddress}`);
+  }
+
+  // Share addresses + ABIs with the web app and CLI miner
   const artifact = await hre.artifacts.readArtifact("PowInscription");
-  const out = { address, chainId: Number(chainId), network: hre.network.name, deployBlock, abi: artifact.abi };
+  const marketArtifact = await hre.artifacts.readArtifact("TokenMarket");
+  const out = {
+    address,
+    chainId: Number(chainId),
+    network: hre.network.name,
+    deployBlock,
+    abi: artifact.abi,
+    market: { address: marketAddress, abi: marketArtifact.abi },
+  };
   for (const dir of ["../web/src", "../miner-cli"]) {
     const file = path.join(__dirname, "..", dir, "deployment.json");
     fs.writeFileSync(file, JSON.stringify(out, null, 2));

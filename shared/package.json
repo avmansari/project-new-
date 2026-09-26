@@ -4,7 +4,15 @@
   "private": true,
   "type": "module",
   "main": "pow-core.js",
-  "exports": { ".": "./pow-core.js", "./keccak-wgsl": "./keccak-wgsl.js" },
-  "scripts": { "test": "node --test" },
-  "dependencies": { "@noble/hashes": "^1.8.0" }
+  "exports": {
+    ".": "./pow-core.js",
+    "./keccak-wgsl": "./keccak-wgsl.js",
+    "./gpu-name": "./gpu-name.js"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@noble/hashes": "^1.8.0"
+  }
 }
