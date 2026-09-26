@@ -15,6 +15,7 @@
     "web": "npm run dev -w web",
     "mine": "npm start -w miner-cli",
     "fund": "npm run fund -w contracts --",
-    "new-wallet": "npm run new-wallet -w contracts"
+    "new-wallet": "npm run new-wallet -w contracts",
+    "testnet": "npm run testnet -w contracts"
   }
 }

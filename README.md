@@ -53,6 +53,8 @@ PRIVATE_KEY=0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d
 - Plain `http://` pe phone ka GPU (WebGPU) nahi chalega, sirf CPU chalega. GPU ke liye site HTTPS pe deploy karo (step 3).
 
 ### 3. Robinhood Chain testnet pe deploy
+> ⚡ **Shortcut: sab ek command mein.** `npm install` ke baad `npm run testnet` chalao. Yeh private key poochta hai (ya Enter dabao toh naya wallet banata hai), key `.env` mein save karta hai, faucet ETH aane ka wait karta hai, aur deploy kar deta hai.
+
 👉 **Poori checklist: [`docs/TESTNET.md`](docs/TESTNET.md)**. Faucet: https://faucet.testnet.chain.robinhood.com
 
 1. `contracts/.env.example` ko copy karke `contracts/.env` banao. Usme `PRIVATE_KEY` (testnet ETH waala wallet), `TOKEN_SYMBOL`, aur difficulty bharo.

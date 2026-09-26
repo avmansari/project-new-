@@ -2,6 +2,8 @@
 
 Pehle testnet → sab theek chala → phir mainnet.
 
+> ⚡ **Shortcut: sab ek command mein.** `npm install` ke baad `npm run testnet` chalao. Yeh private key poochta hai (ya Enter dabao toh naya wallet banata hai), key `.env` mein save karta hai, faucet ETH aane ka wait karta hai, aur deploy kar deta hai.
+
 ## Network details
 | | |
 |---|---|
