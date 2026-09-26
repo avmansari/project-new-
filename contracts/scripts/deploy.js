@@ -66,19 +66,22 @@ async function main() {
   const marketAddress = await m.getAddress();
   console.log(`TokenMarket deployed at:    ${marketAddress} (1 lot = ${hre.ethers.formatEther(lotSize)} tokens, fee ${feeBps / 100}% → ${feeRecipient})`);
 
-  // DEX pool (instant swaps in whole lots). Opens when someone adds the first liquidity.
-  const dexFeeBps = envNum("DEX_PROTOCOL_FEE_BPS", 200); // 200 = 2% protocol fee (+0.3% to LPs)
-  const P = await hre.ethers.getContractFactory("TokenPool");
-  const pool = await P.deploy(address, lotSize, dexFeeBps, feeRecipient);
-  await pool.waitForDeployment();
-  const poolAddress = await pool.getAddress();
-  console.log(`TokenPool deployed at:      ${poolAddress} (swap fee ${dexFeeBps / 100}% → fee wallet + 0.3% to LPs)`);
+  // DEX pool (instant swaps in whole lots) — OFF for now. Set DEPLOY_POOL=true (and VITE_ENABLE_DEX=true on the web) to use it.
+  let poolAddress = null;
+  if (process.env.DEPLOY_POOL === "true") {
+    const dexFeeBps = envNum("DEX_PROTOCOL_FEE_BPS", 200); // 200 = 2% protocol fee (+0.3% to LPs)
+    const P = await hre.ethers.getContractFactory("TokenPool");
+    const pool = await P.deploy(address, lotSize, dexFeeBps, feeRecipient);
+    await pool.waitForDeployment();
+    poolAddress = await pool.getAddress();
+    console.log(`TokenPool deployed at:      ${poolAddress} (swap fee ${dexFeeBps / 100}% → fee wallet + 0.3% to LPs)`);
+  }
 
   const explorer = hre.network.config.explorer;
   if (explorer) {
     console.log("Explorer (token): ", `${explorer}/address/${address}`);
     console.log("Explorer (market):", `${explorer}/address/${marketAddress}`);
-    console.log("Explorer (pool):  ", `${explorer}/address/${poolAddress}`);
+    if (poolAddress) console.log("Explorer (pool):  ", `${explorer}/address/${poolAddress}`);
   }
 
   // Share addresses + ABIs with the web app and CLI miner
@@ -92,7 +95,7 @@ async function main() {
     deployBlock,
     abi: artifact.abi,
     market: { address: marketAddress, abi: marketArtifact.abi },
-    pool: { address: poolAddress, abi: poolArtifact.abi },
+    ...(poolAddress ? { pool: { address: poolAddress, abi: poolArtifact.abi } } : {}),
   };
   for (const dir of ["../web/src", "../miner-cli"]) {
     const file = path.join(__dirname, "..", dir, "deployment.json");

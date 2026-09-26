@@ -53,8 +53,8 @@ async function render() {
   $("adClaimN").textContent = `${c.length} claims ${usdOf(claimFees)}`;
   $("adMarket").textContent = fmtEth(marketFees, 6);
   $("adMarketN").textContent = `${t.length} trades ${usdOf(marketFees)}`;
-  $("adDex").textContent = fmtEth(dexFees, 6);
-  $("adDexN").textContent = `${s.length} swaps ${usdOf(dexFees)}`;
+  if ($("adDex")) $("adDex").textContent = fmtEth(dexFees, 6);
+  if ($("adDexN")) $("adDexN").textContent = `${s.length} swaps ${usdOf(dexFees)}`;
 
   const miners = new Set(c.map((x) => lc(x.who)));
   const traders = new Set([...t, ...s].flatMap((x) => x.who.map(lc)));
@@ -66,7 +66,7 @@ async function render() {
   const bookVol = sum(t, (x) => x.vol);
   const dexVol = sum(s, (x) => x.vol);
   $("adBookVol").textContent = `${fmtEth(bookVol, 4)} ${usdOf(bookVol)}`;
-  $("adDexVol").textContent = `${fmtEth(dexVol, 4)} ${usdOf(dexVol)}`;
+  if ($("adDexVol")) $("adDexVol").textContent = `${fmtEth(dexVol, 4)} ${usdOf(dexVol)}`;
   $("adBlocks").textContent = c.length.toLocaleString("en");
   $("adTrades").textContent = (t.length + s.length).toLocaleString("en");
 
@@ -86,7 +86,8 @@ async function render() {
 async function loadInfo() {
   info = await chain.adminInfo();
   $("adSettings").textContent =
-    `Claim fee: ${fmtEth(info.mintFee, 8)} ${usdOf(info.mintFee)} · marketplace fee: ${Number(info.marketFee ?? 0) / 100}% · DEX fee: ${Number(info.poolFee ?? 0) / 100}% (+0.3% LPs) · ` +
+    `Claim fee: ${fmtEth(info.mintFee, 8)} ${usdOf(info.mintFee)} · marketplace fee: ${Number(info.marketFee ?? 0) / 100}% · ` +
+    (chain.hasPool ? `DEX fee: ${Number(info.poolFee ?? 0) / 100}% (+0.3% LPs) · ` : "") +
     `fee wallet: ${short(info.feeRecipient)} · owner: ${short(info.tokenOwner)}`;
 }
 
@@ -146,7 +147,7 @@ $("adSyncFee").onclick = () =>
   });
 $("adMarketFeeGo").onclick = () =>
   act("Marketplace fee update", () => chain.adminCall(wallet, "market", "setFee", [pctToBps($("adMarketFee").value), info.marketRecipient]));
-$("adDexFeeGo").onclick = () => act("DEX fee update", () => chain.adminCall(wallet, "pool", "setFee", [pctToBps($("adDexFee").value), info.poolRecipient]));
+if ($("adDexFeeGo")) $("adDexFeeGo").onclick = () => act("DEX fee update", () => chain.adminCall(wallet, "pool", "setFee", [pctToBps($("adDexFee").value), info.poolRecipient]));
 $("adRecipientGo").onclick = () =>
   act("Fee wallet update", async () => {
     const r = $("adRecipient").value.trim();
@@ -156,6 +157,7 @@ $("adRecipientGo").onclick = () =>
     if (chain.hasPool) await chain.adminCall(wallet, "pool", "setFee", [info.poolFee, r]);
   });
 
+if (!chain.hasPool) document.querySelectorAll(".dex-only").forEach((el) => el.remove());
 chain.getSymbol().then((s) => document.querySelectorAll(".sym").forEach((el) => (el.textContent = s))).catch(() => {});
 ethUsd();
 indexer.start();

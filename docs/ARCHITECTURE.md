@@ -165,7 +165,10 @@ On-chain **order book** traded in ETH, **whole lots only**:
 - **Fee:** `MARKET_FEE_BPS` (default **2%**, max 5%) of the ETH side, sent to `FEE_RECIPIENT` (also on accepted offers).
 - **Safety:** reentrancy guard, payment checked before any transfer, overpayment refunds.
 
-## 8a. DEX pool (`TokenPool.sol`)
+## 8a. DEX pool (`TokenPool.sol`): switched OFF for now
+
+> Not deployed and hidden in the UI by default. To enable later: `DEPLOY_POOL=true` in `contracts/.env` when deploying, and `VITE_ENABLE_DEX=true` for the website. Someone (usually the project) must add the first liquidity.
+
 
 Uniswap-V2-style constant-product pool (`x × y = k`) for TOKEN ↔ ETH, for **instant** trades without waiting for an order:
 - **Whole lots only:** `buyLots(n)` pays ETH for exactly n lots, `sellLots(n)` sells exactly n lots. 1% slippage protection in the UI.

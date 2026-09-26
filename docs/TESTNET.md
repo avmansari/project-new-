@@ -49,7 +49,6 @@ INITIAL_DIFFICULTY_BITS=27
 FEE_RECIPIENT=0x<wallet that receives all fees; empty = deployer>
 MINT_FEE_USD=0.1
 MARKET_FEE_BPS=200
-DEX_PROTOCOL_FEE_BPS=200
 ```
 Then:
 ```bash
@@ -97,7 +96,6 @@ CLI too: put `PRIVATE_KEY=...` in `miner-cli/.env`, then `npm run mine`.
 - [ ] Claim fee: each claim sends ~$0.10 of ETH to the fee wallet; `npm run set-fee` updates it
 - [ ] Stats tab: leaderboard and charts fill in; Marketplace: price chart, 24h stats, quick buy; Transfer: your activity
 - [ ] Order expiry (list with 24h, check it disappears after 24h, Reclaim) and Make offer → Accept
-- [ ] DEX: open the pool (first liquidity), instant buy/sell, 2% fee arrives, remove liquidity
 - [ ] Share card after a claim: Share on X / Download work on phone + desktop
 - [ ] Owner dashboard `/admin.html` shows revenue; hosted indexer (`indexer/README.md`) running and `VITE_INDEXER_URL` set
 - [ ] Note the gas cost per claim and per trade (how much ETH users need)

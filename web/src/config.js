@@ -25,5 +25,11 @@ export const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || deploym
 export const ABI = deployment.abi;
 export const DEPLOY_BLOCK = BigInt(deployment.deployBlock ?? 0);
 export const MARKET = import.meta.env.VITE_MARKET_ADDRESS ? { ...deployment.market, address: import.meta.env.VITE_MARKET_ADDRESS } : deployment.market ?? null;
-export const POOL = import.meta.env.VITE_POOL_ADDRESS ? { ...deployment.pool, address: import.meta.env.VITE_POOL_ADDRESS } : deployment.pool ?? null;
+// DEX pool (instant swap + liquidity) is switched OFF for now. Set VITE_ENABLE_DEX=true to turn it back on.
+export const DEX_ENABLED = import.meta.env.VITE_ENABLE_DEX === "true";
+export const POOL = !DEX_ENABLED
+  ? null
+  : import.meta.env.VITE_POOL_ADDRESS
+    ? { ...deployment.pool, address: import.meta.env.VITE_POOL_ADDRESS }
+    : (deployment.pool ?? null);
 export const POLL_MS = 2500;

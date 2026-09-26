@@ -49,7 +49,7 @@ Details: [`TESTNET.md`](TESTNET.md)
 1. Fill `RH_MAINNET_RPC`, `RH_MAINNET_CHAIN_ID` (from the official docs) and a new `PRIVATE_KEY` in `contracts/.env`.
 2. Add the mainnet chain in `web/src/config.js` (same shape as the testnet block, with the new chainId/RPC/explorer).
 3. Run `npx hardhat run scripts/deploy.js --network robinhood` (inside `contracts/`).
-4. **Open the DEX pool:** add the first liquidity (ETH + lots) from the Marketplace tab; this sets the starting price.
+4. *(Optional, later)* **DEX pool:** deploy with `DEPLOY_POOL=true`, set `VITE_ENABLE_DEX=true`, and add the first liquidity (ETH + lots) from the Marketplace tab to set the starting price.
 5. Transfer ownership of **all three** contracts (token: claim fee; market + pool: trading fees) to the multisig, and set `FEE_RECIPIENT` to the wallet you want the revenue in.
 6. Commit the mainnet `deployment.json` → Vercel redeploys automatically.
 7. Announce the launch with an exact **start time** so everyone starts together (fair launch).

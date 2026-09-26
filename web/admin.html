@@ -40,7 +40,7 @@
             <div><label>Total revenue</label><b id="adTotal">–</b><div class="small muted" id="adTotalUsd"></div></div>
             <div><label>Claim fees</label><b id="adClaim">–</b><div class="small muted" id="adClaimN"></div></div>
             <div><label>Marketplace fees</label><b id="adMarket">–</b><div class="small muted" id="adMarketN"></div></div>
-            <div><label>DEX fees</label><b id="adDex">–</b><div class="small muted" id="adDexN"></div></div>
+            <div class="dex-only"><label>DEX fees</label><b id="adDex">–</b><div class="small muted" id="adDexN"></div></div>
             <div><label>Fee wallet balance</label><b id="adWallet">–</b><div class="small muted mono" id="adWalletAddr"></div></div>
           </div>
         </section>
@@ -58,7 +58,7 @@
             <div><label>Traders</label><b id="adTraders">–</b></div>
             <div><label>Holders (now)</label><b id="adHolders">–</b></div>
             <div><label>Order-book volume</label><b id="adBookVol">–</b></div>
-            <div><label>DEX volume</label><b id="adDexVol">–</b></div>
+            <div class="dex-only"><label>DEX volume</label><b id="adDexVol">–</b></div>
             <div><label>Blocks mined</label><b id="adBlocks">–</b></div>
             <div><label>Trades</label><b id="adTrades">–</b></div>
           </div>
@@ -72,9 +72,11 @@
           </div>
           <label for="adMarketFee">Marketplace fee (%)</label>
           <div class="row nowrap"><input id="adMarketFee" class="field" inputmode="decimal" placeholder="2" /><button id="adMarketFeeGo" class="secondary">Update</button></div>
-          <label for="adDexFee">DEX protocol fee (%)</label>
-          <div class="row nowrap"><input id="adDexFee" class="field" inputmode="decimal" placeholder="2" /><button id="adDexFeeGo" class="secondary">Update</button></div>
-          <label for="adRecipient">Fee wallet (all 3 contracts)</label>
+          <div class="dex-only">
+            <label for="adDexFee">DEX protocol fee (%)</label>
+            <div class="row nowrap"><input id="adDexFee" class="field" inputmode="decimal" placeholder="2" /><button id="adDexFeeGo" class="secondary">Update</button></div>
+          </div>
+          <label for="adRecipient">Fee wallet (all contracts)</label>
           <div class="row nowrap"><input id="adRecipient" class="field mono" placeholder="0x…" /><button id="adRecipientGo" class="secondary">Update</button></div>
           <p class="small" id="adStatus"></p>
         </section>

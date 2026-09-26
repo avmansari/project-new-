@@ -5,9 +5,9 @@ Users mine with their **CPU, GPU (WebGPU) or phone browser**. The **first** mine
 claims **5,000 tokens** straight into their connected wallet (21M supply = 4,200 blocks). Difficulty adjusts after every block to target ~2 minutes per block.
 The same user can win any number of blocks.
 
-The website has 4 tabs: **Mine** · **Transfer** (+ your activity) · **Marketplace** (on-chain order book, whole lots only: 1 lot = 5,000 tokens, priced in ETH per lot, order expiry, make offer, quick buy, instant DEX swap + liquidity, price chart, 24h stats) · **Stats** (leaderboard, hashrate / block time / difficulty charts). Wallets: MetaMask, Rabby, Coinbase, OKX, Trust… plus WalletConnect.
+The website has 4 tabs: **Mine** · **Transfer** (+ your activity) · **Marketplace** (on-chain order book, whole lots only: 1 lot = 5,000 tokens, priced in ETH per lot, order expiry, make offer, quick buy, price chart, 24h stats) · **Stats** (leaderboard, hashrate / block time / difficulty charts). Wallets: MetaMask, Rabby, Coinbase, OKX, Trust… plus WalletConnect.
 
-**Fees (project revenue, all to one wallet):** $0.10 in ETH per claimed lot + 2% of marketplace volume + 2% DEX protocol fee. Owner dashboard at `/admin.html`. Hosted indexer in [`indexer/`](indexer). See [Fees](docs/ARCHITECTURE.md#8b-fees-project-revenue).
+**Fees (project revenue, all to one wallet):** $0.10 in ETH per claimed lot + 2% of marketplace volume. (A DEX pool is built but switched off for now: `DEPLOY_POOL=true` + `VITE_ENABLE_DEX=true` to turn it on.) Owner dashboard at `/admin.html`. Hosted indexer in [`indexer/`](indexer). See [Fees](docs/ARCHITECTURE.md#8b-fees-project-revenue).
 
 - 📐 Architecture: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 - 🧪 Testnet launch checklist: [`docs/TESTNET.md`](docs/TESTNET.md)
