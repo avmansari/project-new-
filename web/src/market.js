@@ -50,7 +50,8 @@ async function refresh() {
     state.offers = offers;
     swapUi.refresh();
     state.feeBps = feeBps;
-    render();
+    // re-derive the 24h stats too: they are shown in $ and the ETH price may have just arrived
+    renderHistory();
   } catch (e) {
     setStatus("Market load error: " + errMsg(e));
   }
