@@ -1,7 +1,7 @@
 // Mining engine: runs CPU workers and/or the WebGPU kernel on the current job.
 import { createGpuMiner } from "./gpu-miner.js";
 
-export function createEngine({ onHashrate, onFound }) {
+export function createEngine({ onHashrate, onFound, onSample }) {
   let workers = [];
   let gpu = null;
   let gpuTried = false;
@@ -9,6 +9,14 @@ export function createEngine({ onHashrate, onFound }) {
   let hashes = 0;
   let totalHashes = 0;
   let timer = null;
+  let best = null; // lowest digest seen for the current job (hex)
+
+  const sample = (digest, bestHex) => {
+    if (!job) return;
+    // same-length lowercase hex strings compare like the numbers they encode
+    for (const d of [bestHex, digest]) if (d && (!best || d < best)) best = d;
+    onSample?.(digest, best);
+  };
 
   const foundOnce = (sol) => {
     if (!job) return;
@@ -21,8 +29,10 @@ export function createEngine({ onHashrate, onFound }) {
     for (let i = 0; i < threads; i++) {
       const w = new Worker(new URL("./cpu-worker.js", import.meta.url), { type: "module" });
       w.onmessage = (e) => {
-        if (e.data.type === "hashes") hashes += e.data.n;
-        else if (e.data.type === "found") foundOnce({ nonce: BigInt(e.data.nonce), digest: e.data.digest });
+        if (e.data.type === "hashes") {
+          hashes += e.data.n;
+          sample(e.data.sample, e.data.best);
+        } else if (e.data.type === "found") foundOnce({ nonce: BigInt(e.data.nonce), digest: e.data.digest });
       };
       w.postMessage({ type: "start", challenge: job.challenge, miner: job.miner, target: job.target.toString(), workerIndex: i });
       workers.push(w);
@@ -41,7 +51,10 @@ export function createEngine({ onHashrate, onFound }) {
     }
     if (!gpu) return false;
     const myJob = job;
-    gpu.mine(myJob, (n) => (hashes += n)).then((sol) => sol && myJob === job && foundOnce(sol));
+    gpu.mine(myJob, (n, digest) => {
+      hashes += n;
+      sample(digest);
+    }).then((sol) => sol && myJob === job && foundOnce(sol));
     return true;
   }
 
@@ -49,6 +62,7 @@ export function createEngine({ onHashrate, onFound }) {
     stop();
     job = newJob;
     hashes = 0;
+    best = null;
     let gpuOk = false;
     if (useGpu) gpuOk = await startGpu();
     if (threads > 0) startCpu(threads);

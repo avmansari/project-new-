@@ -102,6 +102,27 @@ export function mineBatch(input, targetBytes, start, count) {
   return { found: false, hashes: count };
 }
 
+/**
+ * Same as mineBatch, but also keeps the lowest digest seen in `best` (a 32-byte buffer, updated in place).
+ * Used by the browser miner to show "best hash so far"; the extra check is one byte compare per hash.
+ */
+export function mineBatchBest(input, targetBytes, start, count, best) {
+  const t0 = targetBytes[0];
+  for (let i = 0; i < count; i++) {
+    writeU32BE(input, 80, (start + i) >>> 0);
+    const d = keccak_256(input);
+    if (d[0] <= best[0] && lte(d, best)) best.set(d);
+    if (d[0] > t0) continue;
+    if (lte(d, targetBytes)) {
+      return { found: true, nonce: nonceFromInput(input), digest: d, hashes: i + 1 };
+    }
+  }
+  return { found: false, hashes: count };
+}
+
+/** keccak256 of the current 84-byte input (a sample hash for the live hash stream). */
+export const hashInput = (input) => keccak_256(input);
+
 /** Expected hashes to find a block at `target` (for ETA display). */
 export function expectedHashes(target) {
   return Number((2n ** 256n) / (BigInt(target) + 1n));

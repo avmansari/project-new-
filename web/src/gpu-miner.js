@@ -1,7 +1,7 @@
 // WebGPU miner: runs the Keccak kernel from @pow/shared on the device GPU.
 // Works on desktop Chrome/Edge and Android Chrome (WebGPU enabled). Falls back to CPU if unavailable.
 import { KECCAK_MINER_WGSL, WORKGROUP_SIZE, packParams } from "@pow/shared/keccak-wgsl";
-import { buildInput, bigToBytes32, digestFor, writeU32BE, nonceFromInput, lte, bytesToHex } from "@pow/shared";
+import { buildInput, bigToBytes32, digestFor, writeU32BE, nonceFromInput, lte, bytesToHex, hashInput } from "@pow/shared";
 
 export async function createGpuMiner() {
   if (!("gpu" in navigator)) return null;
@@ -53,7 +53,7 @@ export async function createGpuMiner() {
     name: adapter.info?.description || adapter.info?.vendor || "WebGPU",
     /**
      * job = { challenge, miner, target (bigint) }
-     * onHashes(n) called with hashes done; resolves with {nonce, digest} or null when stopped.
+     * onHashes(n, sampleDigestHex) called after every dispatch; resolves with {nonce, digest} or null when stopped.
      */
     async mine(job, onHashes) {
       const myRun = ++runId;
@@ -83,7 +83,8 @@ export async function createGpuMiner() {
         const t0 = performance.now();
         const hit = await dispatch(input, targetBytes, base);
         const dt = performance.now() - t0;
-        onHashes?.(perDispatch);
+        writeU32BE(input, 80, base); // one CPU-side sample digest per dispatch for the live hash stream
+        onHashes?.(perDispatch, bytesToHex(hashInput(input)));
         if (hit !== null) {
           writeU32BE(input, 80, hit);
           const nonce = nonceFromInput(input);

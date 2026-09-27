@@ -2,14 +2,13 @@
 // Everything comes from BlockMined events via the in-browser indexer.
 import { indexer } from "./indexer.js";
 import { lineChart, onResize } from "./charts.js";
-import { $, store, on, fmtNum, fmtTok, fmtDur, short } from "./store.js";
+import { $, store, on, fmtTok, fmtDur, fmtRate, short } from "./store.js";
 
 const TOTAL_BLOCKS = 4200;
 const RANGES = { "24h": 86400, "7d": 7 * 86400, all: Infinity };
 let range = "24h";
 
 const workOf = (target) => Number(2n ** 256n / (BigInt(target) + 1n)); // expected hashes for one block
-const fmtRate = (h) => `${fmtNum(h)} H/s`;
 
 function blocks() {
   return indexer
@@ -33,6 +32,17 @@ export function networkHashrate() {
   return secs > 0 ? recent.slice(1).reduce((s, b) => s + workOf(b.target), 0) / secs : null;
 }
 
+/** Network hashrate estimate between each of the last `n` blocks (oldest first), for sparkline bars. */
+export function recentHashrates(n = 24) {
+  const all = blocks().slice(-(n + 1));
+  const out = [];
+  for (let i = 1; i < all.length; i++) {
+    const secs = (all[i].t - all[i - 1].t) / 1000;
+    out.push(secs > 0 ? workOf(all[i].target) / secs : 0);
+  }
+  return out;
+}
+
 function inRange(list) {
   const cutoff = Date.now() - RANGES[range] * 1000;
   return list.filter((b) => b.t >= cutoff);
@@ -43,8 +53,8 @@ function render() {
   const now = Date.now();
 
   // ---- tiles (always network-wide, not range-filtered)
-  $("stBlocks").textContent = `${all.length.toLocaleString("en")} / ${TOTAL_BLOCKS.toLocaleString("en")}`;
-  $("stMined").textContent = `${((all.length / TOTAL_BLOCKS) * 100).toFixed(2)}%`;
+  $("stBlocks").textContent = all.length.toLocaleString("en");
+  $("stMined").textContent = `of ${TOTAL_BLOCKS.toLocaleString("en")} · ${((all.length / TOTAL_BLOCKS) * 100).toFixed(2)}% of supply mined`;
   $("stLeft").textContent = (TOTAL_BLOCKS - all.length).toLocaleString("en");
   const recent = all.slice(-21);
   const avg = recent.length > 1 ? (recent[recent.length - 1].t - recent[0].t) / 1000 / (recent.length - 1) : null;

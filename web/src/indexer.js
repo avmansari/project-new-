@@ -84,9 +84,32 @@ async function catchUp(src, latest) {
 }
 
 const listeners = new Set();
+/** One broken view must not stop the others (or later updates) from rendering. */
+const notify = (fn) => {
+  try {
+    fn();
+  } catch (e) {
+    console.error("indexer listener:", e);
+  }
+};
 const sources = [];
 let running = false;
 let loaded = false;
+let inflight = null;
+
+async function refreshNow() {
+  let added = 0;
+  if (INDEXER_URL) {
+    for (const s of sources) added += await catchUpHosted(s);
+  } else {
+    // cacheTime 0: right after a transaction we need the new block, not viem's cached number
+    const latest = await chain.publicClient.getBlockNumber({ cacheTime: 0 });
+    for (const s of sources) added += await catchUp(s, latest);
+  }
+  const first = !loaded;
+  loaded = true;
+  if (added || first) listeners.forEach(notify);
+}
 
 export const indexer = {
   /** Events of one contract: "token" | "market" | "pool", optionally filtered by event name. */
@@ -99,20 +122,16 @@ export const indexer = {
   /** fn() is called after every update (and immediately if data is already loaded). */
   subscribe(fn) {
     listeners.add(fn);
-    if (loaded) fn();
+    if (loaded) notify(fn);
     return () => listeners.delete(fn);
   },
-  async refresh() {
-    let added = 0;
-    if (INDEXER_URL) {
-      for (const s of sources) added += await catchUpHosted(s);
-    } else {
-      const latest = await chain.publicClient.getBlockNumber();
-      for (const s of sources) added += await catchUp(s, latest);
-    }
-    const first = !loaded;
-    loaded = true;
-    if (added || first) listeners.forEach((fn) => fn());
+  /** Pull new events now. Calls are queued, so two refreshes never scan the same blocks at once. */
+  refresh() {
+    const run = (inflight ?? Promise.resolve()).catch(() => {}).then(refreshNow);
+    inflight = run;
+    return run.finally(() => {
+      if (inflight === run) inflight = null;
+    });
   },
   start() {
     if (running) return;

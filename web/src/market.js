@@ -1,7 +1,7 @@
 // Marketplace tab: on-chain order book, traded ONLY in whole lots (1 lot = 5,000 tokens).
 // Prices are shown and entered in US dollars; on-chain they are ETH (converted at the current ETH/USD price).
 import * as chain from "./chain.js";
-import { $, store, on, emit, fmtAmt, short, errMsg } from "./store.js";
+import { $, store, on, emit, fmtAmt, fmtDur, short, errMsg, avatar } from "./store.js";
 import { indexer } from "./indexer.js";
 import { candleChart, onResize } from "./charts.js";
 import { usd, usdToWei, ethUsd, ethUsdCached } from "./price.js";
@@ -11,7 +11,7 @@ import { track } from "./analytics.js";
 let swapUi = { refresh() {} };
 
 const REFRESH_MS = 4000;
-const state = { orders: [], offers: [], trades: [], feeBps: 0n, lotSize: 0n, side: "sell", selected: null, busy: false, timer: null };
+const state = { orders: [], offers: [], trades: [], feeBps: 0n, lotSize: 0n, side: "sell", selected: null, busy: false, timer: null, lsort: "cheap", change24: null };
 
 const setStatus = (s) => ($("mkStatus").textContent = s);
 const me = () => store.wallet?.address.toLowerCase();
@@ -66,7 +66,9 @@ function render() {
   // stats
   $("mkFloor").textContent = asks.length ? usd(asks[0].pricePerLot) : "–";
   $("mkBestBid").textContent = bids.length ? usd(bids[0].pricePerLot) : "–";
-  $("mkLast").textContent = state.trades.length ? usd(state.trades[0].pricePerLot) : "–";
+  $("mkLast").textContent = state.trades.length ? usd(state.trades[0].pricePerLot) : asks.length ? usd(asks[0].pricePerLot) : "–";
+  renderGallery(asks);
+  renderDepth(asks, bids);
   $("mkFee").textContent = `${Number(state.feeBps) / 100}%`;
   state.asks = asks;
   updateQuickBuy();
@@ -123,13 +125,15 @@ function render() {
         .join("")
     : `<li class="muted">${store.wallet ? "You have no open offers" : "Connect your wallet"}</li>`;
 
+  const now = Date.now();
   $("mkTrades").innerHTML = state.trades.length
     ? state.trades
-        .slice(0, 30)
+        .slice(0, 12)
         .map((t) => {
           const url = chain.explorerTx(t.tx);
-          const who = t.src === "dex" ? `DEX ${t.buyer === chain.POOL_CONTRACT?.address ? "sell" : "buy"} by ${short(t.buyer === chain.POOL_CONTRACT?.address ? t.seller : t.buyer)}` : `${short(t.seller)} → ${short(t.buyer)}`;
-          return `<li>${lotsLabel(t.lots)} @ ${usd(t.pricePerLot)} / lot · <span class="mono small">${who}</span> ${url ? `· <a href="${url}" target="_blank" rel="noopener">tx</a>` : ""}</li>`;
+          const buyer = t.src === "dex" && t.buyer === chain.POOL_CONTRACT?.address ? t.seller : t.buyer;
+          const ago = `${fmtDur(Math.max(0, (now - t.t) / 1000))}`;
+          return `<li><span class="bid">${lotsLabel(t.lots)}</span><span>${usd(t.pricePerLot)}</span><span class="muted" title="buyer">${short(buyer)}</span>${url ? `<a href="${url}" target="_blank" rel="noopener" class="muted">${ago} ↗</a>` : `<span class="muted">${ago}</span>`}</li>`;
         })
         .join("")
     : `<li class="muted">No trades yet</li>`;
@@ -143,13 +147,81 @@ function render() {
   updateCreateTotal();
 }
 
+// ---------------- lots gallery + depth book ----------------
+/** Deterministic "hash art" text for a listing card. */
+function artFor(o) {
+  let x = Number(o.id % 2147483647n) * 2654435761 + parseInt(o.maker.slice(2, 10), 16);
+  let out = "";
+  for (let i = 0; i < 300; i++) {
+    x ^= x << 13;
+    x ^= x >>> 17;
+    x ^= x << 5;
+    out += "0123456789abcdef"[(x >>> 0) % 16];
+  }
+  return out;
+}
+
+function renderGallery(asks) {
+  const cmp = { cheap: () => 0, new: (a, b) => (a.id < b.id ? 1 : -1), big: (a, b) => (a.lots < b.lots ? 1 : a.lots > b.lots ? -1 : 0) }[state.lsort];
+  const list = asks.slice().sort(cmp);
+  const totalLots = asks.reduce((s, o) => s + o.lots, 0n);
+  $("mkListedCount").textContent = asks.length ? `· ${asks.length} listing${asks.length === 1 ? "" : "s"} · ${totalLots} lots` : "";
+  $("mkGallery").innerHTML = list.length
+    ? list
+        .slice(0, 24)
+        .map((o) => {
+          const tag = mine(o) ? "yours" : o === asks[0] ? "🔥 floor" : o.lots >= 5n ? "bulk" : "";
+          return `<div class="card hover lot">
+            <div class="art"><pre>${artFor(o)}</pre><span class="num">LOT #${String(o.id).padStart(4, "0")}</span>${tag ? `<span class="pill tag2">${tag}</span>` : ""}</div>
+            <div class="body">
+              <div class="row between" style="margin:0"><span class="price">${usd(o.pricePerLot)}</span><span class="muted mono small">${lotsLabel(o.lots)}</span></div>
+              <div class="row between" style="margin:10px 0 0;flex-wrap:nowrap"><span class="seller">${avatar(o.maker, 18)}${mine(o) ? "you" : `${o.maker.slice(0, 6)}…`}</span>${
+                mine(o) ? `<button class="mini secondary" data-cancel="${o.id}">Cancel</button>` : `<button class="mini" data-pick="${o.id}">Buy</button>`
+              }</div>
+              <div class="muted small" style="margin-top:6px">${timeLeft(o) === "never" ? "no expiry" : `expires in ${timeLeft(o)}`}</div>
+            </div></div>`;
+        })
+        .join("")
+    : `<div class="card muted">No lots listed right now. Be the first: use <b>Sell</b> on the right.</div>`;
+}
+
+function renderDepth(asks, bids) {
+  const a = asks.slice(0, 6).reverse();
+  const b = bids.slice(0, 6);
+  const maxLots = [...a, ...b].reduce((m, o) => (o.lots > m ? o.lots : m), 1n);
+  const row = (o, side) => {
+    const w = Math.max(6, Number((o.lots * 100n) / maxLots));
+    const bg = side === "ask" ? "rgba(230,103,103,.14)" : "rgba(57,135,229,.16)";
+    return `<tr ${mine(o) ? "" : `data-pick="${o.id}"`} style="background:linear-gradient(270deg, ${bg} ${w}%, transparent ${w}%)" title="${mine(o) ? "your order" : side === "ask" ? "click to buy" : "click to sell"}"><td class="${side}">${usd(o.pricePerLot)}</td><td>${lotsLabel(o.lots)}</td><td class="muted" style="text-align:right">${usd(chain.costOf(o.lots, o.pricePerLot))}</td></tr>`;
+  };
+  const mid = state.trades.length ? usd(state.trades[0].pricePerLot) : "–";
+  const ch = state.change24;
+  $("mkDepth").innerHTML =
+    (a.map((o) => row(o, "ask")).join("") || `<tr><td colspan="3" class="muted">No sell orders</td></tr>`) +
+    `<tr class="mid"><td colspan="3">${mid} ${ch === null ? "" : `<span class="${ch >= 0 ? "up" : "down"}" style="font-size:12px">${ch >= 0 ? "▲" : "▼"}</span>`}</td></tr>` +
+    (b.map((o) => row(o, "bid")).join("") || `<tr><td colspan="3" class="muted">No buy orders</td></tr>`);
+  $("mkSpread").textContent = asks.length && bids.length ? `spread ${usd(asks[0].pricePerLot > bids[0].pricePerLot ? asks[0].pricePerLot - bids[0].pricePerLot : 0n)}` : "";
+}
+
+/** Right panel: Buy (quick buy) | Sell (list lots) | Bid (buy order). */
+function showPane(which) {
+  $("qbPane").classList.toggle("hidden", which !== "buy");
+  $("mkCreatePane").classList.toggle("hidden", which === "buy");
+  $("qbTab").classList.toggle("active", which === "buy");
+  if (which !== "buy") setSide(which === "bid" ? "buy" : "sell");
+  else {
+    $("mkSideSell").classList.remove("active");
+    $("mkSideBuy").classList.remove("active");
+  }
+}
+
 // ---------------- fill an existing order ----------------
 function pickOrder(id) {
   const o = state.orders.find((x) => x.id === id);
   if (!o) return;
   state.selected = o;
   $("mkTrade").classList.remove("hidden");
-  $("mkTradeTitle").textContent = o.isBid ? `Sell lots into buy order #${o.id}` : `Buy lots from sell order #${o.id}`;
+  $("mkTradeTitle").textContent = o.isBid ? `Sell into bid #${o.id}` : `Buy LOT #${String(o.id).padStart(4, "0")}`;
   $("mkTradeInfo").textContent = `${usd(o.pricePerLot)} per lot · ${lotsLabel(o.lots)} available`;
   $("mkTradeLots").value = "1";
   $("mkTradeGo").textContent = o.isBid ? "Sell lots" : "Buy lots";
@@ -157,7 +229,6 @@ function pickOrder(id) {
   $("mkOfferBox").classList.toggle("hidden", o.isBid);
   $("mkOfferPrice").value = "";
   render();
-  $("mkTrade").scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
 function closeTrade(msg) {
@@ -366,19 +437,31 @@ function renderHistory() {
   const day = state.trades.filter((t) => t.t >= now - 86400_000);
   const vol = day.reduce((s, t) => s + t.ethPaid, 0n);
   $("mk24Vol").textContent = usd(vol);
+  $("mk24Count").textContent = `${day.length} trade${day.length === 1 ? "" : "s"} · ${day.reduce((s, t) => s + t.lots, 0n)} lots`;
   if (day.length) {
     const prices = day.map((t) => t.pricePerLot);
     const hi = prices.reduce((a, b) => (b > a ? b : a));
     const lo = prices.reduce((a, b) => (b < a ? b : a));
-    $("mk24HL").textContent = `${fmtAmt(hi, 6)} / ${fmtAmt(lo, 6)}`;
+    $("mk24HL").textContent = `${usd(hi)} / ${usd(lo)}`;
   } else $("mk24HL").textContent = "–";
   // change: latest price vs the last price before the 24h window (or the first trade inside it)
   const before = state.trades.find((t) => t.t < now - 86400_000);
   const base = before ?? day[day.length - 1];
   if (state.trades.length && base && base !== state.trades[0]) {
     const pct = ((ethNum(state.trades[0].pricePerLot) - ethNum(base.pricePerLot)) / ethNum(base.pricePerLot)) * 100;
-    $("mk24Change").textContent = `${pct >= 0 ? "▲ +" : "▼ "}${pct.toFixed(2)}%`;
-  } else $("mk24Change").textContent = "–";
+    state.change24 = pct;
+    const txt = `${pct >= 0 ? "▲ +" : "▼ "}${pct.toFixed(2)}% 24h`;
+    for (const id of ["mk24Change", "mkLastChange"]) {
+      $(id).textContent = txt;
+      $(id).className = `${id === "mkLastChange" ? "pill " : "s "}${pct >= 0 ? "up" : "down"}`;
+    }
+  } else {
+    state.change24 = null;
+    $("mk24Change").textContent = "no change data yet";
+    $("mk24Change").className = "s";
+    $("mkLastChange").textContent = "";
+    $("mkLastChange").className = "pill hidden";
+  }
   $("mkHolders").textContent = holdersCount().toLocaleString("en");
   renderChart();
   render();
@@ -426,6 +509,8 @@ function quickPlan(want) {
 
 function updateQuickBuy() {
   const want = parseLots($("qbLots").value);
+  document.querySelectorAll("[data-q]").forEach((b) => b.classList.toggle("active", BigInt(b.dataset.q) === want));
+  $("qbTokens").textContent = want > 0n && state.lotSize ? `lot${want === 1n ? "" : "s"} · ${fmtAmt(want * state.lotSize, 0)} ${store.symbol}` : "lots";
   if (want <= 0n) return ($("qbPreview").textContent = "Enter whole lots (1, 2, 3…)");
   const { plan, missing } = quickPlan(want);
   if (!plan.length) return ($("qbPreview").textContent = "No listings to buy from right now");
@@ -459,8 +544,8 @@ export function initMarket() {
     return { show() {}, hide() {} };
   }
   swapUi = initSwap();
-  $("mkSideSell").onclick = () => setSide("sell");
-  $("mkSideBuy").onclick = () => setSide("buy");
+  $("mkSideSell").onclick = () => showPane("sell");
+  $("mkSideBuy").onclick = () => showPane("bid");
   $("mkLots").oninput = updateCreateTotal;
   $("mkPrice").oninput = updateCreateTotal;
   $("mkCreate").onclick = createOrder;
@@ -468,6 +553,7 @@ export function initMarket() {
   $("mkTradeGo").onclick = doTrade;
   $("mkOfferGo").onclick = makeOffer;
   $("mkTradeClose").onclick = () => closeTrade();
+  $("mkTrade").addEventListener("click", (e) => e.target === $("mkTrade") && closeTrade());
   $("mkTradeMax").onclick = () => {
     $("mkTradeLots").value = String(tradeMax());
     updateTradeCost();
@@ -475,6 +561,20 @@ export function initMarket() {
   stepper("mkLots", () => (state.side === "sell" ? myLots() : 0n));
   stepper("qbLots", () => (state.asks ?? []).filter((o) => !mine(o)).reduce((s, o) => s + o.lots, 0n));
   $("qbLots").oninput = updateQuickBuy;
+  $("qbChips").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-q]");
+    if (!b) return;
+    $("qbLots").value = b.dataset.q;
+    updateQuickBuy();
+  });
+  $("qbTab").onclick = () => showPane("buy");
+  document.querySelectorAll("[data-lsort]").forEach((b) => {
+    b.onclick = () => {
+      state.lsort = b.dataset.lsort;
+      document.querySelectorAll("[data-lsort]").forEach((x) => x.classList.toggle("active", x === b));
+      render();
+    };
+  });
   $("qbGo").onclick = quickBuy;
   document.querySelectorAll("[data-prange]").forEach((b) => {
     b.onclick = () => {
@@ -501,6 +601,7 @@ export function initMarket() {
     updateCreateTotal();
   });
   setSide("sell");
+  showPane("buy");
 
   // realtime: poll only while the tab is visible
   return {

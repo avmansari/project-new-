@@ -66,8 +66,8 @@ function draw({ height, gpu, symbol, reward, bits, hashrate, site }) {
   return c;
 }
 
-/** Build the card after a claim and show the share panel. */
-export async function showShareCard(info) {
+/** Build the card after a claim and show the share panel (open=false: build only, e.g. during auto-claim). */
+export async function showShareCard(info, { open = true } = {}) {
   const canvas = draw(info);
   const blob = await new Promise((r) => canvas.toBlob(r, "image/png"));
   if (current?.url) URL.revokeObjectURL(current.url);
@@ -75,9 +75,15 @@ export async function showShareCard(info) {
   const text = `I just mined block #${info.height} of $${info.symbol} ${info.gpu ? `with my ${info.gpu} ` : ""}⛏️ Proof-of-Work mining right in the browser on Robinhood Chain. Mine yours 👇`;
   current = { blob, url, text, name: `mined-block-${info.height}.png`, site: info.siteUrl };
   $("shareImg").src = url;
-  $("shareCard").classList.remove("hidden");
+  if (open) $("shareCard").classList.remove("hidden");
   const canShareFile = !!(navigator.canShare && navigator.canShare({ files: [new File([blob], current.name, { type: "image/png" })] }));
   $("shareNative").classList.toggle("hidden", !canShareFile);
+}
+
+/** Re-open the last share card (after the panel was closed). */
+export function reopenShare() {
+  if (current) $("shareCard").classList.remove("hidden");
+  return !!current;
 }
 
 function download() {

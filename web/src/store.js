@@ -39,3 +39,31 @@ export function needWallet() {
   alert("Please click 'Connect wallet' at the top first.");
   return false;
 }
+
+/** Deterministic gradient "blockie" for an address (inline HTML). */
+export function avatar(addr, size = 28) {
+  const a = String(addr || "0x000000").toLowerCase();
+  const h1 = parseInt(a.slice(2, 5), 16) % 360;
+  const h2 = (h1 + 60 + (parseInt(a.slice(5, 7), 16) % 120)) % 360;
+  return `<span class="av" style="width:${size}px;height:${size}px;background:conic-gradient(from ${h1}deg, hsl(${h1} 90% 60%), hsl(${h2} 90% 55%), hsl(${h1} 90% 60%))"></span>`;
+}
+
+/** Hashrate split into value + unit, e.g. [412.6, "MH/s"]. */
+export function rateParts(h) {
+  const units = ["H/s", "kH/s", "MH/s", "GH/s", "TH/s", "PH/s"];
+  let i = 0;
+  while (h >= 1000 && i < units.length - 1) {
+    h /= 1000;
+    i++;
+  }
+  return [h >= 100 ? h.toFixed(0) : h >= 10 ? h.toFixed(1) : h.toFixed(2), units[i]];
+}
+export const fmtRate = (h) => rateParts(h).join(" ");
+
+/** "0x" + digest with its leading zero hex digits highlighted (<b>), trimmed to `len` chars. */
+export function hashHtml(hex, len = 66) {
+  const body = hex.slice(2);
+  const z = body.match(/^0*/)[0].length;
+  const rest = body.slice(z, Math.max(z, len - 2));
+  return `0x<b>${"0".repeat(z)}</b>${rest}${len - 2 < body.length ? "…" : ""}`;
+}

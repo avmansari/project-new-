@@ -1,7 +1,7 @@
 // App shell: wallet connect, balances, top tabs (Mine / Transfer / Marketplace).
-import { CONTRACT_ADDRESS, MARKET, POLL_MS } from "./config.js";
+import { CHAIN, CONTRACT_ADDRESS, MARKET, POLL_MS } from "./config.js";
 import * as chain from "./chain.js";
-import { $, store, on, emit, fmtTok, fmtEth, short, errMsg } from "./store.js";
+import { $, store, on, emit, fmtAmt, short, errMsg, escapeHtml, avatar } from "./store.js";
 import { initMine } from "./mine.js";
 import { initTransfer } from "./transfer.js";
 import { initMarket } from "./market.js";
@@ -9,7 +9,7 @@ import { pickWallet, restoreWallet, rememberWallet } from "./wallets.js";
 import { initStats } from "./stats.js";
 import { initLeaderboard } from "./leaderboard.js";
 import { indexer } from "./indexer.js";
-import { ethUsd } from "./price.js";
+import { ethUsd, usd } from "./price.js";
 import { track } from "./analytics.js";
 import { requireTerms } from "./terms-gate.js";
 
@@ -22,18 +22,31 @@ async function loadBalances() {
     const [tok, eth] = await Promise.all([chain.balanceOf(store.wallet.address), chain.ethBalanceWei(store.wallet.address)]);
     store.tokenBalance = tok;
     store.ethBalance = eth;
-    $("hdrBal").textContent = `${fmtTok(tok)} · ${fmtEth(eth, 4)}`;
+    renderHeaderBalances();
     emit("balances:updated");
   } catch {}
 }
 on("balances", loadBalances);
 
+function renderHeaderBalances() {
+  const w = store.wallet;
+  $("hdrTok").classList.toggle("hidden", !w);
+  $("hdrUsd").classList.toggle("hidden", !w);
+  if (!w) return;
+  $("hdrTok").textContent = `${fmtAmt(store.tokenBalance, 0)} ${store.symbol}`;
+  $("hdrUsd").textContent = usd(store.ethBalance);
+}
+on("balances:updated", renderHeaderBalances);
+
 // ---------- wallet ----------
 function setWallet(w) {
   store.wallet = w;
-  $("btnConnect").textContent = w ? short(w.address) : "Connect wallet";
-  $("btnConnect").classList.toggle("secondary", !!w);
-  $("hdrBal").classList.toggle("hidden", !w);
+  const btn = $("btnConnect");
+  if (w) btn.innerHTML = `${avatar(w.address, 26)}${escapeHtml(short(w.address))}`;
+  else btn.textContent = "Connect wallet";
+  btn.classList.toggle("wallet-chip", !!w);
+  btn.title = w ? `${w.name || "Wallet"} · click to disconnect` : "";
+  renderHeaderBalances();
   emit("wallet", w);
   if (w) loadBalances();
 }
@@ -59,7 +72,7 @@ function disconnect() {
 
 $("btnConnect").onclick = async () => {
   if (store.wallet) {
-    if (confirm(`${store.wallet.name || "Wallet"} disconnect karein?`)) disconnect();
+    if (confirm(`Disconnect ${store.wallet.name || "this wallet"}?`)) disconnect();
     return;
   }
   const picked = await pickWallet();
@@ -75,14 +88,25 @@ restoreWallet().then((picked) => picked && useProvider(picked, true).catch(() =>
 
 // ---------- tabs ----------
 const TABS = ["mine", "transfer", "market", "leaderboard", "stats"];
+const TITLES = {
+  mine: ["Mine", "Race the network for the next block"],
+  transfer: ["Transfer", "Send tokens to any address"],
+  market: ["Marketplace", "Trade whole lots · priced in USD"],
+  leaderboard: ["Leaderboard", "Top 100 holders · updated live"],
+  stats: ["Stats", "Network health, straight from the chain"],
+};
 let leaderboard;
 let market;
 function showTab(name) {
   if (!TABS.includes(name)) name = "mine";
   for (const t of TABS) {
     $(`tab-${t}`).classList.toggle("hidden", t !== name);
-    document.querySelector(`[data-tab="${t}"]`).classList.toggle("active", t === name);
+    document.querySelectorAll(`[data-tab="${t}"]`).forEach((b) => b.classList.toggle("active", t === name));
   }
+  $("pageTitle").textContent = TITLES[name][0];
+  $("pageSub").textContent = TITLES[name][1];
+  document.title = `${TITLES[name][0]} · PoW Miner`;
+  window.scrollTo({ top: 0 });
   if (name === "leaderboard") leaderboard.show();
   if (name === "market") market.show();
   else market.hide();
@@ -101,6 +125,8 @@ indexer.start();
 ethUsd().then(() => emit("balances:updated"));
 setInterval(ethUsd, 60_000);
 $("contractAddr").textContent = CONTRACT_ADDRESS;
+$("netName").textContent = CHAIN.name;
+$("netTag").textContent = CHAIN.testnet ? "testnet" : "";
 $("marketAddr").textContent = MARKET?.address ?? "–";
 chain
   .getSymbol()

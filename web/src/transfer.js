@@ -1,7 +1,8 @@
 // Transfer tab: send tokens from the connected wallet to any address.
 import { isAddress, parseEther, formatEther } from "viem";
 import * as chain from "./chain.js";
-import { $, store, on, emit, fmtTok, fmtEth, fmtDur, short, errMsg, escapeHtml } from "./store.js";
+import { $, store, on, emit, fmtTok, fmtDur, short, errMsg, escapeHtml } from "./store.js";
+import { usd } from "./price.js";
 import { indexer } from "./indexer.js";
 
 let actFilter = "all";
@@ -32,8 +33,8 @@ function activity() {
       t: Number(a.timestamp) * 1000,
       tx: e.tx,
       text: buyer
-        ? `🟢 Bought ${a.lots} lot${a.lots === 1n ? "" : "s"} @ ${fmtEth(a.pricePerLot)} / lot · paid ${fmtEth(a.ethPaid)}`
-        : `🔴 Sold ${a.lots} lot${a.lots === 1n ? "" : "s"} @ ${fmtEth(a.pricePerLot)} / lot · got ${fmtEth(a.ethPaid - a.fee)}`,
+        ? `🟢 Bought ${a.lots} lot${a.lots === 1n ? "" : "s"} @ ${usd(a.pricePerLot)} / lot · paid ${usd(a.ethPaid)}`
+        : `🔴 Sold ${a.lots} lot${a.lots === 1n ? "" : "s"} @ ${usd(a.pricePerLot)} / lot · got ${usd(a.ethPaid - a.fee)}`,
     });
   }
   for (const e of indexer.events("token", "BlockMined")) {

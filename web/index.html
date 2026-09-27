@@ -3,99 +3,123 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#0b0f0c" />
+    <meta name="theme-color" content="#06080a" />
     <meta name="description" content="Mine the XYZ inscription token with your CPU, GPU or phone, straight from the browser. Proof-of-Work on Robinhood Chain." />
     <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="preload" href="/fonts/space-grotesk-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin />
     <title>PoW Miner · Mine from your browser</title>
     <link rel="stylesheet" href="/src/style.css" />
     <link rel="stylesheet" href="/src/landing.css" />
   </head>
   <body class="landing">
-    <header class="top">
-      <a class="brand" href="/">⛏️ <span class="sym">XYZ</span></a>
-      <nav class="lnav small">
-        <a href="#how">How it works</a>
-        <a href="#tokenomics">Tokenomics</a>
-        <a href="#faq">FAQ</a>
-      </nav>
-      <div class="wallet"><a class="btn" href="/app.html">Launch app</a></div>
-    </header>
+    <nav class="lnav">
+      <a class="logo" href="/"><span class="mark">⛏</span><span class="sym">XYZ</span></a>
+      <div class="links"><a href="#how">How it works</a><a href="#wall">Block wall</a><a href="#miners">Leaderboard</a><a href="/app.html#market">Marketplace</a><a href="#faq">FAQ</a></div>
+      <div class="navr"><span class="pill live nav-pill"><span class="dot"></span><span id="navBlock">Live</span></span><a class="btn" href="/app.html">Launch app →</a></div>
+    </nav>
 
-    <main>
+    <div class="wrap">
       <section class="hero">
-        <p class="eyebrow">Proof-of-Work · Robinhood Chain</p>
-        <h1>Mine <span class="sym">XYZ</span> with the device you already have.</h1>
-        <p class="lead">
-          CPU, GPU or phone: open the site, connect a wallet and start mining in the browser. The first miner to solve a block claims
-          <b>5,000 <span class="sym">XYZ</span></b> straight into their wallet. No pre-mine, no sign-up.
-        </p>
-        <div class="row">
-          <a class="btn big" href="/app.html">Start mining</a>
-          <a class="btn secondary big" href="#how">How it works</a>
+        <div>
+          <span class="pill live rise"><span class="dot"></span>Proof-of-Work · Robinhood Chain · Fair launch</span>
+          <h1 class="rise" style="animation-delay: 0.08s">Mine the chain.<br /><span class="grad-text">Right from your browser.</span></h1>
+          <p class="lead rise" style="animation-delay: 0.16s">
+            Your GPU, CPU or phone races miners worldwide. Solve the block first and <b><span id="heroReward">5,000</span> <span class="sym">XYZ</span></b> land straight in your wallet, inscribed on-chain forever.
+          </p>
+          <div class="row rise" style="animation-delay: 0.24s"><a class="btn lg" href="/app.html">⛏ Start mining</a><a class="btn lg ghost" href="#wall">Watch the block wall</a></div>
+          <div class="trust rise" style="animation-delay: 0.32s"><span>No pre-mine</span><span>21M hard cap</span><span>Open-source contracts</span></div>
         </div>
-        <div class="grid stats" id="liveStats">
-          <div><label>Blocks mined</label><b id="lsBlocks">–</b></div>
-          <div><label>Supply mined</label><b id="lsSupply">–</b></div>
-          <div><label>Difficulty</label><b id="lsBits">–</b></div>
-          <div><label>Last block</label><b id="lsLast">–</b></div>
+        <div class="stage" aria-hidden="true">
+          <div class="orbit"><i></i></div>
+          <div class="orbit o2"><i></i></div>
+          <div class="cube" id="cube"></div>
+          <div class="glowfloor"></div>
+          <div class="hashline"><div class="hash" id="heroHash">0x<b>0000000</b>…</div><div class="muted small" id="heroHashNote">latest winning hash</div></div>
         </div>
-        <p class="small muted" id="lsNote">Live from the blockchain.</p>
+      </section>
+    </div>
+
+    <div class="ticker"><div class="track" id="ticker"><span class="it muted">Loading the latest blocks…</span></div></div>
+
+    <div class="wrap">
+      <section class="blk">
+        <div class="grid-4" id="liveStats">
+          <div class="card hover"><div class="label">Blocks mined</div><div class="big-num" id="lsBlocks">–</div><div class="muted small">of 4,200</div></div>
+          <div class="card hover"><div class="label">Network hashrate</div><div class="big-num" id="lsHash">–</div><div class="muted small">estimate, last 20 blocks</div></div>
+          <div class="card hover"><div class="label">Miners (24h)</div><div class="big-num" id="lsMiners">–</div><div class="muted small" id="lsBits">–</div></div>
+          <div class="card hover"><div class="label">Floor price / lot</div><div class="big-num" id="lsFloor">–</div><div class="muted small" id="lsLast">–</div></div>
+        </div>
+        <p class="small muted" id="lsNote" style="margin: 12px 0 0">Live from the blockchain.</p>
       </section>
 
-      <section id="how" class="card">
-        <h2>How it works</h2>
-        <ol class="steps">
-          <li><b>Connect a wallet.</b> MetaMask, Rabby, Coinbase, OKX, Trust or any WalletConnect wallet. Add a little ETH on Robinhood Chain for fees.</li>
-          <li><b>Press Start mining.</b> Your CPU (and GPU where supported) searches for a hash below the current target, just like Bitcoin.</li>
-          <li><b>Claim your block.</b> Found one first? Click Claim, approve in your wallet, and 5,000 <span class="sym">XYZ</span> land in that same wallet.</li>
-          <li><b>Hold, send or trade.</b> Transfer tokens, or buy and sell whole lots on the built-in marketplace, priced in dollars.</li>
-        </ol>
-      </section>
-
-      <section id="tokenomics" class="card">
-        <h2>Tokenomics</h2>
-        <div class="grid">
-          <div><label>Max supply</label><b>21,000,000</b></div>
-          <div><label>Per block (1 lot)</label><b>5,000</b></div>
-          <div><label>Total blocks</label><b>4,200</b></div>
-          <div><label>Target block time</label><b>~2 minutes</b></div>
-          <div><label>Pre-mine / team allocation</label><b>None</b></div>
-          <div><label>Difficulty</label><b>Adjusts every block</b></div>
+      <section class="blk" id="wall">
+        <div class="sec-head">
+          <div><div class="eyebrow">The block wall</div><h2>Every block. Every winner.</h2></div>
+          <div class="muted side-note">4,200 blocks will ever exist. Hover (or tap) any square to see who mined it.</div>
         </div>
-        <p class="small muted">Every token is mined. More miners → higher difficulty, so blocks keep coming about every 2 minutes until all 4,200 are mined.</p>
-      </section>
-
-      <section class="card">
-        <h2>Fees</h2>
-        <div class="grid">
-          <div><label>Marketplace trade</label><b>2%</b><div class="small muted">of the trade value</div></div>
-          <div><label>Mining itself</label><b>Free</b><div class="small muted">only your device's power</div></div>
+        <div class="card">
+          <div class="wall" id="wallGrid"></div>
+          <div class="wall-foot">
+            <div class="legend"><span><i style="background: var(--lime)"></i>Mined</span><span><i style="background: var(--cyan)"></i>Mining now</span><span><i style="background: rgba(255, 255, 255, 0.08)"></i>Still to mine</span></div>
+            <div class="supply"><div class="row between small" style="margin-bottom: 8px"><span class="muted">Supply mined</span><b class="mono" id="lsSupply">–</b></div><div class="bar"><div id="supplyBar"></div></div></div>
+          </div>
         </div>
       </section>
 
-      <section id="faq" class="card">
-        <h2>FAQ</h2>
-        <details><summary>What is this?</summary><p>A Bitcoin-style Proof-of-Work token on Robinhood Chain. Instead of big mining farms, anyone can mine from a browser. Each mined block also writes an inscription record on-chain.</p></details>
-        <details><summary>Can I mine on my phone?</summary><p>Yes. Open the site in your wallet app's browser (MetaMask, Trust, Coinbase…) or connect with WalletConnect. Keep the screen on while mining; phones are slower than PCs, so expect fewer blocks.</p></details>
-        <details><summary>Do I need a GPU?</summary><p>No. The CPU miner works everywhere. If your browser supports WebGPU (Chrome/Edge on desktop and Android), your graphics card can mine too and is usually much faster. The app shows which GPU it detected and has a Benchmark button to measure your speed.</p></details>
-        <details><summary>I found a block but didn't get it. Why?</summary><p>Mining is a race: the first valid claim on the blockchain wins. If another miner's claim lands first, yours is rejected and mining moves on to the next block. Turn on Auto-claim to claim as fast as possible.</p></details>
-        <details><summary>What is a "lot"?</summary><p>1 lot = 5,000 tokens = one mined block. The marketplace trades whole lots only, priced in US dollars and paid in ETH.</p></details>
-        <details><summary>What does it cost?</summary><p>Mining is free. Transactions need a little ETH for network gas, and marketplace trades have a 2% fee. Your wallet always shows the exact amount before you confirm.</p></details>
-        <details><summary>Which wallets work?</summary><p>MetaMask, Rabby, Coinbase Wallet, OKX, Trust, Phantom, Brave and other browser wallets are detected automatically; mobile wallets can connect via WalletConnect.</p></details>
-        <details><summary>Is it safe?</summary><p>The smart contracts are open source and have been through an internal security review with automated tests. They are experimental software: only use funds you can afford to lose, and read the <a href="/terms.html">Terms &amp; risk disclaimer</a>. Nothing here is financial advice.</p></details>
-        <details><summary>What happens after all 21M tokens are mined?</summary><p>Mining stops. Tokens can still be transferred and traded on the marketplace.</p></details>
-        <details><summary>Is this affiliated with Robinhood?</summary><p>No. This is an independent project built on Robinhood Chain, a public blockchain. It is not affiliated with, endorsed by or sponsored by Robinhood Markets, Inc.</p></details>
+      <section class="blk" id="how">
+        <div class="sec-head"><div><div class="eyebrow">How it works</div><h2>From zero to miner in 60 seconds.</h2></div></div>
+        <div class="steps">
+          <div class="card hover step"><div class="ix">1</div><h3>Connect</h3><p>MetaMask, Rabby, Coinbase, OKX, Trust or any WalletConnect wallet. Add a little ETH on Robinhood Chain for gas.</p></div>
+          <div class="card hover step"><div class="ix">2</div><h3>Benchmark</h3><p>We detect your GPU and show how often you'd win a block at today's difficulty.</p></div>
+          <div class="card hover step"><div class="ix">3</div><h3>Mine</h3><p>Your device hunts for a hash with enough leading zeros, just like Bitcoin.</p></div>
+          <div class="card hover step glow"><div class="ix">4</div><h3>Claim 5,000 <span class="sym">XYZ</span></h3><p>First valid claim wins. Approve in your wallet and the tokens land in that same wallet.</p></div>
+        </div>
+      </section>
+
+      <section class="blk" id="miners">
+        <div class="sec-head"><div><div class="eyebrow">Hall of miners</div><h2>Who's winning right now.</h2></div><a class="btn ghost" href="/app.html#stats">Full leaderboard →</a></div>
+        <div class="podium" id="podium"></div>
+      </section>
+
+      <section class="blk" id="tokenomics">
+        <div class="sec-head"><div><div class="eyebrow">Tokenomics</div><h2>Every token is mined.</h2></div></div>
+        <div class="grid-4">
+          <div class="card"><div class="label">Max supply</div><div class="big-num">21,000,000</div></div>
+          <div class="card"><div class="label">Per block (1 lot)</div><div class="big-num">5,000</div></div>
+          <div class="card"><div class="label">Target block time</div><div class="big-num">~2 min</div></div>
+          <div class="card"><div class="label">Pre-mine / team</div><div class="big-num">None</div></div>
+        </div>
+        <p class="small muted" style="margin-top: 12px">More miners → higher difficulty, so blocks keep coming about every 2 minutes until all 4,200 are mined. Marketplace trades have a 2% fee; mining itself only costs your device's power and gas.</p>
+      </section>
+
+      <section class="blk" id="faq">
+        <div class="sec-head"><div><div class="eyebrow">FAQ</div><h2>Questions, answered.</h2></div></div>
+        <div class="card faq">
+          <details><summary>What is this?</summary><p>A Bitcoin-style Proof-of-Work token on Robinhood Chain. Instead of big mining farms, anyone can mine from a browser. Each mined block also writes an inscription record on-chain.</p></details>
+          <details><summary>Can I mine on my phone?</summary><p>Yes. Open the site in your wallet app's browser (MetaMask, Trust, Coinbase…) or connect with WalletConnect. Keep the screen on while mining; phones are slower than PCs, so expect fewer blocks.</p></details>
+          <details><summary>Do I need a GPU?</summary><p>No. The CPU miner works everywhere. If your browser supports WebGPU (Chrome/Edge on desktop and Android), your graphics card can mine too and is usually much faster. The app shows which GPU it detected and has a Benchmark button to measure your speed.</p></details>
+          <details><summary>I found a block but didn't get it. Why?</summary><p>Mining is a race: the first valid claim on the blockchain wins. If another miner's claim lands first, yours is rejected and mining moves on to the next block. Turn on Auto-claim to claim as fast as possible.</p></details>
+          <details><summary>What is a "lot"?</summary><p>1 lot = 5,000 tokens = one mined block. The marketplace trades whole lots only, priced in US dollars and paid in ETH.</p></details>
+          <details><summary>What does it cost?</summary><p>Mining is free. Transactions need a little ETH for network gas, and marketplace trades have a 2% fee. Your wallet always shows the exact amount before you confirm.</p></details>
+          <details><summary>Which wallets work?</summary><p>MetaMask, Rabby, Coinbase Wallet, OKX, Trust, Phantom, Brave and other browser wallets are detected automatically; mobile wallets can connect via WalletConnect.</p></details>
+          <details><summary>Is it safe?</summary><p>The smart contracts are open source and have been through an internal security review with automated tests. They are experimental software: only use funds you can afford to lose, and read the <a href="/terms.html">Terms &amp; risk disclaimer</a>. Nothing here is financial advice.</p></details>
+          <details><summary>What happens after all 21M tokens are mined?</summary><p>Mining stops. Tokens can still be transferred and traded on the marketplace.</p></details>
+          <details><summary>Is this affiliated with Robinhood?</summary><p>No. This is an independent project built on Robinhood Chain, a public blockchain. It is not affiliated with, endorsed by or sponsored by Robinhood Markets, Inc.</p></details>
+        </div>
       </section>
 
       <section class="cta">
-        <h2>Ready?</h2>
-        <a class="btn big" href="/app.html">Launch app</a>
+        <div class="eyebrow" id="ctaLeft">4,200 blocks to mine</div>
+        <h2>The next block could be <span class="grad-text">yours.</span></h2>
+        <a class="btn lg" href="/app.html">⛏ Launch app</a>
       </section>
-    </main>
+    </div>
 
-    <footer class="small muted">
-      <a href="/terms.html">Terms &amp; risk disclaimer</a> · <a href="/app.html">App</a> · Not financial advice. Not affiliated with Robinhood Markets, Inc.
+    <footer class="lfoot">
+      <span>Not financial advice · Not affiliated with Robinhood Markets, Inc.</span>
+      <span><a href="/terms.html">Terms &amp; risk disclaimer</a> · <a href="/app.html">App</a></span>
     </footer>
+    <div class="tip" id="tip"></div>
     <script type="module" src="/src/landing.js"></script>
   </body>
 </html>

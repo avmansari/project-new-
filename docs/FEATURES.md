@@ -13,6 +13,7 @@
 - ✅ **Leaderboard**, **network stats page** (hashrate / block time / difficulty charts), **auto-claim**, **sound + notification**
 - ✅ **In-browser indexer**, **price chart**, **24h stats + holders**, **activity history**, **quick buy**, **USD estimates**
 - ✅ **Landing page + FAQ**, **terms popup**, **USD prices in the marketplace**, **benchmark**, **top 100 holders leaderboard**, **owner alerts**, **Plausible analytics**, **internal security review** ([AUDIT.md](AUDIT.md))
+- ✅ **"Mining Console" UI redesign**: sidebar app shell + mobile tab bar, hashrate gauge, puzzle bits bar with your best hash, live hash stream, odds + haul cards, "Block found" popup with confetti, lot-card marketplace with depth order book and live trades, holders podium, landing page with 3D block, live ticker and a 4,200-square block wall
 - ✅ **Share card** (Share on X), **order expiry**, **make offer**, **DEX pool** (built, switched off for now), **owner dashboard**, **hosted indexer (Ponder)**
 
 ## Mining

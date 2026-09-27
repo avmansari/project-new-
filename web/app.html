@@ -2,360 +2,477 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#0b0f0c" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#06080a" />
     <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="preload" href="/fonts/space-grotesk-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/inter-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin />
     <title>PoW Miner · App</title>
     <link rel="stylesheet" href="/src/style.css" />
   </head>
-  <body>
-    <header class="top">
-      <a class="brand" href="/">⛏️ <span class="sym">XYZ</span></a>
-      <nav class="tabs">
-        <button data-tab="mine" class="active">Mine</button>
-        <button data-tab="transfer">Transfer</button>
-        <button data-tab="market">Marketplace</button>
-        <button data-tab="leaderboard">Leaderboard</button>
-        <button data-tab="stats">Stats</button>
-      </nav>
-      <div class="wallet">
-        <span id="hdrBal" class="small muted hidden"></span>
-        <button id="btnConnect">Connect wallet</button>
-      </div>
-    </header>
-
-    <main>
-      <!-- ===================== MINE ===================== -->
-      <div id="tab-mine">
-        <p class="sub">Mine blocks with your CPU / GPU / phone. The first to solve a block claims <b>5,000 <span class="sym">XYZ</span></b>.</p>
-
-        <section class="card">
-          <h2>Your device</h2>
-          <div class="grid">
-            <div><label>GPU</label><b id="gpuName">detecting…</b> <button id="gpuEdit" class="link small">change</button></div>
-            <div><label>CPU</label><b id="cpuName">–</b></div>
-          </div>
-          <p class="small muted" id="gpuApi"></p>
-          <div class="row"><button id="btnBench" class="secondary">Benchmark my device (10 s)</button></div>
-          <p class="small" id="benchResult">Measures your hashrate with the CPU threads / GPU settings below and estimates how often you'd find a block.</p>
-          <details class="small muted"><summary>GPU details</summary><pre class="mono" id="gpuRaw"></pre></details>
-        </section>
-
-        <section class="card">
-          <h2>Network</h2>
-          <div class="grid">
-            <div><label>Block height</label><b id="height">–</b></div>
-            <div><label>Difficulty</label><b id="difficulty">–</b></div>
-            <div><label>Required zero bits</label><b id="bits">–</b></div>
-            <div><label>Block reward</label><b id="reward">–</b></div>
-            <div><label>Minted supply</label><b id="supply">–</b></div>
-            <div><label>Last block</label><b id="lastBlock">–</b></div>
-          </div>
-        </section>
-
-        <section class="card">
-          <h2>Miner</h2>
-          <div class="row">
-            <label>CPU threads <input type="range" id="threads" min="0" max="16" value="2" /> <b id="threadsVal">2</b></label>
-          </div>
-          <div class="row">
-            <label><input type="checkbox" id="useGpu" /> Use GPU (WebGPU) <span id="gpuStatus" class="small"></span></label>
-          </div>
-          <div class="row">
-            <label><input type="checkbox" id="autoClaim" /> Auto-claim (wallet opens as soon as a block is found)</label>
-          </div>
-          <div class="row">
-            <label><input type="checkbox" id="soundOn" /> Sound</label>
-            <label><input type="checkbox" id="notifyOn" /> Notification (when the tab is in the background)</label>
-          </div>
-          <div class="row">
-            <button id="btnStart">Start mining</button>
-            <button id="btnStop" class="secondary" disabled>Stop</button>
-          </div>
-          <div class="grid">
-            <div><label>Hashrate</label><b id="hashrate">0 H/s</b></div>
-            <div><label>Total hashes</label><b id="totalHashes">0</b></div>
-            <div><label>Expected time / block</label><b id="eta">–</b></div>
-            <div><label>Status</label><b id="status">idle</b></div>
-          </div>
-        </section>
-
-        <section class="card hidden" id="solutionCard">
-          <h2>🎉 Block solved!</h2>
-          <p>You mined block <b id="solHeight"></b>. Difficulty: <b id="solReq"></b> zero bits required, your hash has <b id="solBits"></b>.</p>
-          <p class="big">You can claim: <b id="solReward"></b></p>
-          <p class="mono small" id="solDigest"></p>
-          <div class="row">
-            <button id="btnClaim">Claim tokens</button>
-            <button id="btnDiscard" class="secondary">Discard</button>
-          </div>
-          <p class="small">Click Claim → approve in your wallet → tokens go straight to your wallet. Be quick: if someone else claims this block first, your solution expires.</p>
-        </section>
-
-        <section class="card hidden share-card" id="shareCard">
-          <div class="card-head"><h2>Share your block 🎉</h2><button id="shareClose" class="mini secondary">✕</button></div>
-          <img id="shareImg" alt="Share card: the block you mined" />
-          <div class="row">
-            <button id="shareX">Share on X</button>
-            <button id="shareNative" class="secondary hidden">Share…</button>
-            <button id="shareDownload" class="secondary">Download image</button>
-          </div>
-          <p class="small muted">On desktop, "Share on X" opens the post and saves the image: attach it to your post. On phones, "Share…" sends the image straight to the X app.</p>
-        </section>
-
-        <section class="card">
-          <h2>My blocks</h2>
-          <ul id="myBlocks" class="list"><li class="muted">None yet</li></ul>
-        </section>
-
-        <section class="card">
-          <h2>Recent blocks</h2>
-          <ul id="recent" class="list"><li class="muted">Loading…</li></ul>
-        </section>
-      </div>
-
-      <!-- ===================== TRANSFER ===================== -->
-      <div id="tab-transfer" class="hidden">
-        <section class="card">
-          <h2>Send <span class="sym">XYZ</span></h2>
-          <p>Balance: <b id="txBalance">–</b></p>
-          <label for="txTo">To address</label>
-          <input id="txTo" class="field mono" placeholder="0x…" autocomplete="off" />
-          <label for="txAmount">Amount</label>
-          <div class="row nowrap">
-            <input id="txAmount" class="field" inputmode="decimal" placeholder="0.0" />
-            <button id="txMax" class="secondary">Max</button>
-          </div>
-          <div class="row">
-            <button id="txSend">Send</button>
-            <button id="txWatch" class="secondary">Add token to wallet</button>
-          </div>
-          <p class="small" id="txStatus"></p>
-        </section>
-        <section class="card">
-          <h2>Your activity</h2>
-          <div class="seg small-seg" id="actFilter">
-            <button data-act="all" class="active">All</button>
-            <button data-act="claim">Claims</button>
-            <button data-act="transfer">Transfers</button>
-            <button data-act="trade">Trades</button>
-          </div>
-          <ul id="activity" class="list"><li class="muted">Connect your wallet to see your history</li></ul>
-        </section>
-      </div>
-
-      <!-- ===================== MARKETPLACE ===================== -->
-      <div id="tab-market" class="hidden">
-        <section class="card">
-          <div class="grid">
-            <div><label>Floor (lowest sell) / lot</label><b id="mkFloor">–</b></div>
-            <div><label>Best bid / lot</label><b id="mkBestBid">–</b></div>
-            <div><label>Last trade / lot</label><b id="mkLast">–</b></div>
-            <div><label>24h change</label><b id="mk24Change">–</b></div>
-            <div><label>24h volume</label><b id="mk24Vol">–</b></div>
-            <div><label>24h high / low</label><b id="mk24HL">–</b></div>
-            <div><label>Holders</label><b id="mkHolders">–</b></div>
-            <div><label>Fee</label><b id="mkFee">–</b></div>
-            <div><label>Your lots</label><b id="mkBal">–</b></div>
-            <div><label>Your wallet balance</label><b id="mkBalEth">–</b></div>
-          </div>
-          <p class="small muted">Live · updates every 4 s. <b>1 lot = <span class="lotsize">5,000</span> <span class="sym">XYZ</span></b> · whole lots only · all prices in US dollars (paid in ETH at the live rate; your wallet shows the exact ETH).</p>
-        </section>
-
-        <section class="card">
-          <div class="card-head">
-            <h2>Price per lot</h2>
-            <div class="seg small-seg">
-              <button data-prange="24h" class="active">24h</button>
-              <button data-prange="7d">7d</button>
-              <button data-prange="30d">30d</button>
-              <button data-prange="all">All</button>
-            </div>
-          </div>
-          <div id="chPrice" class="chart"></div>
-          <p class="small muted" id="chPriceNote"></p>
-        </section>
-
-        <section class="card">
-          <h2>Quick buy</h2>
-          <p class="small muted">Buys the cheapest listings for you in one transaction.</p>
-          <label for="qbLots">Lots to buy</label>
-          <div class="row nowrap stepper">
-            <button id="qbLotsMinus" class="secondary">−</button>
-            <input id="qbLots" class="field" inputmode="numeric" value="1" />
-            <button id="qbLotsPlus" class="secondary">+</button>
-          </div>
-          <p id="qbPreview" class="small">–</p>
-          <button id="qbGo">Quick buy</button>
-        </section>
-
-        <section class="card" id="swapCard">
-          <div class="card-head">
-            <h2>Instant swap (DEX pool)</h2>
-            <div class="seg small-seg">
-              <button id="swBuySide" class="active">Buy</button>
-              <button id="swSellSide">Sell</button>
-            </div>
-          </div>
-          <p class="small muted" id="swPoolInfo">Loading pool…</p>
-          <label for="swLots">Lots</label>
-          <div class="row nowrap stepper">
-            <button id="swLotsMinus" class="secondary">−</button>
-            <input id="swLots" class="field" inputmode="numeric" value="1" />
-            <button id="swLotsPlus" class="secondary">+</button>
-          </div>
-          <p id="swQuote" class="small">–</p>
-          <button id="swGo">Buy instantly</button>
-          <p class="small muted">No waiting for a seller: the pool trades with you at the current price (1% slippage protection).</p>
-        </section>
-
-        <section class="card" id="lpCard">
-          <h2>Pool liquidity</h2>
-          <p class="small" id="lpInfo">–</p>
-          <label for="lpEth">Add liquidity: ETH amount</label>
-          <input id="lpEth" class="field" inputmode="decimal" placeholder="e.g. 0.5" />
-          <div id="lpFirstRow" class="hidden">
-            <label for="lpLots">Lots to pair (you're the first provider: this sets the starting price)</label>
-            <input id="lpLots" class="field" inputmode="numeric" placeholder="e.g. 4" />
-          </div>
-          <p class="small" id="lpPreview">–</p>
-          <div class="row">
-            <button id="lpAdd">Add liquidity</button>
-            <button id="lpRemove" class="secondary">Remove all my liquidity</button>
-          </div>
-          <p class="small muted">Liquidity providers earn 0.3% of every swap. You can remove your share any time.</p>
-        </section>
-
-        <section class="card hidden" id="mkTrade">
-          <h2 id="mkTradeTitle"></h2>
-          <p class="small" id="mkTradeInfo"></p>
-          <label for="mkTradeLots">Lots</label>
-          <div class="row nowrap stepper">
-            <button id="mkTradeLotsMinus" class="secondary">−</button>
-            <input id="mkTradeLots" class="field" inputmode="numeric" value="1" />
-            <button id="mkTradeLotsPlus" class="secondary">+</button>
-            <button id="mkTradeMax" class="secondary">Max</button>
-          </div>
-          <p><b id="mkTradeCost">–</b></p>
-          <div class="row">
-            <button id="mkTradeGo">Confirm</button>
-            <button id="mkTradeClose" class="secondary">Close</button>
-          </div>
-          <div id="mkOfferBox" class="offer-box">
-            <p class="small"><b>Or make an offer</b> at your own price. Your ETH is locked; the seller can accept, or you can cancel any time.</p>
-            <div class="row nowrap">
-              <input id="mkOfferPrice" class="field" inputmode="decimal" placeholder="Your price per lot ($)" />
-              <select id="mkOfferExpiry" class="field select">
-              <option value="0">Never</option>
-              <option value="86400" selected>24 hours</option>
-              <option value="604800">7 days</option>
-              <option value="2592000">30 days</option>
-              </select>
-            </div>
-            <button id="mkOfferGo" class="secondary">Make offer</button>
-          </div>
-        </section>
-
-        <div class="two">
-          <section class="card">
-            <h2>🔴 Sell orders <span class="small muted">(you can buy)</span></h2>
-            <div class="tablewrap"><table id="mkAsks" class="book"></table></div>
-          </section>
-          <section class="card">
-            <h2>🟢 Buy orders <span class="small muted">(you can sell)</span></h2>
-            <div class="tablewrap"><table id="mkBids" class="book"></table></div>
-          </section>
+  <body class="app">
+    <div class="shell">
+      <!-- ===================== SIDEBAR (desktop) ===================== -->
+      <aside class="side">
+        <a class="logo" href="/"><span class="mark">⛏</span><span class="sym">XYZ</span><span class="net" id="netTag"></span></a>
+        <nav class="nav">
+          <button data-tab="mine"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 4l6 6M3 21l9-9"/><path d="M15 3c3 0 6 3 6 6"/><path d="M4 11c3-5 7-7 11-8"/></svg>Mine</button>
+          <button data-tab="market"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>Marketplace</button>
+          <button data-tab="leaderboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 01-10 0z"/><path d="M17 5h3v2a3 3 0 01-3 3M7 5H4v2a3 3 0 003 3"/></svg>Leaderboard</button>
+          <button data-tab="stats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Stats</button>
+          <button data-tab="transfer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg>Transfer</button>
+        </nav>
+        <div class="foot card">
+          <div class="label">Block <span id="sbHeight">–</span></div>
+          <div class="meter" style="margin: 8px 0 6px"><i id="sbBar"></i></div>
+          <div class="muted small" id="sbText">–</div>
         </div>
+      </aside>
 
-        <section class="card">
-          <h2>Create order</h2>
-          <div class="seg">
-            <button id="mkSideSell" class="active">Sell</button>
-            <button id="mkSideBuy">Buy</button>
+      <main>
+        <header class="topbar">
+          <a class="mlogo" href="/"><span class="mark">⛏</span><span class="sym">XYZ</span></a>
+          <div class="titles"><h1 id="pageTitle">Mine</h1><div class="sub" id="pageSub"></div></div>
+          <div class="right">
+            <span class="pill live hide-m"><span class="dot"></span><span id="netName">Robinhood Chain</span></span>
+            <span class="pill mono hidden" id="hdrTok" title="Your token balance"></span>
+            <span class="pill mono hidden" id="hdrUsd" title="Your ETH balance, in US dollars"></span>
+            <button id="btnConnect">Connect wallet</button>
           </div>
-          <label for="mkLots">Lots (1 lot = <span class="lotsize">5,000</span> <span class="sym">XYZ</span>)</label>
-          <div class="row nowrap stepper">
-            <button id="mkLotsMinus" class="secondary">−</button>
-            <input id="mkLots" class="field" inputmode="numeric" value="1" />
-            <button id="mkLotsPlus" class="secondary">+</button>
+        </header>
+
+        <div class="page">
+          <!-- ===================== MINE ===================== -->
+          <div id="tab-mine">
+            <div class="grid-2">
+              <div class="stack">
+                <!-- reactor -->
+                <section class="card glow rise" id="reactorCard">
+                  <div class="card-head">
+                    <div class="row" style="margin: 0">
+                      <span class="pill live idle" id="mnPill"><span class="dot"></span><span id="mnPillText">Ready</span></span>
+                      <span class="pill mono"><span id="bits">–</span>&nbsp;zero bits</span>
+                    </div>
+                    <div class="seg flat" id="modeSeg">
+                      <button data-mode="max">Max</button>
+                      <button data-mode="balanced">Balanced</button>
+                      <button data-mode="eco">Eco</button>
+                    </div>
+                  </div>
+                  <div class="reactor">
+                    <div class="gauge">
+                      <svg viewBox="0 0 300 300" aria-hidden="true">
+                        <defs>
+                          <linearGradient id="gaugeGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#c6ff3d" /><stop offset=".6" stop-color="#3dffb5" /><stop offset="1" stop-color="#38d6ff" /></linearGradient>
+                        </defs>
+                        <circle cx="150" cy="150" r="136" fill="none" stroke="rgba(255,255,255,.05)" stroke-width="13" />
+                        <circle id="gaugeArc" class="arc" cx="150" cy="150" r="136" fill="none" stroke="url(#gaugeGrad)" stroke-width="13" stroke-linecap="round" stroke-dasharray="854.5" stroke-dashoffset="854.5" transform="rotate(-90 150 150)" />
+                        <g class="spin"><circle cx="150" cy="150" r="114" fill="none" stroke="rgba(198,255,61,.35)" stroke-width="2" stroke-dasharray="4 10" /></g>
+                        <g class="spin2"><circle cx="150" cy="150" r="101" fill="none" stroke="rgba(56,214,255,.25)" stroke-width="1" stroke-dasharray="60 20 4 20" /></g>
+                      </svg>
+                      <div class="center">
+                        <div>
+                          <div class="label">Your hashrate</div>
+                          <div class="hr" id="hashrate">0</div>
+                          <div class="unit" id="hashUnit">H/s</div>
+                          <button id="btnStart" class="go">▶ Start mining</button>
+                          <button id="btnStop" class="go secondary hidden" disabled>■ Stop</button>
+                          <div class="work" id="gaugeWork">&nbsp;</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <div class="devices">
+                        <div class="dev">
+                          <div class="row between" style="margin: 0"><span class="label">GPU</span><label class="switch" title="Use GPU"><input type="checkbox" id="useGpu" /><i></i></label></div>
+                          <div class="name" id="gpuName">detecting…</div>
+                          <div class="meta"><span id="gpuStatus"></span> <button id="gpuEdit" class="link small">change</button></div>
+                          <div class="small muted" id="gpuApi"></div>
+                        </div>
+                        <div class="dev on">
+                          <div class="row between" style="margin: 0"><span class="label">CPU</span><span class="mono small muted" id="cpuName">–</span></div>
+                          <div class="name"><b id="threadsVal">2</b> threads</div>
+                          <div class="meta">0 = GPU only</div>
+                          <input type="range" id="threads" min="0" max="16" value="2" aria-label="CPU threads" />
+                        </div>
+                      </div>
+                      <div class="kpis">
+                        <div><div class="label">Hashes tried</div><div class="v" id="totalHashes">0</div></div>
+                        <div><div class="label">Block ETA</div><div class="v" id="eta">–</div></div>
+                        <div><div class="label">Session</div><div class="v" id="session">0s</div></div>
+                      </div>
+                      <div class="toggles">
+                        <label class="pill" title="Wallet opens as soon as a block is found"><input type="checkbox" id="autoClaim" />⚡ Auto-claim <span class="st"></span></label>
+                        <label class="pill"><input type="checkbox" id="soundOn" />🔔 Sound <span class="st"></span></label>
+                        <label class="pill" title="Notification when the tab is in the background"><input type="checkbox" id="notifyOn" />📣 Alerts <span class="st"></span></label>
+                        <button id="btnBench" class="pill">⏱ Benchmark</button>
+                      </div>
+                      <p class="small" id="benchResult" style="margin: 12px 0 0; color: var(--fg-2)"></p>
+                      <p class="status-line" style="margin: 8px 0 0">Status: <b id="status">idle</b></p>
+                      <details class="small muted"><summary>GPU details</summary><pre class="mono" id="gpuRaw" style="white-space: pre-wrap"></pre></details>
+                    </div>
+                  </div>
+                </section>
+
+                <!-- puzzle -->
+                <section class="card rise" style="animation-delay: 0.08s">
+                  <div class="card-head"><h3>The puzzle</h3><span class="muted small">Find a hash that starts with <b style="color: var(--lime)"><span id="puzzleReq">–</span> zero bits</b></span></div>
+                  <div class="bits" id="puzzleBits"></div>
+                  <div class="row between small" style="margin: 0"><span class="muted"><span style="color: var(--lime)">■</span> required zeros · <span style="color: var(--cyan)">■</span> your best so far (<span id="bestBits">–</span>)</span><span class="mono muted" id="puzzleToGo"></span></div>
+                  <div class="hash" style="margin-top: 12px; font-size: 13.5px" id="bestHash">best: start mining to see your best hash</div>
+                  <div class="netline">
+                    <div><span class="label">Block</span><b id="height">–</b></div>
+                    <div><span class="label">Difficulty</span><b id="difficulty">–</b></div>
+                    <div><span class="label">Supply</span><b id="supply">–</b></div>
+                    <div><span class="label">Last block</span><b id="lastBlock">–</b></div>
+                  </div>
+                </section>
+
+                <!-- hash stream -->
+                <section class="card rise" style="animation-delay: 0.16s">
+                  <div class="card-head"><h3>Hash stream</h3><span class="pill mono" id="streamRate">idle</span></div>
+                  <div class="term" id="stream"><div class="idle">$ waiting for the miner… press Start mining</div></div>
+                </section>
+              </div>
+
+              <div class="stack">
+                <section class="card rise" style="animation-delay: 0.04s">
+                  <div class="label">Your odds</div>
+                  <div class="row between" style="margin: 8px 0 14px; align-items: flex-start">
+                    <div><div class="luck grad-text" id="oddsShare">–</div><div class="muted small">share of network</div></div>
+                    <div style="text-align: right"><div class="luck" id="oddsDay">–</div><div class="muted small">expected blocks / day</div></div>
+                  </div>
+                  <div class="odds" id="oddsBars"></div>
+                  <div class="row between muted" style="font-size: 11px; margin: 6px 0 0"><span>older</span><span>network hashrate · last 24 blocks</span><span>now</span></div>
+                </section>
+
+                <section class="card rise" style="animation-delay: 0.08s">
+                  <div class="card-head"><h3>Your haul</h3><span class="pill mono" id="haulToday">0 blocks today</span></div>
+                  <div class="row" style="gap: 28px; margin: 4px 0 10px; align-items: flex-start">
+                    <div><div class="label">Balance</div><div class="big-num" id="haulBal">–</div><div class="muted small" id="haulLots">connect a wallet</div></div>
+                    <div><div class="label">Worth</div><div class="big-num" id="haulUsd">–</div><div class="muted small" id="haulNote">at the last trade price</div></div>
+                  </div>
+                  <div class="row">
+                    <a class="btn sm" href="#market">List a lot</a>
+                    <a class="btn sm ghost" href="#transfer">Send</a>
+                    <button class="mini secondary" id="shareAgain" disabled>Share card</button>
+                  </div>
+                  <ul id="myBlocks" class="list small"><li class="muted">Your claimed blocks show up here</li></ul>
+                </section>
+
+                <section class="card rise" style="animation-delay: 0.12s">
+                  <div class="card-head"><h3>Latest blocks</h3><span class="muted small" id="avgBlock"></span></div>
+                  <ul id="recent" class="feed"><li class="muted">Loading…</li></ul>
+                </section>
+              </div>
+            </div>
+
+            <!-- block found -->
+            <div class="scrim hidden" id="solutionCard" role="dialog" aria-modal="true" aria-labelledby="solTitle">
+              <div class="card glow found">
+                <div class="medal">⛏</div>
+                <div class="pill live" style="margin-bottom: 12px"><span class="dot"></span><span id="solTime">Solved</span></div>
+                <h2 id="solTitle">Block <span id="solHeight"></span><br /><span class="grad-text">is yours.</span></h2>
+                <p class="muted" style="margin: 10px 0 0">Claim it before anyone else does. First valid claim on-chain wins.</p>
+                <div class="inscr">
+                  <div><span class="k">reward</span><b id="solReward"></b></div>
+                  <div><span class="k">bits</span><b id="solBits"></b> zero bits (needed <span id="solReq"></span>)</div>
+                  <div><span class="k">hash</span><span id="solDigest"></span></div>
+                  <div><span class="k">device</span><span id="solDevice"></span></div>
+                </div>
+                <div class="row" style="justify-content: center">
+                  <button id="btnClaim" class="lg" style="min-width: 240px">Claim tokens →</button>
+                  <button id="btnDiscard" class="lg secondary">Discard</button>
+                </div>
+                <div class="muted small" style="margin-top: 10px">Approve in your wallet · tokens land in <span id="solWallet"></span></div>
+              </div>
+            </div>
+            <div class="confetti hidden" id="confetti"></div>
+
+            <!-- share card -->
+            <div class="modal share-modal hidden" id="shareCard">
+              <div class="sheet">
+                <div class="sheet-head"><h2>Share your block 🎉</h2><button id="shareClose" class="mini secondary">✕</button></div>
+                <img id="shareImg" alt="Share card: the block you mined" />
+                <div class="row">
+                  <button id="shareX">Share on X</button>
+                  <button id="shareNative" class="secondary hidden">Share…</button>
+                  <button id="shareDownload" class="secondary">Download image</button>
+                </div>
+                <p class="small muted">On desktop, "Share on X" opens the post and saves the image: attach it to your post. On phones, "Share…" sends the image straight to the X app.</p>
+              </div>
+            </div>
           </div>
-          <p class="small muted" id="mkLotsHint"></p>
-          <label for="mkPrice">Price per lot ($)</label>
-          <input id="mkPrice" class="field" inputmode="decimal" placeholder="e.g. 25" />
-          <label for="mkExpiry">Expires after</label>
-          <select id="mkExpiry" class="field select">
-              <option value="0">Never</option>
-              <option value="86400">24 hours</option>
-              <option value="604800" selected>7 days</option>
-              <option value="2592000">30 days</option>
-          </select>
-          <p>Total: <b id="mkTotal">–</b></p>
-          <button id="mkCreate">List for sale</button>
-          <p class="small muted" id="mkCreateHint"></p>
-        </section>
 
-        <p class="small" id="mkStatus"></p>
-
-        <section class="card">
-          <h2>My open orders</h2>
-          <ul id="mkMine" class="list"></ul>
-          <h3>Offers on my listings</h3>
-          <ul id="mkOffersIn" class="list"></ul>
-          <h3>My offers</h3>
-          <ul id="mkOffersMine" class="list"></ul>
-          <p class="small muted">Expired orders/offers can't be filled. Click Reclaim to get your lots/ETH back (anyone can also return them to you).</p>
-        </section>
-
-        <section class="card">
-          <h2>Recent trades</h2>
-          <ul id="mkTrades" class="list"></ul>
-        </section>
-      </div>
-      <!-- ===================== LEADERBOARD ===================== -->
-      <div id="tab-leaderboard" class="hidden">
-        <section class="card">
-          <h2>🏆 Top 100 holders</h2>
-          <p class="small" id="lbMe"></p>
-          <div class="tablewrap"><table id="lbTable" class="book"></table></div>
-          <p class="small muted">Balance includes lots the holder has listed on the marketplace. Updates live.</p>
-        </section>
-      </div>
-
-      <!-- ===================== STATS ===================== -->
-      <div id="tab-stats" class="hidden">
-        <section class="card">
-          <h2>Network</h2>
-          <div class="grid">
-            <div><label>Blocks mined</label><b id="stBlocks">–</b></div>
-            <div><label>Supply mined</label><b id="stMined">–</b></div>
-            <div><label>Blocks left</label><b id="stLeft">–</b></div>
-            <div><label>Avg block time (last 20)</label><b id="stAvgTime">–</b></div>
-            <div><label>Network hashrate (est.)</label><b id="stHashrate">–</b></div>
-            <div><label>Miners (24h)</label><b id="stMiners24">–</b></div>
+          <!-- ===================== TRANSFER ===================== -->
+          <div id="tab-transfer" class="hidden">
+            <div class="grid-2">
+              <section class="card glow">
+                <div class="label">Your balance</div>
+                <div class="big-num" id="txBalance" style="margin: 6px 0 18px">–</div>
+                <label for="txTo">To address</label>
+                <input id="txTo" class="field mono" placeholder="0x…" autocomplete="off" />
+                <label for="txAmount">Amount</label>
+                <div class="row nowrap">
+                  <input id="txAmount" class="field" inputmode="decimal" placeholder="0.0" />
+                  <button id="txMax" class="secondary">Max</button>
+                </div>
+                <div class="row">
+                  <button id="txSend" class="lg" style="flex: 1">Send</button>
+                  <button id="txWatch" class="lg secondary">Add token to wallet</button>
+                </div>
+                <p class="small status-line" id="txStatus"></p>
+              </section>
+              <section class="card">
+                <div class="card-head">
+                  <h3>Your activity</h3>
+                  <div class="seg small-seg flat" id="actFilter">
+                    <button data-act="all" class="active">All</button>
+                    <button data-act="claim">Claims</button>
+                    <button data-act="transfer">Transfers</button>
+                    <button data-act="trade">Trades</button>
+                  </div>
+                </div>
+                <ul id="activity" class="list"><li class="muted">Connect your wallet to see your history</li></ul>
+              </section>
+            </div>
           </div>
-        </section>
 
-        <div class="row range-row">
-          <span class="small muted">Range</span>
-          <div class="seg small-seg">
-            <button data-range="24h" class="active">24h</button>
-            <button data-range="7d">7d</button>
-            <button data-range="all">All time</button>
+          <!-- ===================== MARKETPLACE ===================== -->
+          <div id="tab-market" class="hidden">
+            <div class="grid-4 rise" style="margin-bottom: 16px">
+              <div class="card stat"><div class="label">Floor / lot</div><div class="v" id="mkFloor">–</div><div class="s" id="mk24Change">–</div></div>
+              <div class="card stat"><div class="label">24h volume</div><div class="v" id="mk24Vol">–</div><div class="s" id="mk24Count">–</div></div>
+              <div class="card stat"><div class="label">Best bid / lot</div><div class="v" id="mkBestBid">–</div><div class="s">highest buy order</div></div>
+              <div class="card stat"><div class="label">Holders</div><div class="v" id="mkHolders">–</div><div class="s">wallets holding tokens</div></div>
+            </div>
+            <div class="mk-mini rise" style="margin-bottom: 20px">
+              <div><span class="label">24h high / low</span><b id="mk24HL">–</b></div>
+              <div><span class="label">Fee</span><b id="mkFee">–</b></div>
+              <div><span class="label">Your lots</span><b id="mkBal">–</b></div>
+              <div><span class="label">Your ETH ($)</span><b id="mkBalEth">–</b></div>
+            </div>
+
+            <div class="mk">
+              <div class="stack">
+                <section class="card rise">
+                  <div class="card-head" style="align-items: flex-start">
+                    <div>
+                      <div class="label">Price per lot · USD</div>
+                      <div class="pricebig"><span class="big-num" id="mkLast">–</span><span class="pill" id="mkLastChange"></span></div>
+                    </div>
+                    <div class="seg small-seg flat">
+                      <button data-prange="24h" class="active">24H</button>
+                      <button data-prange="7d">7D</button>
+                      <button data-prange="30d">30D</button>
+                      <button data-prange="all">All</button>
+                    </div>
+                  </div>
+                  <div id="chPrice" class="chart mk-chart"></div>
+                  <p class="small muted" id="chPriceNote" style="margin: 6px 0 0"></p>
+                </section>
+
+                <section class="rise">
+                  <div class="card-head">
+                    <h3 style="margin: 0">Lots for sale <span class="muted" style="font: 500 14px var(--body)" id="mkListedCount"></span></h3>
+                    <div class="seg small-seg flat" id="lotSort">
+                      <button data-lsort="cheap" class="active">Cheapest</button>
+                      <button data-lsort="new">Newest</button>
+                      <button data-lsort="big">Biggest</button>
+                    </div>
+                  </div>
+                  <div class="lots" id="mkGallery"></div>
+                  <p class="small muted" style="margin: 10px 0 0"><b>1 lot = <span class="lotsize">5,000</span> <span class="sym">XYZ</span></b> · whole lots only · prices in US dollars, paid in ETH at the live rate (your wallet shows the exact ETH).</p>
+                </section>
+
+                <section class="card">
+                  <div class="card-head"><h3>🟢 Buy orders <span class="small muted">(you can sell into these)</span></h3></div>
+                  <div class="tablewrap"><table id="mkBids" class="book"></table></div>
+                  <details style="margin-top: 14px"><summary class="small muted" style="cursor: pointer">All sell orders as a table</summary><div class="tablewrap"><table id="mkAsks" class="book"></table></div></details>
+                </section>
+
+                <section class="card">
+                  <h3 style="margin-top: 0">My open orders</h3>
+                  <ul id="mkMine" class="list"></ul>
+                  <h3>Offers on my listings</h3>
+                  <ul id="mkOffersIn" class="list"></ul>
+                  <h3>My offers</h3>
+                  <ul id="mkOffersMine" class="list"></ul>
+                  <p class="small muted">Expired orders/offers can't be filled. Click Reclaim to get your lots/ETH back (anyone can also return them to you).</p>
+                </section>
+              </div>
+
+              <div class="stack mk-side">
+                <section class="card glow qb">
+                  <div class="seg full">
+                    <button id="qbTab" class="active">Buy</button>
+                    <button id="mkSideSell">Sell</button>
+                    <button id="mkSideBuy">Bid</button>
+                  </div>
+                  <!-- quick buy -->
+                  <div id="qbPane">
+                    <div class="stepper2"><button id="qbLotsMinus">−</button><div style="flex: 1; text-align: center"><input id="qbLots" inputmode="numeric" value="1" aria-label="Lots to buy" /><div class="muted small" id="qbTokens">lots</div></div><button id="qbLotsPlus">+</button></div>
+                    <div class="chips" id="qbChips"><button data-q="1" class="active">1</button><button data-q="3">3</button><button data-q="5">5</button><button data-q="10">10</button></div>
+                    <p id="qbPreview" class="small" style="color: var(--fg-2); min-height: 40px">–</p>
+                    <button id="qbGo" class="lg block">Quick buy</button>
+                    <p class="small muted" style="margin: 10px 0 0">Buys the cheapest listings for you in one transaction.</p>
+                  </div>
+                  <!-- create order (sell listing or bid) -->
+                  <div id="mkCreatePane" class="hidden">
+                    <label for="mkLots" style="margin-top: 12px">Lots (1 lot = <span class="lotsize">5,000</span> <span class="sym">XYZ</span>)</label>
+                    <div class="row nowrap stepper">
+                      <button id="mkLotsMinus" class="secondary">−</button>
+                      <input id="mkLots" class="field" inputmode="numeric" value="1" />
+                      <button id="mkLotsPlus" class="secondary">+</button>
+                    </div>
+                    <p class="small muted" id="mkLotsHint" style="margin: 0 0 8px"></p>
+                    <label for="mkPrice">Price per lot ($)</label>
+                    <input id="mkPrice" class="field" inputmode="decimal" placeholder="e.g. 25" />
+                    <label for="mkExpiry">Expires after</label>
+                    <select id="mkExpiry" class="field select">
+                      <option value="0">Never</option>
+                      <option value="86400">24 hours</option>
+                      <option value="604800" selected>7 days</option>
+                      <option value="2592000">30 days</option>
+                    </select>
+                    <div class="total"><span>Total</span><b id="mkTotal">–</b></div>
+                    <button id="mkCreate" class="lg block" style="margin-top: 12px">List for sale</button>
+                    <p class="small muted" id="mkCreateHint" style="margin: 10px 0 0"></p>
+                  </div>
+                  <p class="small status-line" id="mkStatus" style="margin: 10px 0 0"></p>
+                </section>
+
+                <section class="card">
+                  <div class="card-head"><h3>Order book</h3><span class="muted mono small" id="mkSpread"></span></div>
+                  <table class="depth" id="mkDepth"></table>
+                </section>
+
+                <section class="card">
+                  <div class="card-head"><h3>Live trades</h3><span class="pill live"><span class="dot"></span>live</span></div>
+                  <ul id="mkTrades" class="tape"></ul>
+                </section>
+
+                <section class="card" id="swapCard">
+                  <div class="card-head">
+                    <h3>Instant swap (DEX pool)</h3>
+                    <div class="seg small-seg flat">
+                      <button id="swBuySide" class="active">Buy</button>
+                      <button id="swSellSide">Sell</button>
+                    </div>
+                  </div>
+                  <p class="small muted" id="swPoolInfo">Loading pool…</p>
+                  <label for="swLots">Lots</label>
+                  <div class="row nowrap stepper">
+                    <button id="swLotsMinus" class="secondary">−</button>
+                    <input id="swLots" class="field" inputmode="numeric" value="1" />
+                    <button id="swLotsPlus" class="secondary">+</button>
+                  </div>
+                  <p id="swQuote" class="small">–</p>
+                  <button id="swGo" class="block">Buy instantly</button>
+                  <p class="small muted">No waiting for a seller: the pool trades with you at the current price (1% slippage protection).</p>
+                </section>
+
+                <section class="card" id="lpCard">
+                  <h3 style="margin-top: 0">Pool liquidity</h3>
+                  <p class="small" id="lpInfo">–</p>
+                  <label for="lpEth">Add liquidity: ETH amount</label>
+                  <input id="lpEth" class="field" inputmode="decimal" placeholder="e.g. 0.5" />
+                  <div id="lpFirstRow" class="hidden">
+                    <label for="lpLots">Lots to pair (you're the first provider: this sets the starting price)</label>
+                    <input id="lpLots" class="field" inputmode="numeric" placeholder="e.g. 4" />
+                  </div>
+                  <p class="small" id="lpPreview">–</p>
+                  <div class="row">
+                    <button id="lpAdd">Add liquidity</button>
+                    <button id="lpRemove" class="secondary">Remove all my liquidity</button>
+                  </div>
+                  <p class="small muted">Liquidity providers earn 0.3% of every swap. You can remove your share any time.</p>
+                </section>
+              </div>
+            </div>
+
+            <!-- fill an order / make an offer -->
+            <div class="modal hidden" id="mkTrade">
+              <div class="sheet">
+                <div class="sheet-head"><h2 id="mkTradeTitle"></h2><button id="mkTradeClose" class="mini secondary">✕</button></div>
+                <p class="small muted" id="mkTradeInfo"></p>
+                <label for="mkTradeLots">Lots</label>
+                <div class="row nowrap stepper">
+                  <button id="mkTradeLotsMinus" class="secondary">−</button>
+                  <input id="mkTradeLots" class="field" inputmode="numeric" value="1" />
+                  <button id="mkTradeLotsPlus" class="secondary">+</button>
+                  <button id="mkTradeMax" class="secondary">Max</button>
+                </div>
+                <p><b id="mkTradeCost">–</b></p>
+                <button id="mkTradeGo" class="lg block">Confirm</button>
+                <div id="mkOfferBox" class="offer-box">
+                  <p class="small"><b>Or make an offer</b> at your own price. Your ETH is locked; the seller can accept, or you can cancel any time.</p>
+                  <div class="row nowrap">
+                    <input id="mkOfferPrice" class="field" inputmode="decimal" placeholder="Your price per lot ($)" />
+                    <select id="mkOfferExpiry" class="field select">
+                      <option value="0">Never</option>
+                      <option value="86400" selected>24 hours</option>
+                      <option value="604800">7 days</option>
+                      <option value="2592000">30 days</option>
+                    </select>
+                  </div>
+                  <button id="mkOfferGo" class="secondary block">Make offer</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===================== LEADERBOARD ===================== -->
+          <div id="tab-leaderboard" class="hidden">
+            <div class="podium" id="lbPodium"></div>
+            <section class="card" style="padding: 10px 10px 6px">
+              <p class="small" id="lbMe" style="margin: 8px 10px 4px"></p>
+              <div class="tablewrap"><table id="lbTable" class="book"></table></div>
+              <p class="small muted" style="margin: 8px 10px">Balance includes lots the holder has listed on the marketplace. Updates live.</p>
+            </section>
+          </div>
+
+          <!-- ===================== STATS ===================== -->
+          <div id="tab-stats" class="hidden">
+            <div class="grid-4" style="margin-bottom: 16px">
+              <div class="card stat"><div class="label">Blocks mined</div><div class="v" id="stBlocks">–</div><div class="s" id="stMined">–</div></div>
+              <div class="card stat"><div class="label">Network hashrate</div><div class="v" id="stHashrate">–</div><div class="s">estimate, last 20 blocks</div></div>
+              <div class="card stat"><div class="label">Avg block time</div><div class="v" id="stAvgTime">–</div><div class="s">target 2 min</div></div>
+              <div class="card stat"><div class="label">Miners (24h)</div><div class="v" id="stMiners24">–</div><div class="s"><span id="stLeft">–</span> blocks left</div></div>
+            </div>
+
+            <div class="row range-row">
+              <span class="small muted">Range</span>
+              <div class="seg small-seg flat">
+                <button data-range="24h" class="active">24h</button>
+                <button data-range="7d">7d</button>
+                <button data-range="all">All time</button>
+              </div>
+            </div>
+
+            <section class="card">
+              <div class="card-head"><h3>Top miners</h3><span class="small" id="myRank"></span></div>
+              <div class="tablewrap"><table id="leaderboard" class="book"></table></div>
+            </section>
+            <div class="grid-2 even" style="margin-bottom: 18px">
+              <section class="card"><h3 style="margin-top: 0">Network hashrate</h3><div id="chHashrate" class="chart"></div></section>
+              <section class="card"><h3 style="margin-top: 0">Block time</h3><p class="small muted" style="margin: 0 0 6px">Target: 2 min</p><div id="chBlockTime" class="chart"></div></section>
+            </div>
+            <section class="card"><h3 style="margin-top: 0">Difficulty</h3><p class="small muted" style="margin: 0 0 6px">Required leading zero bits (+1 bit = 2× harder)</p><div id="chDifficulty" class="chart"></div></section>
           </div>
         </div>
+        <footer class="app-footer">Token: <span class="mono" id="contractAddr"></span> · Market: <span class="mono" id="marketAddr"></span> · <a href="/terms.html">Terms</a> · Not financial advice.</footer>
+      </main>
+    </div>
 
-        <section class="card">
-          <h2>Leaderboard</h2>
-          <p class="small" id="myRank"></p>
-          <div class="tablewrap"><table id="leaderboard" class="book"></table></div>
-        </section>
-
-        <section class="card"><h2>Network hashrate</h2><div id="chHashrate" class="chart"></div></section>
-        <section class="card"><h2>Block time</h2><p class="small muted">Target: 2 min</p><div id="chBlockTime" class="chart"></div></section>
-        <section class="card"><h2>Difficulty</h2><p class="small muted">Required leading zero bits (+1 bit = 2× harder)</p><div id="chDifficulty" class="chart"></div></section>
-      </div>
-    </main>
-    <footer class="small muted">Token: <span class="mono" id="contractAddr"></span><br />Market: <span class="mono" id="marketAddr"></span></footer>
+    <!-- ===================== TAB BAR (mobile) ===================== -->
+    <nav class="tabbar">
+      <button data-tab="mine"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 4l6 6M3 21l9-9"/><path d="M15 3c3 0 6 3 6 6"/><path d="M4 11c3-5 7-7 11-8"/></svg>Mine</button>
+      <button data-tab="market"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>Market</button>
+      <button data-tab="leaderboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 01-10 0z"/><path d="M17 5h3v2a3 3 0 01-3 3M7 5H4v2a3 3 0 003 3"/></svg>Ranks</button>
+      <button data-tab="stats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Stats</button>
+      <button data-tab="transfer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg>Send</button>
+    </nav>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
