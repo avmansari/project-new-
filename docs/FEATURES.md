@@ -14,6 +14,7 @@
 - ✅ **In-browser indexer**, **price chart**, **24h stats + holders**, **activity history**, **quick buy**, **USD estimates**
 - ✅ **Landing page + FAQ**, **terms popup**, **USD prices in the marketplace**, **benchmark**, **top 100 holders leaderboard**, **owner alerts**, **Plausible analytics**, **internal security review** ([AUDIT.md](AUDIT.md))
 - ✅ **"Mining Console" UI redesign**: sidebar app shell + mobile tab bar, hashrate gauge, puzzle bits bar with your best hash, live hash stream, odds + haul cards, "Block found" popup with confetti, lot-card marketplace with depth order book and live trades, holders podium, landing page with 3D block, live ticker and a 4,200-square block wall
+- ✅ **Pixel "Dither" skin** (`web/src/pixel.css`): Jersey 10 pixel font for headings, labels, buttons and numbers, square corners, dithered cards, dot-grid background, pixel-striped bars. Remove its `<link>` to go back to the smooth look
 - ✅ **Share card** (Share on X), **order expiry**, **make offer**, **DEX pool** (built, switched off for now), **owner dashboard**, **hosted indexer (Ponder)**
 
 ## Mining

@@ -7,3 +7,4 @@ Self-hosted from [Fontsource](https://fontsource.org) (latin subset, woff2):
 - **JetBrains Mono** — SIL Open Font License 1.1
 
 The OFL allows bundling and redistributing these fonts with the app.
+- **Jersey 10** — SIL Open Font License 1.1

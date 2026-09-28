@@ -1,0 +1,86 @@
+/* ================= Pixel skin: "Dither" =================
+   Loaded after style.css / landing.css on every page. Only changes the look (fonts, corners, textures),
+   never the layout. Headings, labels, buttons and numbers use Jersey 10 (a pixel font whose letters and
+   digits stay unambiguous: B/8, Z/2, S/5); body text stays in Inter. Remove this file's <link> to go back
+   to the smooth look. */
+@font-face { font-family: "Jersey 10"; font-weight: 400; font-display: swap; src: url(/fonts/jersey-10-latin-400-normal.woff2) format("woff2"); }
+
+:root {
+  --pixel: "Jersey 10", var(--body);
+  --pixnum: "Jersey 10", var(--mono);
+  --display: var(--pixnum);
+  --r: 4px;
+  /* hard-stop gradient instead of a smooth blend */
+  --grad: linear-gradient(120deg, #c6ff3d 0 33%, #3dffb5 33% 66%, #38d6ff 66%);
+}
+
+/* headings, labels, buttons: pixel font */
+h1, h2, h3, .logo, .label, .grid label, button, .btn, .seg button, .nav button, .tabbar button, .eyebrow {
+  font-family: var(--pixel);
+  letter-spacing: 0;
+}
+h1, h2, h3, .label, .grid label, button, .btn, .seg button, .nav button, .tabbar button, .eyebrow { font-weight: 400; }
+/* Jersey is narrow: nudge the small UI text up so it reads like the original sizes */
+.label, .grid label, .eyebrow { font-size: 14px; letter-spacing: 0.06em; }
+button, .btn { font-size: 18px; }
+button.mini, .btn.sm { font-size: 16px; }
+.seg button { font-size: 16px; }
+.seg.small-seg button { font-size: 15px; }
+.nav button { font-size: 18px; }
+.tabbar button { font-size: 14px; }
+.topbar h1 { font-size: 28px; }
+h3 { font-size: 20px; }
+h2 { font-size: 1.45rem; }
+.btn.lg, button.lg { font-size: 22px; }
+.chips button, .qb .stepper2 button { font-size: 18px; }
+/* Jersey has one weight: never let the browser fake a bold */
+.logo, .dev .name, .gauge .unit, .lot .price, .pod .who, .feed .you { font-weight: 400; }
+.logo { font-family: var(--pixel); font-size: 24px; }
+.dev .name { font-family: var(--pixel); font-size: 21px; }
+
+/* numbers: pixel digits that stay readable */
+.big-num, .gauge .hr, .kpis .v, .stat .v, .lot .price, .luck, .pod .rk, .landing .pod .rank, .netline b,
+.lot .art .num, .cube .f .n, .mk-mini b, table.depth .mid td, .grid b, .qb .stepper2 input {
+  font-family: var(--pixnum);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+}
+.big-num, .stat .v, .lot .price { font-size: 36px; }
+.kpis .v { font-size: 28px; }
+.luck { font-size: 34px; }
+.gauge .hr { font-size: 60px; }
+.netline b { font-size: 19px; }
+.mk-mini b { font-size: 20px; }
+.grid b { font-size: 1.35rem; }
+
+/* square-ish corners */
+.card, .dev, .sheet, button, .btn, .pill, .seg, .seg button, .field, .wallet-chip, .nav button, .term, .mk-mini > div, .witem, .tabbar { border-radius: 4px; }
+.av, .mark, .logo .mark { border-radius: 4px; }
+.pod .av, .landing .pod .av { border-radius: 6px; }
+
+/* dithered card texture (4px checker) */
+.card {
+  background-image:
+    linear-gradient(180deg, var(--glass-2), var(--glass)),
+    conic-gradient(rgba(255, 255, 255, 0.035) 25%, transparent 0 50%, rgba(255, 255, 255, 0.035) 0 75%, transparent 0);
+  background-size: auto, 4px 4px;
+}
+
+/* dot-grid background instead of lines */
+body::after {
+  background-image: radial-gradient(rgba(198, 255, 61, 0.16) 1px, transparent 1.5px);
+  background-size: 12px 12px;
+}
+
+/* pixel stripes on progress bars */
+.meter > i, .bar > div {
+  background: repeating-linear-gradient(90deg, #c6ff3d 0 6px, #3dffb5 6px 12px, #38d6ff 12px 18px);
+}
+
+/* crisp edges on the hash-art and 3D cube text */
+.lot .art pre, .cube .f { image-rendering: pixelated; }
+
+@media (max-width: 520px) {
+  .big-num, .stat .v, .lot .price { font-size: 30px; }
+  .stat .v { font-size: 26px; }
+}
