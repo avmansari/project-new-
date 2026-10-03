@@ -29,14 +29,15 @@ npm run node                      # terminal 1: local chain (prints 20 funded ac
 npm run deploy:local              # terminal 2: rebuilds the list, deploys, writes web/config.js + web/merkle.json
 npm run serve                     # open http://localhost:8080
 ```
-To test with your own wallet (it has no ETH on the local chain): `ADDRESS=0xYourWallet npm run fund:local`
-(gives 100 test ETH, local node only). Add a local-node account to MetaMask (import one of the printed keys) with network
+To test with your own wallet (it has no ETH on the local chain): `npm run fund:local`
+(gives 100 test ETH to every wallet in data/wallets.csv, local node only; works on Windows too). Add a local-node account to MetaMask (import one of the printed keys) with network
 `http://127.0.0.1:8545`, chain id `31337`. Use a wallet from wallets.csv, press Claim.
 
 ## 2. Testnet (Robinhood Chain testnet) - testing phase
 Get chain id / RPC / explorer / faucet from the official Robinhood Chain docs, then:
 ```bash
-cp .env.example .env   # fill it in, then: set -a; source .env; set +a
+cp .env.example .env   # fill it in. Mac/Linux: set -a; source .env; set +a
+# Windows PowerShell: set each line as  $env:RPC_URL="..."  (same for CHAIN_ID, PRIVATE_KEY, ...)
 npm run merkle
 npm run deploy:robinhood
 ```
