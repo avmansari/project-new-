@@ -175,7 +175,7 @@ const $=id=>document.getElementById(id);
 let merkle=null,active=null,signer=null,account=null;
 const say=(t,c='')=>{$('msg').textContent=t;$('msg').className=c};
 const short=a=>a.slice(0,6)+'...'+a.slice(-4);
-fetch('merkle.json').then(r=>r.json()).then(j=>merkle=j).catch(()=>{});
+fetch('merkle.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.json()).then(j=>merkle=j).catch(err=>console.error('merkle.json failed to load',err));
 
 /* ---------- wallet discovery (EIP-6963: MetaMask, Rabby, Coinbase, Trust, OKX, Phantom, Brave, ...) ---------- */
 const found=new Map();
@@ -235,9 +235,9 @@ $('navConnect').onclick=$('panelConnect').onclick=()=>account?say('Connected: '+
 $('claim').onclick=async()=>{
   $('result').style.display='none';
   let a;try{a=getAddress($('addr').value.trim())}catch{return say('Enter a valid 0x wallet address.','err')}
-  if(!merkle)return say('Claim list not loaded, refresh the page.','err');
+  if(!merkle)return say('Claim list not loaded. Open the site through `npm run serve` (not the file directly) and run `npm run deploy:local` first.','err');
   const e=Object.entries(merkle.claims).find(([w])=>w.toLowerCase()===a.toLowerCase())?.[1];
-  if(!e)return say('This wallet has nothing to claim.','err');
+  if(!e){console.warn('not in list',a,'list size',Object.keys(merkle.claims).length,'root',merkle.root);return say('This wallet has nothing to claim.','err')}
   $('amt').textContent=Number(formatUnits(e.amount,18)).toLocaleString()+' '+CONFIG.symbol;$('result').style.display='block';
   if(!live)return say('Claim opens soon.','err');
   if(!account){say('Connect a wallet to confirm the claim.');return openModal()}

@@ -26,7 +26,7 @@ npm test                          # contract tests
 # put real test wallets in data/wallets.csv (wallet,amount in whole tokens), then:
 npm run merkle
 npm run node                      # terminal 1: local chain (prints 20 funded accounts + keys)
-npm run deploy:local              # terminal 2: deploys, writes web/config.js + web/merkle.json
+npm run deploy:local              # terminal 2: rebuilds the list, deploys, writes web/config.js + web/merkle.json
 npm run serve                     # open http://localhost:8080
 ```
 To test with your own wallet (it has no ETH on the local chain): `ADDRESS=0xYourWallet npm run fund:local`
@@ -55,3 +55,7 @@ Host `web/` anywhere static (Vercel, Netlify, Cloudflare Pages). Test real claim
 ## Notes
 - The claim fee is a fixed native-coin amount (a contract cannot know the USD price). Update it if ETH moves a lot.
 - Anyone can submit a claim for a wallet (they pay fee+gas), but tokens always go to the wallet in the proof.
+
+## Troubleshooting
+- **"This wallet has nothing to claim"**: the wallet is not in `data/wallets.csv`, or `web/merkle.json` is old. Edit the csv, run `npm run deploy:local` again (it rebuilds the list), hard-refresh the page (Ctrl+Shift+R).
+- Local node restarted? Everything resets: run `npm run deploy:local` again, and in MetaMask: Settings > Advanced > Clear activity tab data.
