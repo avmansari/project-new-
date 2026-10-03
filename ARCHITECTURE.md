@@ -6,9 +6,9 @@ Chain ID / RPC / explorer: take from official Robinhood Chain docs, put in `CONF
 
 ## Components
 1. **contracts/ClaimToken.sol** - ERC-20, fixed 100B supply minted to owner. Transfers locked until `enableTrading()`.
-2. **contracts/MerkleClaim.sol** - one claim per index, verifies Merkle proof, pays from its own balance.
+2. **contracts/MerkleClaim.sol** - one claim per index, verifies Merkle proof, pays `account` from its own balance.
 3. **scripts/build-merkle.mjs** - data/wallets.csv -> data/merkle.json (root + proofs, OZ-compatible leaves).
-4. **web/index.html** - connect wallet (auto add/switch chain), check eligibility, call `claim()`.
+4. **web/index.html** - connect wallet (auto add/switch chain), call `claim(index, account, amount, proof)`.
 
 ## Deploy order
 1. Deploy ClaimToken(name, symbol, owner).

@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>CHOMP Wallet Checker</title>
-<meta name="description" content="Check your Robinhood Chain wallet for the CHOMP drop.">
+<title>CHOMP Claim</title>
+<meta name="description" content="Claim your CHOMP drop on Robinhood Chain.">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Lilita+One&display=swap" rel="stylesheet">
 <style>
@@ -73,7 +73,7 @@ footer small{color:#5f7a69;display:block;margin-top:14px;font-size:11px}
 <nav>
   <a class="logo" href="#home"><img src="assets/logo.png" alt="" onload="this.style.display='block';this.nextElementSibling.style.display='none'"><span class="fallback">CHOMP</span></a>
   <div class="links"><a href="#home">Home</a><a href="#about">About</a><a href="#tokenomics">Tokenomics</a><a href="#whitepaper">Whitepaper</a><a href="#gallery">Gallery</a><a href="#faq">FAQ</a></div>
-  <div class="nav-r"><a href="https://x.com/Chomponhood" target="_blank" rel="noopener" aria-label="X" style="font-weight:800">𝕏</a><a class="btn" href="#home">Check Wallet</a></div>
+  <div class="nav-r"><a href="https://x.com/Chomponhood" target="_blank" rel="noopener" aria-label="X" style="font-weight:800">𝕏</a><a class="btn" href="#home">Claim</a></div>
 </nav>
 
 <header class="hero" id="home">
@@ -85,15 +85,13 @@ footer small{color:#5f7a69;display:block;margin-top:14px;font-size:11px}
   <div class="sign">AIRDROP<br>ZONE</div>
 
   <div class="eyebrow">CHOMP COMMUNITY</div>
-  <h1>WALLET<br>CHECKER</h1>
-  <p class="sub">Check your Robinhood wallet to see if you are eligible for the CHOMP DROP.</p>
+  <h1>CLAIM<br>CHOMP</h1>
+  <p class="sub">Enter your Robinhood wallet address and claim your CHOMP DROP.</p>
   <div class="panel">
     <label for="addr">Enter your Robinhood wallet</label>
-    <input id="addr" placeholder="Enter your Robinhood wallet address..." autocomplete="off" spellcheck="false">
-    <button class="btn" id="check">Check Eligibility &nbsp;→</button>
-    <div class="or">or</div>
-    <button class="btn ghost" id="connect">Connect Wallet</button>
-    <div id="result"><small>YOU ARE ELIGIBLE FOR</small><div class="amt" id="amt"></div><button class="btn" id="claim" style="margin-top:10px">Claim CHOMP</button></div>
+    <input id="addr" placeholder="0x... your Robinhood wallet address" autocomplete="off" spellcheck="false">
+    <button class="btn" id="claim">Claim CHOMP &nbsp;→</button>
+    <div id="result"><small>CLAIMED / CLAIMABLE</small><div class="amt" id="amt"></div></div>
     <div id="msg" role="status"></div>
   </div>
 </header>
@@ -133,16 +131,16 @@ footer small{color:#5f7a69;display:block;margin-top:14px;font-size:11px}
   <div class="gal"><div>meme 1</div><div>meme 2</div><div>meme 3</div><div>meme 4</div></div></div></section>
 
 <section class="s faq" id="faq"><div class="wrap"><h2>FAQ</h2>
-  <details><summary>How do I claim?</summary><p>Enter your Robinhood Chain wallet above or connect it. If it is eligible, your amount shows up and you can claim.</p></details>
+  <details><summary>How do I claim?</summary><p>Paste your Robinhood Chain wallet address, press Claim, and confirm in your connected wallet. Tokens go straight to the address you entered.</p></details>
   <details><summary>When can I trade?</summary><p>Trading opens at launch after the date is announced on X. Claimed tokens stay in your wallet until then.</p></details>
   <details><summary>Which network?</summary><p>Robinhood Chain. Your wallet will be asked to switch to it.</p></details>
 </div></section>
 
-<div class="cta"><h2>READY TO JOIN THE PACK?</h2><p>Check your wallet eligibility now.</p><a class="btn" href="#home" style="padding:16px 32px;font-size:15px">Check Wallet →</a></div>
+<div class="cta"><h2>READY TO JOIN THE PACK?</h2><p>Claim your CHOMP now.</p><a class="btn" href="#home" style="padding:16px 32px;font-size:15px">Claim Now →</a></div>
 
 <footer>
   <div><div class="logo disp" style="font-size:28px">CHOMP</div><p style="color:var(--mut);margin-top:6px">For the ones who were here. For the ones coming next.</p></div>
-  <div><h4>ECOSYSTEM</h4><a href="#">Buy $CHOMP</a><a href="#home">Wallet Checker</a><a href="#home">Token Claim</a></div>
+  <div><h4>ECOSYSTEM</h4><a href="#">Buy $CHOMP</a><a href="#home">Token Claim</a></div>
   <div><h4>COMMUNITY</h4><a href="https://x.com/Chomponhood" target="_blank" rel="noopener">Twitter / X</a><a href="#">Telegram</a></div>
   <div><h4>RESOURCES</h4><a href="#tokenomics">Tokenomics</a><a href="#whitepaper">WhitePaper</a><a href="#faq">FAQ &amp; Help</a></div>
   <div><a class="btn" href="#home" style="text-align:center">Join the Pack</a><small>POWERED BY Robinhood<br>© 2026 CHOMP. All rights reserved.</small></div>
@@ -152,37 +150,32 @@ footer small{color:#5f7a69;display:block;margin-top:14px;font-size:11px}
 import {BrowserProvider,Contract,formatUnits,getAddress} from 'https://esm.sh/ethers@6';
 // === CONFIG: fill from Robinhood Chain official docs + your deployment ===
 const CONFIG={chainIdHex:'0x0',chainName:'Robinhood Chain',rpcUrl:'',explorer:'',claimAddress:'0x0000000000000000000000000000000000000000'};
-const ABI=['function claim(uint256 index,uint256 amount,bytes32[] proof)'];
-const $=id=>document.getElementById(id);let merkle=null,signer=null,entry=null;
+const ABI=['function claim(uint256 index,address account,uint256 amount,bytes32[] proof)','function claimed(uint256) view returns (bool)'];
+const $=id=>document.getElementById(id);let merkle=null;
 const say=(t,c='')=>{$('msg').textContent=t;$('msg').className=c};
 fetch('../data/merkle.json').then(r=>r.json()).then(j=>merkle=j).catch(()=>{});
-const find=a=>merkle&&Object.entries(merkle.claims).find(([w])=>w.toLowerCase()===a.toLowerCase())?.[1];
-function show(e){entry=e;$('amt').textContent=Number(formatUnits(e.amount,18)).toLocaleString()+' CHOMP';$('result').style.display='block';say('')}
-$('check').onclick=()=>{
-  $('result').style.display='none';let a;
-  try{a=getAddress($('addr').value.trim())}catch{return say('Enter a valid 0x wallet address.','err')}
-  if(!merkle)return say('Eligibility list not loaded yet.','err');
-  const e=find(a);e?show(e):say('This wallet is not eligible.','err');
-};
 async function ensureChain(){
   try{await ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:CONFIG.chainIdHex}]})}
   catch(e){if(e.code===4902)await ethereum.request({method:'wallet_addEthereumChain',params:[{chainId:CONFIG.chainIdHex,chainName:CONFIG.chainName,rpcUrls:[CONFIG.rpcUrl],blockExplorerUrls:[CONFIG.explorer]}]});else throw e}
 }
-$('connect').onclick=async()=>{
-  if(!window.ethereum)return say('Install MetaMask (or another EVM wallet).','err');
+$('claim').onclick=async()=>{
+  $('result').style.display='none';
+  let a;try{a=getAddress($('addr').value.trim())}catch{return say('Enter a valid 0x wallet address.','err')}
+  if(!merkle)return say('Claim list not loaded, refresh the page.','err');
+  const e=Object.entries(merkle.claims).find(([w])=>w.toLowerCase()===a.toLowerCase())?.[1];
+  if(!e)return say('This wallet has nothing to claim.','err');
+  $('amt').textContent=Number(formatUnits(e.amount,18)).toLocaleString()+' CHOMP';$('result').style.display='block';
+  if(CONFIG.claimAddress.endsWith('0000'))return say('Claim opens soon.','err');
+  if(!window.ethereum)return say('Install MetaMask (or another EVM wallet) to confirm the claim.','err');
   try{
+    $('claim').disabled=true;say('Confirm in your wallet...');
     const p=new BrowserProvider(window.ethereum);await p.send('eth_requestAccounts',[]);
     if(CONFIG.chainIdHex!=='0x0')await ensureChain();
-    signer=await p.getSigner();const a=await signer.getAddress();
-    $('addr').value=a;$('connect').textContent=a.slice(0,6)+'...'+a.slice(-4);
-    const e=find(a);e?show(e):say('This wallet is not eligible.','err');
-  }catch(e){say(e.shortMessage||e.message,'err')}
-};
-$('claim').onclick=async()=>{
-  if(!signer)return say('Connect your wallet to claim.','err');
-  if(CONFIG.claimAddress.endsWith('0000'))return say('Claim opens soon (contract not live yet).','err');
-  try{$('claim').disabled=true;say('Confirm in your wallet...');
-    const tx=await new Contract(CONFIG.claimAddress,ABI,signer).claim(entry.index,entry.amount,entry.proof);await tx.wait();say('Claimed! 🐊','ok');
-  }catch(e){say(e.reason||e.shortMessage||e.message,'err');$('claim').disabled=false}
+    const c=new Contract(CONFIG.claimAddress,ABI,await p.getSigner());
+    if(await c.claimed(e.index)){say('Already claimed.','err');return}
+    const tx=await c.claim(e.index,a,e.amount,e.proof);say('Claiming...');await tx.wait();
+    say('Claimed! Tokens sent to '+a.slice(0,6)+'...'+a.slice(-4)+' 🐊','ok');
+  }catch(err){say(err.reason||err.shortMessage||err.message,'err')}
+  finally{$('claim').disabled=false}
 };
 </script></body></html>

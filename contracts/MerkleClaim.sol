@@ -15,12 +15,14 @@ contract MerkleClaim {
 
     constructor(IERC20 token_, bytes32 root_) { token = token_; merkleRoot = root_; }
 
-    function claim(uint256 index, uint256 amount, bytes32[] calldata proof) external {
+    /// Anyone can submit the claim, tokens always go to `account` (so the proof owner
+    /// is the only one who can ever receive them).
+    function claim(uint256 index, address account, uint256 amount, bytes32[] calldata proof) external {
         require(!claimed[index], "Already claimed");
-        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(index, msg.sender, amount))));
+        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(index, account, amount))));
         require(MerkleProof.verify(proof, merkleRoot, leaf), "Invalid proof");
         claimed[index] = true;
-        require(token.transfer(msg.sender, amount), "Transfer failed");
-        emit Claimed(index, msg.sender, amount);
+        require(token.transfer(account, amount), "Transfer failed");
+        emit Claimed(index, account, amount);
     }
 }
