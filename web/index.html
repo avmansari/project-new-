@@ -69,12 +69,22 @@ section.s{position:relative;padding:90px 16px;background:linear-gradient(180deg,
 footer{background:#021209;border-top:1px solid var(--line);padding:36px 24px;display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1.3fr;gap:24px;font-size:13px}
 footer h4{font:800 10px Inter;letter-spacing:1.5px;color:var(--lime);margin-bottom:12px}footer a{display:block;color:var(--mut);margin-bottom:10px}footer a:hover{color:var(--lime)}
 footer small{color:#5f7a69;display:block;margin-top:14px;font-size:11px}
+
+.btn.ghost{background:transparent;color:var(--lime);border:1px solid var(--lime);box-shadow:none;width:100%;border-radius:4px}
+.modal{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;padding:16px}
+.modal.open{display:flex}
+.mbox{width:100%;max-width:380px;max-height:85vh;overflow:auto;background:#04150f;border:1px solid var(--lime);border-radius:14px;padding:20px;box-shadow:0 0 50px rgba(170,255,0,.25)}
+.mbox h3{font-size:24px;margin-bottom:4px}.mbox p{font-size:12px;color:var(--mut);margin-bottom:14px}
+.w{display:flex;align-items:center;gap:12px;width:100%;padding:12px;margin-bottom:8px;background:#071f16;border:1px solid var(--line);border-radius:10px;color:var(--txt);font:600 14px Inter;cursor:pointer;text-align:left}
+.w:hover{border-color:var(--lime)}.w img,.w .ic{width:30px;height:30px;border-radius:7px;flex:none;display:grid;place-items:center;background:#0b3a29;color:var(--lime);font-size:16px}
+.mclose{float:right;background:none;border:0;color:var(--mut);font-size:22px;cursor:pointer}
+.nav-r .btn{padding:9px 14px}
 @media(max-width:860px){.links{display:none}.about,.tk,footer{grid-template-columns:1fr}.about .txt{grid-row:auto}.c1{opacity:.5}.sign,.c3,.c4{display:none}}
 </style></head><body>
 <nav>
   <a class="logo" href="#home"><img src="assets/logo.png" alt="" onload="this.style.display='block';this.nextElementSibling.style.display='none'"><span class="fallback">CHOMP</span></a>
   <div class="links"><a href="#home">Home</a><a href="#about">About</a><a href="#tokenomics">Tokenomics</a><a href="#whitepaper">Whitepaper</a><a href="#gallery">Gallery</a><a href="#faq">FAQ</a></div>
-  <div class="nav-r"><a href="https://x.com/Chomponhood" target="_blank" rel="noopener" aria-label="X" style="font-weight:800">𝕏</a><a class="btn" href="#home">Claim</a></div>
+  <div class="nav-r"><a href="https://x.com/Chomponhood" target="_blank" rel="noopener" aria-label="X" style="font-weight:800">𝕏</a><button class="btn" id="navConnect">Connect Wallet</button></div>
 </nav>
 
 <header class="hero" id="home">
@@ -91,7 +101,7 @@ footer small{color:#5f7a69;display:block;margin-top:14px;font-size:11px}
   <div class="panel">
     <label for="addr">Enter your Robinhood wallet</label>
     <input id="addr" placeholder="0x... your Robinhood wallet address" autocomplete="off" spellcheck="false">
-    <div id="fee" style="font-size:11px;color:var(--mut);margin:-4px 0 10px;text-align:center"></div>
+    <button class="btn ghost" id="panelConnect" style="margin-bottom:10px">Connect Wallet</button>
     <button class="btn" id="claim">Claim CHOMP &nbsp;→</button>
     <div id="result"><small>CLAIMED / CLAIMABLE</small><div class="amt" id="amt"></div></div>
     <div id="msg" role="status"></div>
@@ -148,22 +158,80 @@ footer small{color:#5f7a69;display:block;margin-top:14px;font-size:11px}
   <div><a class="btn" href="#home" style="text-align:center">Join the Pack</a><small>POWERED BY Robinhood<br>© 2026 CHOMP. All rights reserved.</small></div>
 </footer>
 
+
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-label="Connect wallet">
+  <div class="mbox"><button class="mclose" id="mclose" aria-label="Close">×</button>
+    <h3>CONNECT WALLET</h3><p>Choose a wallet. Any EVM wallet works.</p>
+    <div id="wlist"></div>
+  </div>
+</div>
 <script src="vendor/ethers.umd.min.js"></script>
 <script type="module">
 const {BrowserProvider,JsonRpcProvider,Contract,formatUnits,getAddress}=window.ethers;
 const CONFIG=window.CHOMP_CONFIG;
 const ABI=['function claim(uint256 index,address account,uint256 amount,bytes32[] proof) payable','function claimed(uint256) view returns (bool)','function claimFee() view returns (uint256)','function claimOpen() view returns (bool)'];
 const live=!CONFIG.claimAddress.endsWith('0000');
-const $=id=>document.getElementById(id);let merkle=null,fee=null;
+const $=id=>document.getElementById(id);
+let merkle=null,active=null,signer=null,account=null;
 const say=(t,c='')=>{$('msg').textContent=t;$('msg').className=c};
+const short=a=>a.slice(0,6)+'...'+a.slice(-4);
 fetch('merkle.json').then(r=>r.json()).then(j=>merkle=j).catch(()=>{});
-// show the fee up front (read-only RPC, no wallet needed)
-if(live&&CONFIG.rpcUrl)new Contract(CONFIG.claimAddress,ABI,new JsonRpcProvider(CONFIG.rpcUrl)).claimFee()
-  .then(f=>{fee=f;$('fee').textContent='Claim fee: '+formatUnits(f,18)+' '+CONFIG.nativeSymbol+' (~$0.10) + network gas'}).catch(()=>{});
-async function ensureChain(){
-  try{await ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:CONFIG.chainIdHex}]})}
-  catch(e){if(e.code===4902||e.code===-32603)await ethereum.request({method:'wallet_addEthereumChain',params:[{chainId:CONFIG.chainIdHex,chainName:CONFIG.chainName,rpcUrls:[CONFIG.rpcUrl],blockExplorerUrls:CONFIG.explorer?[CONFIG.explorer]:undefined,nativeCurrency:{name:CONFIG.nativeSymbol,symbol:CONFIG.nativeSymbol,decimals:18}}]});else throw e}
+
+/* ---------- wallet discovery (EIP-6963: MetaMask, Rabby, Coinbase, Trust, OKX, Phantom, Brave, ...) ---------- */
+const found=new Map();
+function esc(t){return String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+addEventListener('eip6963:announceProvider',e=>{found.set(e.detail.info.uuid,e.detail);renderList()});
+dispatchEvent(new Event('eip6963:requestProvider'));
+function renderList(){
+  const rows=[...found.values()].map(w=>`<button class="w" data-uuid="${esc(w.info.uuid)}"><img src="${esc(w.info.icon)}" alt="">${esc(w.info.name)}</button>`);
+  // old wallets that only inject window.ethereum (and no 6963 announcement)
+  if(window.ethereum&&!found.size)rows.push('<button class="w" data-legacy="1"><span class="ic">◆</span>Browser wallet</button>');
+  rows.push('<button class="w" data-wc="1"><span class="ic">⌁</span>WalletConnect (mobile &amp; other wallets)</button>');
+  $('wlist').innerHTML=rows.join('');
 }
+$('wlist').addEventListener('click',async e=>{
+  const b=e.target.closest('.w');if(!b)return;
+  try{
+    if(b.dataset.uuid)await connect(found.get(b.dataset.uuid).provider);
+    else if(b.dataset.legacy)await connect(window.ethereum);
+    else if(b.dataset.wc)await connect(await walletConnectProvider());
+    closeModal();
+  }catch(err){say(err.shortMessage||err.message||'Connection cancelled','err');closeModal()}
+});
+const openModal=()=>{renderList();$('modal').classList.add('open')};
+const closeModal=()=>$('modal').classList.remove('open');
+$('mclose').onclick=closeModal;$('modal').onclick=e=>{if(e.target.id==='modal')closeModal()};
+addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
+
+/* ---------- WalletConnect (lazy-loaded, needs walletConnectProjectId in config.js) ---------- */
+async function walletConnectProvider(){
+  if(!CONFIG.walletConnectProjectId)throw new Error('WalletConnect is not configured yet (add walletConnectProjectId in config.js).');
+  if(!window.WCEthereumProvider)await new Promise((ok,no)=>{const sc=document.createElement('script');sc.src='vendor/walletconnect.bundle.js';sc.onload=ok;sc.onerror=()=>no(new Error('Could not load WalletConnect'));document.head.appendChild(sc)});
+  const wc=await window.WCEthereumProvider.init({projectId:CONFIG.walletConnectProjectId,optionalChains:[CONFIG.chainId||1],showQrModal:true,rpcMap:CONFIG.rpcUrl?{[CONFIG.chainId]:CONFIG.rpcUrl}:undefined,metadata:{name:'CHOMP Claim',description:'Claim CHOMP',url:location.origin,icons:[]}});
+  await wc.connect();return wc;
+}
+
+/* ---------- connect / network ---------- */
+async function ensureChain(provider){
+  if(!CONFIG.chainId)return;
+  try{await provider.request({method:'wallet_switchEthereumChain',params:[{chainId:CONFIG.chainIdHex}]})}
+  catch(e){
+    if(e.code===4902||e.code===-32603)await provider.request({method:'wallet_addEthereumChain',params:[{chainId:CONFIG.chainIdHex,chainName:CONFIG.chainName,rpcUrls:[CONFIG.rpcUrl],blockExplorerUrls:CONFIG.explorer?[CONFIG.explorer]:undefined,nativeCurrency:{name:CONFIG.nativeSymbol,symbol:CONFIG.nativeSymbol,decimals:18}}]});
+    else throw e}
+}
+async function connect(provider){
+  await provider.request({method:'eth_requestAccounts'});
+  await ensureChain(provider);
+  active=provider;signer=await new BrowserProvider(provider).getSigner();account=await signer.getAddress();
+  $('navConnect').textContent=short(account);$('panelConnect').textContent='Connected: '+short(account);
+  if(!$('addr').value.trim())$('addr').value=account;
+  provider.on?.('accountsChanged',()=>location.reload());
+  provider.on?.('chainChanged',()=>location.reload());
+  say('');
+}
+$('navConnect').onclick=$('panelConnect').onclick=()=>account?say('Connected: '+account):openModal();
+
+/* ---------- claim ---------- */
 $('claim').onclick=async()=>{
   $('result').style.display='none';
   let a;try{a=getAddress($('addr').value.trim())}catch{return say('Enter a valid 0x wallet address.','err')}
@@ -172,17 +240,15 @@ $('claim').onclick=async()=>{
   if(!e)return say('This wallet has nothing to claim.','err');
   $('amt').textContent=Number(formatUnits(e.amount,18)).toLocaleString()+' '+CONFIG.symbol;$('result').style.display='block';
   if(!live)return say('Claim opens soon.','err');
-  if(!window.ethereum)return say('Install MetaMask (or another EVM wallet) to confirm the claim.','err');
+  if(!account){say('Connect a wallet to confirm the claim.');return openModal()}
   try{
     $('claim').disabled=true;say('Confirm in your wallet...');
-    const p=new BrowserProvider(window.ethereum);await p.send('eth_requestAccounts',[]);
-    await ensureChain();
-    const c=new Contract(CONFIG.claimAddress,ABI,await p.getSigner());
+    const c=new Contract(CONFIG.claimAddress,ABI,signer);
     if(!(await c.claimOpen())){say('Claim is not open yet.','err');return}
     if(await c.claimed(e.index)){say('Already claimed.','err');return}
-    const value=await c.claimFee();
+    const value=await c.claimFee(); // the wallet shows this amount in its confirmation
     const tx=await c.claim(e.index,a,e.amount,e.proof,{value});say('Claiming...');await tx.wait();
-    say('Claimed! Tokens sent to '+a.slice(0,6)+'...'+a.slice(-4)+' 🐊','ok');
+    say('Claimed! Tokens sent to '+short(a)+' 🐊','ok');
   }catch(err){say(err.reason||err.shortMessage||err.message,'err')}
   finally{$('claim').disabled=false}
 };

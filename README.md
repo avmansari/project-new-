@@ -9,8 +9,15 @@ contracts/MerkleClaim.sol  Merkle claim, one claim per index, claimFee per claim
 scripts/build-merkle.mjs   data/wallets.csv -> data/merkle.json (root + proofs)
 scripts/deploy.cjs         deploys both, whitelists + funds claim contract, writes web/config.js
 test/claim.test.cjs        10 contract tests
-web/                       static site (index.html, config.js, vendor/ethers). Host this folder.
+web/                       static site (index.html, config.js, vendor/). Host this folder.
+tools/wc-entry.js          source for web/vendor/walletconnect.bundle.js (`npm run build:wc` to rebuild)
 ```
+
+## Wallets
+The Connect Wallet button lists every browser wallet that supports EIP-6963 (MetaMask, Rabby, Coinbase Wallet,
+Trust, OKX, Phantom EVM, Brave, ...) plus WalletConnect for mobile wallets (Rainbow, Trust mobile, etc.).
+WalletConnect needs a free project id from https://cloud.reown.com : put it in `WALLETCONNECT_PROJECT_ID` (.env) before deploy,
+or in `web/config.js`. Without it the WalletConnect option shows a "not configured" message; browser wallets still work.
 
 ## 1. Test everything locally (no real money)
 ```bash
