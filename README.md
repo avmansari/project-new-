@@ -1,1 +1,49 @@
-https://drive.google.com/drive/folders/1OLUHKGNSBcwCrs_PhZlf9YrtMuk2QPSU?usp=sharing
+# CHOMP Claim
+
+Claim site for CHOMP on Robinhood Chain (EVM L2). 100,000,000,000 supply, 75% community airdrop.
+User pastes wallet, presses Claim, pays a small fee (~$0.10 in native coin) + gas, tokens go to that wallet.
+
+```
+contracts/ClaimToken.sol   ERC-20, 100B fixed supply, transfers locked until enableTrading()
+contracts/MerkleClaim.sol  Merkle claim, one claim per index, claimFee per claim, owner controls
+scripts/build-merkle.mjs   data/wallets.csv -> data/merkle.json (root + proofs)
+scripts/deploy.cjs         deploys both, whitelists + funds claim contract, writes web/config.js
+test/claim.test.cjs        10 contract tests
+web/                       static site (index.html, config.js, vendor/ethers). Host this folder.
+```
+
+## 1. Test everything locally (no real money)
+```bash
+npm install
+npm test                          # contract tests
+# put real test wallets in data/wallets.csv (wallet,amount in whole tokens), then:
+npm run merkle
+npm run node                      # terminal 1: local chain (prints 20 funded accounts + keys)
+npm run deploy:local              # terminal 2: deploys, writes web/config.js + web/merkle.json
+npm run serve                     # open http://localhost:8080
+```
+Add a local-node account to MetaMask (import one of the printed keys) with network
+`http://127.0.0.1:8545`, chain id `31337`. Use a wallet from wallets.csv, press Claim.
+
+## 2. Testnet (Robinhood Chain testnet) - testing phase
+Get chain id / RPC / explorer / faucet from the official Robinhood Chain docs, then:
+```bash
+cp .env.example .env   # fill it in, then: set -a; source .env; set +a
+npm run merkle
+npm run deploy:robinhood
+```
+Host `web/` anywhere static (Vercel, Netlify, Cloudflare Pages). Test real claims with a few wallets.
+
+## 3. Production checklist
+- [ ] Contracts audited / reviewed by someone independent (tests here are not an audit).
+- [ ] Owner = a multisig (set `OWNER=` at deploy), not a hot key. Never commit `.env`.
+- [ ] Final wallet list -> `npm run merkle` -> deploy -> **verify contracts on the explorer**.
+- [ ] Set `CLAIM_FEE_ETH` to ~$0.10 at the current price; adjust later with `setClaimFee`.
+- [ ] Announce the claim fee and the trading date publicly BEFORE launch.
+- [ ] Trading: claimed tokens are locked until `token.enableTrading()` (one-way). Add liquidity from the owner wallet (whitelisted), then enable.
+- [ ] `claim.withdrawFees(treasury)` for fees; `claim.recoverTokens` for unclaimed tokens after the claim window.
+- [ ] Add your art to `web/assets/` (bg.webp, bg2.webp, logo.png).
+
+## Notes
+- The claim fee is a fixed native-coin amount (a contract cannot know the USD price). Update it if ETH moves a lot.
+- Anyone can submit a claim for a wallet (they pay fee+gas), but tokens always go to the wallet in the proof.

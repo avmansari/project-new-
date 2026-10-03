@@ -2,6 +2,7 @@
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>CHOMP Claim</title>
 <meta name="description" content="Claim your CHOMP drop on Robinhood Chain.">
+<script src="config.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Lilita+One&display=swap" rel="stylesheet">
 <style>
@@ -90,6 +91,7 @@ footer small{color:#5f7a69;display:block;margin-top:14px;font-size:11px}
   <div class="panel">
     <label for="addr">Enter your Robinhood wallet</label>
     <input id="addr" placeholder="0x... your Robinhood wallet address" autocomplete="off" spellcheck="false">
+    <div id="fee" style="font-size:11px;color:var(--mut);margin:-4px 0 10px;text-align:center"></div>
     <button class="btn" id="claim">Claim CHOMP &nbsp;→</button>
     <div id="result"><small>CLAIMED / CLAIMABLE</small><div class="amt" id="amt"></div></div>
     <div id="msg" role="status"></div>
@@ -131,7 +133,7 @@ footer small{color:#5f7a69;display:block;margin-top:14px;font-size:11px}
   <div class="gal"><div>meme 1</div><div>meme 2</div><div>meme 3</div><div>meme 4</div></div></div></section>
 
 <section class="s faq" id="faq"><div class="wrap"><h2>FAQ</h2>
-  <details><summary>How do I claim?</summary><p>Paste your Robinhood Chain wallet address, press Claim, and confirm in your connected wallet. Tokens go straight to the address you entered.</p></details>
+  <details><summary>How do I claim?</summary><p>Paste your Robinhood Chain wallet address, press Claim, and confirm in your connected wallet. Each claim costs a small fee of about $0.10 (shown on the page) plus network gas. Tokens go straight to the address you entered.</p></details>
   <details><summary>When can I trade?</summary><p>Trading opens at launch after the date is announced on X. Claimed tokens stay in your wallet until then.</p></details>
   <details><summary>Which network?</summary><p>Robinhood Chain. Your wallet will be asked to switch to it.</p></details>
 </div></section>
@@ -146,17 +148,21 @@ footer small{color:#5f7a69;display:block;margin-top:14px;font-size:11px}
   <div><a class="btn" href="#home" style="text-align:center">Join the Pack</a><small>POWERED BY Robinhood<br>© 2026 CHOMP. All rights reserved.</small></div>
 </footer>
 
+<script src="vendor/ethers.umd.min.js"></script>
 <script type="module">
-import {BrowserProvider,Contract,formatUnits,getAddress} from 'https://esm.sh/ethers@6';
-// === CONFIG: fill from Robinhood Chain official docs + your deployment ===
-const CONFIG={chainIdHex:'0x0',chainName:'Robinhood Chain',rpcUrl:'',explorer:'',claimAddress:'0x0000000000000000000000000000000000000000'};
-const ABI=['function claim(uint256 index,address account,uint256 amount,bytes32[] proof)','function claimed(uint256) view returns (bool)'];
-const $=id=>document.getElementById(id);let merkle=null;
+const {BrowserProvider,JsonRpcProvider,Contract,formatUnits,getAddress}=window.ethers;
+const CONFIG=window.CHOMP_CONFIG;
+const ABI=['function claim(uint256 index,address account,uint256 amount,bytes32[] proof) payable','function claimed(uint256) view returns (bool)','function claimFee() view returns (uint256)','function claimOpen() view returns (bool)'];
+const live=!CONFIG.claimAddress.endsWith('0000');
+const $=id=>document.getElementById(id);let merkle=null,fee=null;
 const say=(t,c='')=>{$('msg').textContent=t;$('msg').className=c};
-fetch('../data/merkle.json').then(r=>r.json()).then(j=>merkle=j).catch(()=>{});
+fetch('merkle.json').then(r=>r.json()).then(j=>merkle=j).catch(()=>{});
+// show the fee up front (read-only RPC, no wallet needed)
+if(live&&CONFIG.rpcUrl)new Contract(CONFIG.claimAddress,ABI,new JsonRpcProvider(CONFIG.rpcUrl)).claimFee()
+  .then(f=>{fee=f;$('fee').textContent='Claim fee: '+formatUnits(f,18)+' '+CONFIG.nativeSymbol+' (~$0.10) + network gas'}).catch(()=>{});
 async function ensureChain(){
   try{await ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:CONFIG.chainIdHex}]})}
-  catch(e){if(e.code===4902)await ethereum.request({method:'wallet_addEthereumChain',params:[{chainId:CONFIG.chainIdHex,chainName:CONFIG.chainName,rpcUrls:[CONFIG.rpcUrl],blockExplorerUrls:[CONFIG.explorer]}]});else throw e}
+  catch(e){if(e.code===4902||e.code===-32603)await ethereum.request({method:'wallet_addEthereumChain',params:[{chainId:CONFIG.chainIdHex,chainName:CONFIG.chainName,rpcUrls:[CONFIG.rpcUrl],blockExplorerUrls:CONFIG.explorer?[CONFIG.explorer]:undefined,nativeCurrency:{name:CONFIG.nativeSymbol,symbol:CONFIG.nativeSymbol,decimals:18}}]});else throw e}
 }
 $('claim').onclick=async()=>{
   $('result').style.display='none';
@@ -164,16 +170,18 @@ $('claim').onclick=async()=>{
   if(!merkle)return say('Claim list not loaded, refresh the page.','err');
   const e=Object.entries(merkle.claims).find(([w])=>w.toLowerCase()===a.toLowerCase())?.[1];
   if(!e)return say('This wallet has nothing to claim.','err');
-  $('amt').textContent=Number(formatUnits(e.amount,18)).toLocaleString()+' CHOMP';$('result').style.display='block';
-  if(CONFIG.claimAddress.endsWith('0000'))return say('Claim opens soon.','err');
+  $('amt').textContent=Number(formatUnits(e.amount,18)).toLocaleString()+' '+CONFIG.symbol;$('result').style.display='block';
+  if(!live)return say('Claim opens soon.','err');
   if(!window.ethereum)return say('Install MetaMask (or another EVM wallet) to confirm the claim.','err');
   try{
     $('claim').disabled=true;say('Confirm in your wallet...');
     const p=new BrowserProvider(window.ethereum);await p.send('eth_requestAccounts',[]);
-    if(CONFIG.chainIdHex!=='0x0')await ensureChain();
+    await ensureChain();
     const c=new Contract(CONFIG.claimAddress,ABI,await p.getSigner());
+    if(!(await c.claimOpen())){say('Claim is not open yet.','err');return}
     if(await c.claimed(e.index)){say('Already claimed.','err');return}
-    const tx=await c.claim(e.index,a,e.amount,e.proof);say('Claiming...');await tx.wait();
+    const value=await c.claimFee();
+    const tx=await c.claim(e.index,a,e.amount,e.proof,{value});say('Claiming...');await tx.wait();
     say('Claimed! Tokens sent to '+a.slice(0,6)+'...'+a.slice(-4)+' 🐊','ok');
   }catch(err){say(err.reason||err.shortMessage||err.message,'err')}
   finally{$('claim').disabled=false}
