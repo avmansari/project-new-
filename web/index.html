@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TOKEN_NAME Claim</title>
+<style>
+:root{--bg:#fff7e0;--ink:#1b1b1b;--accent:#ff5c35;--card:#fff;--ok:#1a9d57}
+@media(prefers-color-scheme:dark){:root{--bg:#1c1710;--ink:#f6efe0;--card:#2a231a}}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--bg);color:var(--ink);font-family:system-ui,sans-serif;padding:16px}
+.card{width:100%;max-width:440px;background:var(--card);border:3px solid var(--ink);border-radius:20px;padding:28px;box-shadow:8px 8px 0 var(--ink);text-align:center}
+h1{margin:0 0 4px;font-size:2rem}p{margin:6px 0 18px}
+button{width:100%;padding:14px;font-size:1.1rem;font-weight:700;border:3px solid var(--ink);border-radius:12px;background:var(--accent);color:#fff;cursor:pointer}
+button:disabled{opacity:.5;cursor:not-allowed}.amt{font-size:1.6rem;font-weight:800;margin:10px 0}#msg{min-height:1.4em;margin-top:12px}
+</style></head><body>
+<main class="card">
+  <h1>TOKEN_NAME</h1>
+  <p>Total supply: 100,000,000,000</p>
+  <button id="connect">Connect Wallet</button>
+  <div id="result" hidden>
+    <div class="amt" id="amt"></div>
+    <button id="claim">Claim</button>
+  </div>
+  <div id="msg" role="status"></div>
+  <p><small>Trading opens after launch announcement.</small></p>
+</main>
+<script>
+const $=id=>document.getElementById(id);let merkle=null,addr=null;
+const fmt=raw=>(Number(BigInt(raw)/1000000n)).toLocaleString();
+fetch('../data/merkle.json').then(r=>r.json()).then(j=>merkle=j).catch(()=>{});
+$('connect').onclick=async()=>{
+  const p=window.solana;
+  if(!p){$('msg').textContent='Install Phantom wallet first.';return}
+  try{addr=(await p.connect()).publicKey.toString()}catch{return}
+  const c=merkle&&merkle.claims[addr];
+  $('connect').textContent=addr.slice(0,4)+'...'+addr.slice(-4);
+  if(!c){$('msg').textContent='This wallet is not eligible.';return}
+  $('amt').textContent=fmt(c.amount)+' TOKEN_NAME';$('result').hidden=false;
+};
+$('claim').onclick=()=>{ $('msg').textContent='Claim transaction not wired yet (needs deployed distributor program).'; };
+</script></body></html>

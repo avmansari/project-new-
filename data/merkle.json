@@ -1,0 +1,20 @@
+{
+  "root": "153968a53bd1b57dd9f0ab44ab117a871f902e03d89fb9dd97aec7a2d685f30a",
+  "total": "3500000000000",
+  "claims": {
+    "EXAMPLE_WALLET_1": {
+      "index": 0,
+      "amount": "1000000000000",
+      "proof": [
+        "e09c3d57a67cb872279533ec67c1392e928b2138dcec7df00a1f0ea7d6252edf"
+      ]
+    },
+    "EXAMPLE_WALLET_2": {
+      "index": 1,
+      "amount": "2500000000000",
+      "proof": [
+        "40e3cb7c13f4cce093cc1a440fa925966d3daac7dceb506003ac801bfd1c481e"
+      ]
+    }
+  }
+}
