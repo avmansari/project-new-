@@ -1,25 +1,28 @@
-# Claim Site Architecture
+# Claim Site Architecture (Robinhood Chain, EVM L2)
 
-Token: TOKEN_NAME | Total supply: 100,000,000,000 | Decimals: 6 (raw = 100_000_000_000_000_000)
-Chain: Solana (SPL token + Merkle distributor)
+Token: TOKEN_NAME | Total supply: 100,000,000,000 | Decimals: 18
+Chain: Robinhood Chain (Ethereum L2). EVM, so standard ERC-20 + Solidity + MetaMask.
+Chain ID / RPC / explorer: take from official Robinhood Chain docs, put in `CONFIG` in web/index.html.
 
 ## Components
-1. **web/** - static claim page. Wallet connect, eligibility check, claim button.
-2. **scripts/build-merkle.mjs** - reads data/wallets.csv (wallet,amount), outputs data/merkle.json (root + per-wallet proofs).
-3. **On-chain** - SPL mint (100B), vault holding the claim pool, Merkle distributor program (one claim per wallet, root stored on-chain).
-4. **API (later)** - serves proof for a wallet, rate limiting / anti-bot.
+1. **contracts/ClaimToken.sol** - ERC-20, fixed 100B supply minted to owner. Transfers locked until `enableTrading()`.
+2. **contracts/MerkleClaim.sol** - one claim per index, verifies Merkle proof, pays from its own balance.
+3. **scripts/build-merkle.mjs** - data/wallets.csv -> data/merkle.json (root + proofs, OZ-compatible leaves).
+4. **web/index.html** - connect wallet (auto add/switch chain), check eligibility, call `claim()`.
 
-## Flow
-wallet connect -> lookup amount + proof in merkle.json -> sign claim tx -> distributor verifies proof, transfers from vault.
+## Deploy order
+1. Deploy ClaimToken(name, symbol, owner).
+2. `node scripts/build-merkle.mjs` with the final wallet list.
+3. Deploy MerkleClaim(token, root).
+4. `token.setTransferAllowed(claimContract, true)`; transfer the claim pool to claimContract.
+5. Fill CONFIG in web/index.html, host web/ + merkle.json.
+6. Launch day: add liquidity from owner (owner is whitelisted), then `token.enableTrading()`.
 
-## Trading control
-Recommended: do NOT create a liquidity pool until launch. No pool = no trading. Announce launch date publicly.
-Avoid keeping freeze authority / transfer-hook control; scanners flag it as honeypot risk. If used, disclose it and revoke after launch.
+## Trading freeze
+Claimed tokens reach wallets, but wallet-to-wallet and DEX transfers revert until `enableTrading()`.
+It is one-way (cannot be re-disabled). Disclose this publicly with a launch date; hidden transfer locks look like a honeypot and get flagged by scanners.
+Alternative with zero trust issues: just don't add liquidity until launch.
 
-## Supply buckets (edit)
-Claim pool / Liquidity / Treasury - percentages TBD.
-
-## TODO
-- Final wallet list -> data/wallets.csv
-- Deploy mint + distributor, set real root
-- Replace placeholder branding in web/
+## Before mainnet
+- Contracts are untested/unaudited: write Foundry/Hardhat tests and get a review. Test on testnet first.
+- Whitelist for pool/router if you add liquidity (owner address already allowed).

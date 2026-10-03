@@ -1,19 +1,27 @@
 {
-  "root": "153968a53bd1b57dd9f0ab44ab117a871f902e03d89fb9dd97aec7a2d685f30a",
-  "total": "3500000000000",
+  "root": "0xfb62d9347bdc06e746fe037f1dfc2ff89608e49edde1177e28bbc1d70ff87535",
   "claims": {
-    "EXAMPLE_WALLET_1": {
+    "0x1111111111111111111111111111111111111111": {
       "index": 0,
-      "amount": "1000000000000",
+      "amount": "1000000000000000000000000",
       "proof": [
-        "e09c3d57a67cb872279533ec67c1392e928b2138dcec7df00a1f0ea7d6252edf"
+        "0xae5477c86386d6f17f6fd18eafc3be330449e19e120a8025e092e3f22ac05744",
+        "0x2371f57ecf80b854712da5ff8e8687df01e2ab1caf8773525c94683c4ea507e5"
       ]
     },
-    "EXAMPLE_WALLET_2": {
+    "0x2222222222222222222222222222222222222222": {
       "index": 1,
-      "amount": "2500000000000",
+      "amount": "2500000000000000000000000",
       "proof": [
-        "40e3cb7c13f4cce093cc1a440fa925966d3daac7dceb506003ac801bfd1c481e"
+        "0xcce5e399abdd4075575d1029e088cfe1c70321bee93deff687f141d8efeeaf50",
+        "0x2371f57ecf80b854712da5ff8e8687df01e2ab1caf8773525c94683c4ea507e5"
+      ]
+    },
+    "0x3333333333333333333333333333333333333333": {
+      "index": 2,
+      "amount": "500000000000000000000000",
+      "proof": [
+        "0x8125c28a7e64a9f9bdac86bb803b5a03c653f0d41a8506ff17eb22f06384e64a"
       ]
     }
   }
