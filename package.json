@@ -11,7 +11,8 @@
     "deploy:local": "hardhat run scripts/deploy.cjs --network localhost",
     "deploy:robinhood": "hardhat run scripts/deploy.cjs --network robinhood",
     "serve": "npx http-server web -p 8080 -c-1",
-    "build:wc": "esbuild tools/wc-entry.js --bundle --minify --format=iife --platform=browser --target=es2020 --define:process.env.NODE_ENV='\"production\"' --define:global=globalThis --outfile=web/vendor/walletconnect.bundle.js"
+    "build:wc": "esbuild tools/wc-entry.js --bundle --minify --format=iife --platform=browser --target=es2020 --define:process.env.NODE_ENV='\"production\"' --define:global=globalThis --outfile=web/vendor/walletconnect.bundle.js",
+    "fund:local": "hardhat run scripts/fund-local.cjs --network localhost"
   },
   "repository": {
     "type": "git",
