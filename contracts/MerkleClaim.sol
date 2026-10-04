@@ -13,11 +13,15 @@ contract MerkleClaim is Ownable {
     bytes32 public immutable merkleRoot;
     uint256 public claimFee;      // wei, publicly readable, shown on the claim page
     bool public claimOpen;
+    uint256 public claimDeadline;   // unix seconds, 0 = no deadline
+    uint256 public totalClaimed;    // raw token units paid out so far
+    uint256 public claimedCount;    // number of wallets that claimed
     mapping(uint256 => bool) public claimed;
 
     event Claimed(uint256 indexed index, address indexed account, uint256 amount, uint256 feePaid);
     event ClaimFeeUpdated(uint256 newFee);
     event ClaimOpenUpdated(bool open);
+    event ClaimDeadlineUpdated(uint256 deadline);
     event FeesWithdrawn(address indexed to, uint256 amount);
     event TokensRecovered(address indexed to, uint256 amount);
 
@@ -31,16 +35,22 @@ contract MerkleClaim is Ownable {
     /// Anyone can submit; tokens always go to `account` (the address in the proof).
     function claim(uint256 index, address account, uint256 amount, bytes32[] calldata proof) external payable {
         require(claimOpen, "Claim not open");
+        require(claimDeadline == 0 || block.timestamp <= claimDeadline, "Claim period ended");
         require(msg.value == claimFee, "Wrong fee");
         require(!claimed[index], "Already claimed");
         bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(index, account, amount))));
         require(MerkleProof.verify(proof, merkleRoot, leaf), "Invalid proof");
         claimed[index] = true;
+        totalClaimed += amount;
+        claimedCount += 1;
         require(token.transfer(account, amount), "Transfer failed");
         emit Claimed(index, account, amount, msg.value);
     }
 
     function setClaimOpen(bool open_) external onlyOwner { claimOpen = open_; emit ClaimOpenUpdated(open_); }
+
+    /// 0 removes the deadline. Unclaimed tokens can be pulled back with recoverTokens().
+    function setClaimDeadline(uint256 deadline_) external onlyOwner { claimDeadline = deadline_; emit ClaimDeadlineUpdated(deadline_); }
 
     function setClaimFee(uint256 fee_) external onlyOwner { claimFee = fee_; emit ClaimFeeUpdated(fee_); }
 

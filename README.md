@@ -13,6 +13,13 @@ web/                       static site (index.html, config.js, vendor/). Host th
 tools/wc-entry.js          source for web/vendor/walletconnect.bundle.js (`npm run build:wc` to rebuild)
 ```
 
+## What the page does
+Live allocation + eligibility check as soon as a valid address is typed, wallet picker (EIP-6963 + WalletConnect),
+remembers the last wallet, claim button states (connect / claim / already claimed / ended), live "claimed %" bar and
+wallet counter from the contract, optional claim deadline countdown, confetti + tx link + "Add CHOMP to wallet" on success,
+mobile menu, reduced-motion support. Put your art in `web/assets/` and memes in `web/assets/gallery/` (list them in `gallery` in config.js).
+Contract extras: `setClaimDeadline(unix)` (0 = none), `totalClaimed`, `claimedCount`.
+
 ## Wallets
 The Connect Wallet button lists every browser wallet that supports EIP-6963 (MetaMask, Rabby, Coinbase Wallet,
 Trust, OKX, Phantom EVM, Brave, ...) plus WalletConnect for mobile wallets (Rainbow, Trust mobile, etc.).

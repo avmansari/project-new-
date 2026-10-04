@@ -43,6 +43,7 @@ async function main() {
     claimAddress: await claim.getAddress(), tokenAddress: await token.getAddress(),
     symbol, nativeSymbol: process.env.NATIVE_SYMBOL || 'ETH',
     walletConnectProjectId: process.env.WALLETCONNECT_PROJECT_ID || '',
+    gallery: [],
   };
   fs.writeFileSync('web/config.js', 'window.CHOMP_CONFIG = ' + JSON.stringify(cfg, null, 2) + ';\n');
   fs.copyFileSync('data/merkle.json', 'web/merkle.json');

@@ -1,209 +1,664 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>CHOMP Claim</title>
 <meta name="description" content="Claim your CHOMP drop on Robinhood Chain.">
+<meta name="theme-color" content="#020d09">
+<meta property="og:title" content="CHOMP Claim"><meta property="og:description" content="The table is getting hungry. Claim your CHOMP drop on Robinhood Chain.">
+<script>document.documentElement.classList.add('js')</script>
 <script src="config.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Lilita+One&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=Lilita+One&display=swap" rel="stylesheet">
 <style>
-:root{--lime:#aaff00;--lime2:#7acc00;--bg:#031a12;--bg2:#052a1d;--card:rgba(3,22,16,.82);--line:rgba(170,255,0,.18);--txt:#e9f5e1;--mut:#9db8a6;--red:#ff2a2a}
-*{box-sizing:border-box;margin:0}html{scroll-behavior:smooth}
-body{background:var(--bg);color:var(--txt);font:400 15px/1.6 Inter,system-ui,sans-serif;overflow-x:hidden}
-h1,h2,h3,.disp{font-family:'Lilita One',Impact,sans-serif;font-weight:400;letter-spacing:.5px;color:var(--lime);text-shadow:0 0 18px rgba(170,255,0,.35)}
-a{color:inherit;text-decoration:none}
-/* nav */
-nav{position:fixed;inset:0 0 auto 0;height:56px;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:rgba(0,0,0,.88);backdrop-filter:blur(6px);border-bottom:1px solid var(--line)}
-.logo{display:flex;align-items:center;gap:8px;font:400 22px 'Lilita One';color:var(--lime)}
-.logo img{height:38px;display:none}.logo .fallback{font-size:26px}
-.links{display:flex;gap:30px;font-size:12px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase}
-.links a:hover{color:var(--lime)}
-.btn{display:inline-block;background:var(--lime);color:#06140a;font:800 13px Inter;letter-spacing:1px;text-transform:uppercase;padding:11px 20px;border-radius:8px;border:0;cursor:pointer;box-shadow:0 0 22px rgba(170,255,0,.35);transition:.15s}
-.btn:hover{transform:translateY(-1px);box-shadow:0 0 32px rgba(170,255,0,.6)}.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
-.nav-r{display:flex;align-items:center;gap:18px}
-/* hero */
-.hero{position:relative;min-height:100vh;padding:110px 16px 80px;display:flex;flex-direction:column;align-items:center;text-align:center;overflow:hidden;
- background:url(assets/bg.webp) center/cover no-repeat,radial-gradient(ellipse at 50% 0%,#14533b 0%,#06271c 45%,#020d09 100%)}
-.hero::before{content:"";position:absolute;top:60px;right:15%;width:150px;height:150px;border-radius:50%;background:radial-gradient(circle,#cfe9d8 0,#6c8f7c 55%,transparent 70%);opacity:.22;filter:blur(2px)}
-.hero::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 40%,rgba(0,0,0,.7));pointer-events:none}
-.hero>*{position:relative;z-index:2}
-.eyebrow{font-size:9px;font-weight:800;letter-spacing:2px;color:var(--lime)}
-.hero h1{font-size:clamp(40px,6vw,64px);line-height:.95;margin:6px 0 10px}
-.sub{font-size:12px;font-weight:600;margin-bottom:20px}
-.panel{width:100%;max-width:420px;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;box-shadow:0 0 40px rgba(0,0,0,.6)}
-.panel label{display:block;font-size:9px;font-weight:800;letter-spacing:1.5px;color:var(--lime);margin-bottom:8px;text-transform:uppercase}
-.panel input{width:100%;background:#050d0a;border:1px solid #16261e;color:var(--txt);border-radius:6px;padding:11px;font:13px Inter;margin-bottom:12px}
-.panel input:focus{outline:1px solid var(--lime)}
-.panel .btn{width:100%;border-radius:4px}
-.or{text-align:center;color:var(--mut);font-size:11px;margin:10px 0}
-.ghost{width:100%;background:transparent;color:var(--lime);border:1px solid var(--lime);box-shadow:none}
-#result{display:none;margin-top:14px;padding:14px;border:1px dashed var(--lime);border-radius:8px;text-align:center}
-#result .amt{font:400 30px 'Lilita One';color:var(--lime)}
-#msg{min-height:20px;margin-top:10px;font-size:12px;text-align:center;color:var(--mut)}#msg.err{color:#ff7a7a}#msg.ok{color:var(--lime)}
-/* crates */
-.crate{position:absolute!important;z-index:1!important;animation:sway 5s ease-in-out infinite;filter:drop-shadow(0 0 22px rgba(150,255,0,.5))}
-.crate svg{display:block;width:100%;height:auto}
-.c1{left:2%;top:130px;width:min(34vw,420px)}.c2{right:6%;top:150px;width:min(15vw,190px);animation-delay:-1.5s}
-.c3{left:46%;top:240px;width:min(8vw,110px);opacity:.75;animation-delay:-3s}.c4{right:10%;top:520px;width:min(7vw,90px);opacity:.6;animation-delay:-2s}
-@keyframes sway{50%{transform:translateY(14px) rotate(1.5deg)}}
-.sign{position:absolute!important;right:28%;bottom:70px;z-index:1!important;font:400 34px/1 'Lilita One';color:var(--lime);text-align:center;background:#1c2a14;border:4px solid #2c3d1c;padding:12px 16px;border-radius:6px;transform:rotate(-4deg);text-shadow:0 0 14px rgba(170,255,0,.5)}
-.eyes{position:absolute!important;z-index:1!important;display:flex;gap:10px}.eyes i{width:16px;height:7px;background:var(--red);border-radius:50% 50% 50% 50%/80% 80% 20% 20%;box-shadow:0 0 12px var(--red);animation:blink 6s infinite}
-@keyframes blink{0%,94%,100%{transform:scaleY(1)}97%{transform:scaleY(.1)}}
-/* sections */
-section.s{position:relative;padding:90px 16px;background:linear-gradient(180deg,var(--bg),var(--bg2)),url(assets/bg2.webp) center/cover;background-blend-mode:normal}
-.wrap{max-width:1100px;margin:0 auto;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:44px 32px}
-.s h2{text-align:center;font-size:clamp(28px,4vw,40px);margin-bottom:26px}
-.about{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:16px}
-.about .txt{grid-row:span 2;padding:26px;border:1px solid var(--line);border-radius:10px;color:var(--mut);text-align:center}.about .txt h2{margin-bottom:14px}.about .txt p{margin-bottom:12px;font-size:13px}
-.stat{padding:22px;border:1px solid var(--line);border-radius:10px;text-align:center;display:flex;flex-direction:column;justify-content:center;gap:6px}
-.stat small{font-size:10px;letter-spacing:1.5px;color:var(--mut);font-weight:800}.stat b{font:400 24px/1.1 'Lilita One';color:#fff}
-.tk{display:grid;grid-template-columns:1fr 280px;gap:40px;align-items:center}
-.total{text-align:center;margin-bottom:24px}.total small{display:block;font-size:10px;letter-spacing:1.5px;color:var(--mut)}.total b{font:400 38px 'Lilita One';color:#dfe7e2}
-.row{display:flex;justify-content:space-between;padding:12px 14px;border:1px solid var(--line);border-radius:6px;margin-bottom:10px;font-size:13px;font-weight:600;position:relative;overflow:hidden}
-.row i{position:absolute;left:0;bottom:0;height:2px;background:var(--lime)}.row span:last-child{color:var(--lime);font-weight:800}
-.donut{width:100%;aspect-ratio:1;border-radius:50%;position:relative;background:conic-gradient(var(--lime) 0 75%,#0a3d1c 75% 85%,#8a948e 85% 90%,#c9cfcb 90% 95%,#fff 95% 100%)}
-.donut::before{content:"";position:absolute;inset:18%;border-radius:50%;background:#062a1c;box-shadow:inset 0 0 0 6px #0b3a29}
-.donut div{position:absolute;inset:0;display:grid;place-content:center;text-align:center;z-index:1}.donut b{font:400 28px 'Lilita One';color:var(--lime)}.donut small{font-size:8px;letter-spacing:2px;font-weight:800}
-.gal{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px}.gal div{aspect-ratio:1;border-radius:10px;border:1px dashed var(--line);display:grid;place-content:center;color:var(--mut);font-size:12px;background:rgba(170,255,0,.04)}
-.faq details{border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin-bottom:10px}.faq summary{cursor:pointer;font-weight:800;color:var(--lime)}.faq p{color:var(--mut);margin-top:8px;font-size:13px}
-.cta{text-align:center;padding:80px 16px;background:linear-gradient(180deg,var(--bg2),#041d14)}.cta h2{font-size:clamp(28px,4vw,40px)}.cta p{color:var(--mut);margin:6px 0 22px}
-footer{background:#021209;border-top:1px solid var(--line);padding:36px 24px;display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1.3fr;gap:24px;font-size:13px}
-footer h4{font:800 10px Inter;letter-spacing:1.5px;color:var(--lime);margin-bottom:12px}footer a{display:block;color:var(--mut);margin-bottom:10px}footer a:hover{color:var(--lime)}
-footer small{color:#5f7a69;display:block;margin-top:14px;font-size:11px}
+:root{
+  --lime:#aaff00;--lime-d:#78c000;--lime-glow:rgba(170,255,0,.35);
+  --bg:#020d09;--bg2:#041a12;--panel:rgba(4,22,16,.78);--panel-solid:#05160f;
+  --line:rgba(170,255,0,.16);--line2:rgba(255,255,255,.07);
+  --txt:#eaf6e3;--mut:#93b09c;--red:#ff3b3b;--warn:#ffcc33;--ok:#38e07b;
+  --disp:'Lilita One','Arial Black',Impact,sans-serif;--body:Inter,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --r:16px;--ease:cubic-bezier(.2,.8,.2,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;scroll-padding-top:70px;overflow-x:clip}
+body{background:var(--bg);color:var(--txt);font:400 15px/1.6 var(--body);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--lime);outline-offset:3px;border-radius:6px}
+h1,h2,h3,.disp{font-family:var(--disp);font-weight:400;letter-spacing:.5px;color:var(--lime);text-shadow:0 0 22px var(--lime-glow)}
+::selection{background:var(--lime);color:#06140a}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 
-.btn.ghost{background:transparent;color:var(--lime);border:1px solid var(--lime);box-shadow:none;width:100%;border-radius:4px}
-.modal{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;padding:16px}
-.modal.open{display:flex}
-.mbox{width:100%;max-width:380px;max-height:85vh;overflow:auto;background:#04150f;border:1px solid var(--lime);border-radius:14px;padding:20px;box-shadow:0 0 50px rgba(170,255,0,.25)}
-.mbox h3{font-size:24px;margin-bottom:4px}.mbox p{font-size:12px;color:var(--mut);margin-bottom:14px}
-.w{display:flex;align-items:center;gap:12px;width:100%;padding:12px;margin-bottom:8px;background:#071f16;border:1px solid var(--line);border-radius:10px;color:var(--txt);font:600 14px Inter;cursor:pointer;text-align:left}
-.w:hover{border-color:var(--lime)}.w img,.w .ic{width:30px;height:30px;border-radius:7px;flex:none;display:grid;place-items:center;background:#0b3a29;color:var(--lime);font-size:16px}
-.mclose{float:right;background:none;border:0;color:var(--mut);font-size:22px;cursor:pointer}
-.nav-r .btn{padding:9px 14px}
-@media(max-width:860px){.links{display:none}.about,.tk,footer{grid-template-columns:1fr}.about .txt{grid-row:auto}.c1{opacity:.5}.sign,.c3,.c4{display:none}}
-</style></head><body>
-<nav>
-  <a class="logo" href="#home"><img src="assets/logo.png" alt="" onload="this.style.display='block';this.nextElementSibling.style.display='none'"><span class="fallback">CHOMP</span></a>
-  <div class="links"><a href="#home">Home</a><a href="#about">About</a><a href="#tokenomics">Tokenomics</a><a href="#whitepaper">Whitepaper</a><a href="#gallery">Gallery</a><a href="#faq">FAQ</a></div>
-  <div class="nav-r"><a href="https://x.com/Chomponhood" target="_blank" rel="noopener" aria-label="X" style="font-weight:800">𝕏</a><button class="btn" id="navConnect">Connect Wallet</button></div>
+/* ---------- buttons ---------- */
+.btn{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:8px;background:linear-gradient(180deg,#c4ff3d,var(--lime) 55%,#8fe000);color:#07160a;font:800 13px var(--body);letter-spacing:1.2px;text-transform:uppercase;padding:13px 22px;border-radius:10px;border:0;cursor:pointer;box-shadow:0 0 24px var(--lime-glow),inset 0 1px 0 rgba(255,255,255,.5);transition:transform .15s var(--ease),box-shadow .2s,opacity .2s;overflow:hidden}
+.btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 6px 34px rgba(170,255,0,.55),inset 0 1px 0 rgba(255,255,255,.6)}
+.btn:active:not(:disabled){transform:translateY(0)}
+.btn::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.55) 50%,transparent 70%);transform:translateX(-120%)}
+.btn:hover:not(:disabled)::after{transform:translateX(120%);transition:transform .7s}
+.btn:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+.btn.ghost{background:rgba(170,255,0,.06);color:var(--lime);border:1px solid rgba(170,255,0,.55);box-shadow:none}
+.btn.ghost:hover:not(:disabled){background:rgba(170,255,0,.14);box-shadow:0 0 22px rgba(170,255,0,.2)}
+.btn.lg{padding:16px 30px;font-size:14px}.btn.block{width:100%}
+.spin{width:16px;height:16px;border-radius:50%;border:2.5px solid rgba(0,0,0,.25);border-top-color:#07160a;animation:rot .7s linear infinite;display:none}
+.loading .spin{display:inline-block}@keyframes rot{to{transform:rotate(360deg)}}
+
+/* ---------- nav ---------- */
+nav{position:fixed;inset:0 0 auto 0;height:60px;z-index:60;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 clamp(14px,3vw,28px);background:rgba(0,0,0,.55);backdrop-filter:blur(14px) saturate(1.4);-webkit-backdrop-filter:blur(14px) saturate(1.4);border-bottom:1px solid transparent;transition:background .3s,border-color .3s}
+nav.stuck{background:rgba(0,0,0,.86);border-color:var(--line)}
+.logo{display:flex;align-items:center;gap:9px;font:400 24px var(--disp);color:var(--lime);text-shadow:0 0 16px var(--lime-glow)}
+.logo img{height:38px;display:none}.logo svg{width:30px;height:30px}
+.links{display:flex;gap:6px;font-size:11.5px;font-weight:800;letter-spacing:1.4px;text-transform:uppercase}
+.links a{padding:8px 12px;border-radius:8px;color:#cfe3d4;transition:.2s}.links a:hover{color:var(--lime);background:rgba(170,255,0,.07)}.links a.on{color:var(--lime)}
+.nav-r{display:flex;align-items:center;gap:10px}
+.chip{display:none;align-items:center;gap:7px;font:700 11px var(--body);letter-spacing:.6px;padding:7px 11px;border-radius:99px;background:rgba(170,255,0,.08);border:1px solid var(--line);color:var(--lime)}
+.chip.show{display:inline-flex}.chip i{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.nav-r .btn{padding:10px 16px;font-size:12px}
+.xbtn{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;border:1px solid var(--line);background:rgba(255,255,255,.03);font-weight:800;transition:.2s}.xbtn:hover{border-color:var(--lime);color:var(--lime)}
+.burger{display:none;width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.03);cursor:pointer;position:relative}
+.burger i,.burger::before,.burger::after{content:"";position:absolute;left:11px;right:11px;height:2px;background:var(--lime);border-radius:2px;transition:.25s}
+.burger::before{top:13px}.burger i{top:19px}.burger::after{top:25px}
+.burger.open::before{top:19px;transform:rotate(45deg)}.burger.open i{opacity:0}.burger.open::after{top:19px;transform:rotate(-45deg)}
+
+/* ---------- hero scene ---------- */
+.hero{position:relative;min-height:100svh;padding:96px 16px 70px;display:flex;flex-direction:column;align-items:center;overflow:hidden;isolation:isolate;
+  background:linear-gradient(180deg,#02100b 0%,#06281c 38%,#0a3a28 62%,#04180f 100%)}
+.layer{position:absolute;inset:0;pointer-events:none;will-change:transform;transition:transform .25s ease-out}
+.bgimg{background:url(assets/bg.webp) center/cover no-repeat;opacity:.9}
+.moon{position:absolute;top:70px;right:14%;width:clamp(90px,12vw,170px);aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 38% 36%,#f3fff0 0,#cfe8d3 30%,#86a894 62%,rgba(134,168,148,0) 72%);box-shadow:0 0 90px 30px rgba(170,255,200,.18);opacity:.8}
+.moon::after{content:"";position:absolute;inset:-60%;border-radius:50%;background:radial-gradient(circle,rgba(170,255,200,.16),transparent 62%)}
+.trees{position:absolute;left:0;right:0;bottom:0;height:100%;width:100%}
+.fog{position:absolute;left:-50%;width:200%;height:46%;background:radial-gradient(ellipse at 20% 50%,rgba(120,200,160,.14),transparent 55%),radial-gradient(ellipse at 70% 60%,rgba(120,200,160,.12),transparent 55%);animation:drift 38s linear infinite}
+.fog.f2{bottom:12%;animation-duration:55s;animation-direction:reverse;opacity:.7}.fog.f1{bottom:0}
+@keyframes drift{to{transform:translateX(25%)}}
+.water{position:absolute;left:0;right:0;bottom:0;height:24%;background:linear-gradient(180deg,rgba(2,24,16,0) 0,rgba(3,30,20,.85) 30%,#020f0a 100%)}
+.water::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(180deg,rgba(170,255,0,.06) 0 1px,transparent 1px 9px);mask:linear-gradient(180deg,transparent,#000 70%);-webkit-mask:linear-gradient(180deg,transparent,#000 70%);animation:ripple 6s linear infinite}
+@keyframes ripple{to{background-position:0 18px}}
+.vig{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 40%,transparent 38%,rgba(0,0,0,.72) 100%)}
+#fx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
+.hero>.content{position:relative;z-index:3;width:100%;display:flex;flex-direction:column;align-items:center;text-align:center}
+
+.crate{position:absolute;z-index:2;pointer-events:none;filter:drop-shadow(0 0 26px rgba(150,255,0,.45));animation:sway 6s ease-in-out infinite;transform-origin:50% 0}
+.crate svg{display:block;width:100%;height:auto;overflow:visible}
+.c1{left:max(0px,calc(50% - 760px));top:120px;width:clamp(150px,27vw,400px)}
+.c2{right:max(10px,calc(50% - 760px));top:150px;width:clamp(90px,13vw,190px);animation-delay:-2s}
+.c3{left:calc(50% + 150px);top:290px;width:clamp(50px,6vw,100px);opacity:.55;animation-delay:-3.5s;filter:blur(1px) drop-shadow(0 0 14px rgba(150,255,0,.3))}
+.c4{right:12%;top:540px;width:clamp(40px,5vw,80px);opacity:.45;animation-delay:-1s;filter:blur(1.5px)}
+.c5{left:14%;top:520px;width:clamp(40px,5vw,76px);opacity:.4;animation-delay:-4.5s;filter:blur(1.5px)}
+@keyframes sway{0%,100%{transform:translateY(0) rotate(-1.2deg)}50%{transform:translateY(16px) rotate(1.4deg)}}
+.sign{position:absolute;z-index:2;right:max(3%,calc(50% - 700px));bottom:270px;transform:rotate(-4deg);text-align:center;font:400 clamp(20px,2.6vw,36px)/1 var(--disp);color:var(--lime);background:linear-gradient(180deg,#26371a,#1a2812);border:4px solid #31471f;border-radius:8px;padding:12px 18px;text-shadow:0 0 16px var(--lime-glow);box-shadow:0 10px 30px rgba(0,0,0,.6),inset 0 0 0 2px rgba(0,0,0,.35)}
+.sign::after{content:"";position:absolute;left:50%;top:100%;width:12px;height:90px;transform:translateX(-50%);background:linear-gradient(90deg,#1c2a14,#2c3d1c,#1c2a14)}
+.eyes{position:absolute;z-index:2;display:flex;gap:11px;pointer-events:none}
+.eyes i{width:15px;height:7px;background:var(--red);border-radius:50% 50% 50% 50%/85% 85% 20% 20%;box-shadow:0 0 14px 2px var(--red);animation:blink 7s infinite}
+.eyes.g i{background:#d6ff3a;box-shadow:0 0 16px 3px rgba(190,255,40,.8);width:19px;height:10px;position:relative}
+.eyes.g i::after{content:"";position:absolute;left:50%;top:1px;bottom:1px;width:3px;margin-left:-1.5px;background:#08150a;border-radius:3px}
+.eyes.g::after{content:"";position:absolute;left:-26px;right:-26px;top:9px;height:12px;border-radius:50%;border:1px solid rgba(170,255,0,.35);animation:ring 3.4s ease-out infinite}
+@keyframes ring{0%{transform:scale(.4);opacity:.9}100%{transform:scale(1.5);opacity:0}}
+@keyframes blink{0%,93%,100%{transform:scaleY(1)}96%{transform:scaleY(.08)}}
+
+/* hero content */
+.status{display:inline-flex;align-items:center;gap:8px;font:800 10.5px var(--body);letter-spacing:2px;color:var(--lime);padding:7px 14px;border-radius:99px;border:1px solid var(--line);background:rgba(2,16,11,.65);backdrop-filter:blur(6px);margin-bottom:14px}
+.status i{width:8px;height:8px;border-radius:50%;background:var(--warn);box-shadow:0 0 10px var(--warn);animation:pulse 1.6s infinite}
+.status.live i{background:var(--ok);box-shadow:0 0 10px var(--ok)}.status.off i{background:var(--red);box-shadow:0 0 10px var(--red);animation:none}
+@keyframes pulse{50%{opacity:.35;transform:scale(.8)}}
+.hero h1{font-size:clamp(46px,8vw,88px);line-height:.92;margin:0 0 12px;filter:drop-shadow(0 4px 0 rgba(0,40,0,.6))}
+.sub{max-width:520px;color:#cfe3d4;font-size:clamp(13px,1.6vw,16px);margin-bottom:22px;text-shadow:0 2px 12px #000}
+.count{font:700 12px var(--body);letter-spacing:1.4px;color:var(--warn);margin:-8px 0 16px;min-height:18px}
+
+/* claim card */
+.card{position:relative;width:100%;max-width:460px;text-align:left;background:var(--panel);backdrop-filter:blur(16px) saturate(1.3);-webkit-backdrop-filter:blur(16px) saturate(1.3);border:1px solid var(--line);border-radius:20px;padding:20px;box-shadow:0 30px 80px rgba(0,0,0,.65),0 0 0 1px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.06)}
+.card::before{content:"";position:absolute;inset:-1px;border-radius:21px;padding:1px;background:linear-gradient(140deg,rgba(170,255,0,.7),transparent 35%,transparent 65%,rgba(170,255,0,.4));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none}
+.steps{display:flex;align-items:center;gap:6px;margin-bottom:18px}
+.step{display:flex;align-items:center;gap:7px;font:800 9.5px var(--body);letter-spacing:1.2px;text-transform:uppercase;color:#5f7d6b;transition:.3s}
+.step b{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:11px;border:1.5px solid #335544;transition:.3s}
+.step.on{color:var(--lime)}.step.on b{border-color:var(--lime);box-shadow:0 0 12px var(--lime-glow)}
+.step.done{color:var(--ok)}.step.done b{background:var(--ok);border-color:var(--ok);color:#04140a}
+.bar{flex:1;height:2px;background:#16352a;border-radius:2px;position:relative;overflow:hidden;min-width:10px}
+.bar::after{content:"";position:absolute;inset:0;background:var(--lime);transform:scaleX(0);transform-origin:left;transition:transform .5s var(--ease)}.bar.on::after{transform:scaleX(1)}
+.lbl{display:flex;justify-content:space-between;align-items:center;font:800 10px var(--body);letter-spacing:1.4px;color:var(--lime);margin-bottom:8px;text-transform:uppercase}
+.field{position:relative;display:flex;align-items:center;background:#030c08;border:1px solid #17302a;border-radius:12px;transition:.2s}
+.field:focus-within{border-color:var(--lime);box-shadow:0 0 0 3px rgba(170,255,0,.12)}
+.field.ok{border-color:rgba(56,224,123,.6)}.field.bad{border-color:rgba(255,59,59,.6)}
+.field input{flex:1;min-width:0;background:none;border:0;outline:0;color:var(--txt);font:500 14px/1 var(--body);padding:15px 4px 15px 14px}
+.field input::placeholder{color:#4b6556}
+.field .tag{margin-right:6px;font:800 10px var(--body);letter-spacing:1px;padding:7px 10px;border-radius:8px;background:rgba(170,255,0,.1);color:var(--lime);border:0;cursor:pointer;transition:.2s}.field .tag:hover{background:rgba(170,255,0,.22)}
+.field .vi{width:22px;font-size:16px;text-align:center;margin-right:4px}
+.alloc{display:none;margin-top:14px;padding:16px;border-radius:14px;background:linear-gradient(160deg,rgba(170,255,0,.1),rgba(170,255,0,.02));border:1px solid var(--line);text-align:center;animation:pop .45s var(--ease)}
+.alloc.show{display:block}@keyframes pop{from{opacity:0;transform:translateY(8px) scale(.97)}}
+.alloc small{display:block;font:800 9.5px var(--body);letter-spacing:1.6px;color:var(--mut);margin-bottom:2px}
+.alloc .amt{font:400 clamp(30px,6vw,42px)/1.1 var(--disp);color:var(--lime);text-shadow:0 0 24px var(--lime-glow)}.alloc .amt span{font-size:.5em;opacity:.8}
+.badge{display:inline-block;margin-top:8px;font:800 10px var(--body);letter-spacing:1.2px;padding:5px 11px;border-radius:99px;text-transform:uppercase}
+.badge.ok{background:rgba(56,224,123,.14);color:var(--ok);border:1px solid rgba(56,224,123,.4)}
+.badge.no{background:rgba(255,59,59,.12);color:#ff7b7b;border:1px solid rgba(255,59,59,.4)}
+.badge.done{background:rgba(255,204,51,.12);color:var(--warn);border:1px solid rgba(255,204,51,.4)}
+.actions{display:grid;gap:10px;margin-top:14px}
+#msg{min-height:20px;margin-top:12px;font-size:12.5px;text-align:center;color:var(--mut);line-height:1.5}#msg.err{color:#ff8a8a}#msg.ok{color:var(--lime)}
+#msg a{color:var(--lime);text-decoration:underline}
+.prog{margin-top:16px;padding-top:14px;border-top:1px dashed var(--line2)}
+.prog .row{display:flex;justify-content:space-between;font:600 11px var(--body);color:var(--mut);margin-bottom:7px}.prog .row b{color:var(--txt)}
+.meter{height:8px;border-radius:99px;background:#0b241a;overflow:hidden;box-shadow:inset 0 1px 3px #000}
+.meter i{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,var(--lime-d),var(--lime));box-shadow:0 0 14px var(--lime-glow);transition:width 1.2s var(--ease)}
+.safe{margin-top:12px;font-size:11px;color:#6f8c7a;text-align:center}
+.done-view{display:none;text-align:center;padding:6px 0}
+.done-view .big{font:400 clamp(34px,7vw,50px)/1 var(--disp);color:var(--lime);text-shadow:0 0 30px var(--lime-glow);margin:6px 0}
+.done-view .croc{font-size:46px;animation:bob 1.6s ease-in-out infinite}@keyframes bob{50%{transform:translateY(-8px) rotate(6deg)}}
+.done-view p{color:var(--mut);font-size:13px;margin-bottom:14px}
+.card.claimed .claim-view{display:none}.card.claimed .done-view{display:block}
+
+/* stat strip */
+.stats{position:relative;z-index:3;width:100%;max-width:960px;margin-top:34px;display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:16px;overflow:hidden;backdrop-filter:blur(10px)}
+.stat{background:rgba(3,18,12,.82);padding:16px 12px;text-align:center}
+.stat small{display:block;font:800 9.5px var(--body);letter-spacing:1.5px;color:var(--mut);margin-bottom:3px}.stat b{font:400 clamp(17px,2.4vw,25px)/1.1 var(--disp);color:#fff}
+.scroll{position:relative;z-index:3;margin-top:22px;color:var(--mut);font:700 10px var(--body);letter-spacing:2px;text-transform:uppercase;display:flex;flex-direction:column;align-items:center;gap:6px}
+.scroll i{width:1.5px;height:26px;background:linear-gradient(var(--lime),transparent);animation:sc 1.8s infinite}@keyframes sc{0%{transform:scaleY(0);transform-origin:top}50%{transform:scaleY(1);transform-origin:top}51%{transform-origin:bottom}100%{transform:scaleY(0);transform-origin:bottom}}
+
+/* ---------- ticker ---------- */
+.ticker{background:var(--lime);color:#07160a;overflow:hidden;white-space:nowrap;border-block:2px solid #07160a;transform:rotate(-1deg) scale(1.02);margin:-14px 0;position:relative;z-index:5;box-shadow:0 0 40px var(--lime-glow)}
+.ticker div{display:inline-block;padding:11px 0;animation:tick 28s linear infinite;font:400 20px var(--disp);letter-spacing:1px}.ticker span{margin:0 22px}
+@keyframes tick{to{transform:translateX(-50%)}}
+
+/* ---------- sections ---------- */
+section.s{position:relative;padding:clamp(70px,10vw,120px) 16px;background:linear-gradient(180deg,var(--bg),var(--bg2));overflow:hidden}
+section.s.alt{background:linear-gradient(180deg,var(--bg2),#031209)}
+section.s .bgimg2{position:absolute;inset:0;background:url(assets/bg2.webp) center/cover;opacity:.35;pointer-events:none}
+.wrap{position:relative;max-width:1100px;margin:0 auto}
+.sec-h{text-align:center;margin-bottom:34px}.sec-h h2{font-size:clamp(32px,5vw,52px)}.sec-h p{color:var(--mut);max-width:560px;margin:6px auto 0}
+.glass{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);backdrop-filter:blur(8px)}
+.about{display:grid;grid-template-columns:1.35fr 1fr 1fr;gap:16px}
+.about .txt{grid-row:span 2;padding:30px;text-align:center;color:var(--mut)}.about .txt h2{font-size:34px;margin-bottom:14px}.about .txt p{margin-bottom:12px;font-size:14px}.about .txt p:last-child{color:var(--lime);font-weight:800;margin:0}
+.tile{padding:24px 16px;text-align:center;display:flex;flex-direction:column;justify-content:center;gap:6px;transition:.3s var(--ease)}.tile:hover{transform:translateY(-4px);border-color:rgba(170,255,0,.5);box-shadow:0 14px 40px rgba(0,0,0,.5),0 0 30px rgba(170,255,0,.1)}
+.tile small{font:800 10px var(--body);letter-spacing:1.6px;color:var(--mut)}.tile b{font:400 clamp(20px,2.6vw,28px)/1.1 var(--disp);color:#fff}
+
+.how{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;counter-reset:n}
+.how .it{padding:28px 22px;position:relative;transition:.3s var(--ease)}.how .it:hover{transform:translateY(-4px);border-color:rgba(170,255,0,.5)}
+.how .it::before{counter-increment:n;content:counter(n);font:400 54px/1 var(--disp);color:rgba(170,255,0,.18);position:absolute;right:18px;top:12px}
+.how h3{font-size:22px;margin-bottom:8px}.how p{color:var(--mut);font-size:14px}
+
+.tk{display:grid;grid-template-columns:1fr 320px;gap:40px;align-items:center;padding:clamp(22px,4vw,44px)}
+.total{text-align:center;margin-bottom:26px}.total small{display:block;font:800 10px var(--body);letter-spacing:1.6px;color:var(--mut)}.total b{font:400 clamp(30px,5vw,48px) var(--disp);color:#e6efe9}
+.trow{display:flex;align-items:center;gap:12px;padding:13px 16px;border:1px solid var(--line2);border-radius:12px;margin-bottom:10px;cursor:default;position:relative;overflow:hidden;transition:.25s}
+.trow:hover,.trow.hl{border-color:var(--c);background:rgba(255,255,255,.04);transform:translateX(4px)}
+.trow .dot{width:11px;height:11px;border-radius:50%;background:var(--c);box-shadow:0 0 10px var(--c);flex:none}
+.trow .nm{flex:1;font-weight:600;font-size:14px}.trow .tok{font-size:11px;color:var(--mut);margin-right:6px}.trow .pc{font-weight:800;color:var(--c)}
+.trow i{position:absolute;left:0;bottom:0;height:2px;background:var(--c);width:0;transition:width 1.1s var(--ease)}.revealed .trow i{width:var(--w)}
+.donut{position:relative;width:100%;max-width:320px;margin:auto;aspect-ratio:1}
+.donut svg{width:100%;height:100%;transform:rotate(-90deg)}
+.donut circle{fill:none;stroke-width:22;transition:stroke-dasharray 1.4s var(--ease),stroke-width .25s,opacity .25s}
+.donut:hover circle{opacity:.55}.donut circle.hl{opacity:1!important;stroke-width:27}
+.donut .mid{position:absolute;inset:0;display:grid;place-content:center;text-align:center}.donut .mid b{font:400 34px var(--disp);color:var(--lime);text-shadow:0 0 20px var(--lime-glow)}.donut .mid small{font:800 9px var(--body);letter-spacing:2.4px;color:var(--mut)}
+
+.gal{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+.gal .g{aspect-ratio:1;border-radius:var(--r);border:1px dashed rgba(170,255,0,.3);display:grid;place-content:center;gap:6px;text-align:center;color:var(--mut);font-size:12px;background:repeating-linear-gradient(45deg,rgba(170,255,0,.03) 0 12px,transparent 12px 24px);overflow:hidden;transition:.3s var(--ease)}.gal .g:hover{transform:rotate(-1.5deg) scale(1.03);border-color:var(--lime)}
+.gal .g b{font:400 30px var(--disp);color:rgba(170,255,0,.45)}.gal img{width:100%;height:100%;object-fit:cover}
+
+.faq{max-width:760px;margin:auto}.faq details{padding:0;margin-bottom:10px;overflow:hidden}.faq summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:18px 20px;font-weight:800;color:var(--lime);font-size:15px}
+.faq summary::-webkit-details-marker{display:none}.faq summary::after{content:"+";font:400 26px/1 var(--disp);transition:.3s}.faq details[open] summary::after{transform:rotate(45deg)}
+.faq details[open]{border-color:rgba(170,255,0,.45)}.faq p{padding:0 20px 18px;color:var(--mut);font-size:14px}
+.faq p b{color:var(--txt)}
+
+.cta{position:relative;text-align:center;padding:clamp(70px,10vw,110px) 16px;background:radial-gradient(ellipse at 50% 100%,rgba(170,255,0,.14),transparent 60%),linear-gradient(180deg,#031209,#020d09);overflow:hidden}
+.cta h2{font-size:clamp(34px,6vw,64px)}.cta p{color:var(--mut);margin:8px 0 26px}
+.ca{display:inline-flex;align-items:center;gap:10px;margin-top:22px;padding:9px 14px;border-radius:12px;border:1px solid var(--line);background:rgba(0,0,0,.4);font:600 12px var(--body);color:var(--mut)}.ca code{color:var(--txt);font-family:ui-monospace,Menlo,Consolas,monospace}.ca button{background:rgba(170,255,0,.1);border:0;color:var(--lime);padding:5px 10px;border-radius:8px;cursor:pointer;font:800 10px var(--body);letter-spacing:1px}
+
+footer{background:#010a07;border-top:1px solid var(--line);padding:46px clamp(16px,4vw,40px) 30px;font-size:13px}
+.fgrid{max-width:1200px;margin:auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1.2fr;gap:28px}
+footer h4{font:800 10.5px var(--body);letter-spacing:1.6px;color:var(--lime);margin-bottom:14px}footer a{display:block;color:var(--mut);margin-bottom:10px;transition:.2s}footer a:hover{color:var(--lime);transform:translateX(3px)}
+.fbot{max-width:1200px;margin:30px auto 0;padding-top:20px;border-top:1px solid var(--line2);display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;color:#5c7867;font-size:11.5px}
+.risk{max-width:1200px;margin:24px auto 0;color:#4d6858;font-size:11px;line-height:1.6}
+
+/* ---------- modal / toast ---------- */
+.modal{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.72);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;padding:16px}
+.modal.open{display:flex;animation:fade .2s}@keyframes fade{from{opacity:0}}
+.mbox{position:relative;width:100%;max-width:400px;max-height:88vh;overflow:auto;background:var(--panel-solid);border:1px solid rgba(170,255,0,.5);border-radius:20px;padding:22px;box-shadow:0 0 60px rgba(170,255,0,.18),0 30px 80px #000;animation:pop .35s var(--ease)}
+.mbox h3{font-size:26px;margin-bottom:2px}.mbox p{font-size:12.5px;color:var(--mut);margin-bottom:16px}
+.mclose{position:absolute;right:14px;top:12px;background:none;border:0;color:var(--mut);font-size:26px;cursor:pointer;line-height:1}.mclose:hover{color:var(--lime)}
+.w{display:flex;align-items:center;gap:13px;width:100%;padding:13px;margin-bottom:9px;background:#071f16;border:1px solid var(--line2);border-radius:13px;font:700 14px var(--body);cursor:pointer;text-align:left;transition:.2s}
+.w:hover{border-color:var(--lime);background:#0a2a1d;transform:translateX(3px)}.w img,.w .ic{width:34px;height:34px;border-radius:9px;flex:none;display:grid;place-items:center;background:#0b3a29;color:var(--lime);font-size:17px}
+.w small{display:block;font-weight:500;color:var(--mut);font-size:11px}
+.acct{padding:14px;border-radius:12px;background:#071f16;border:1px solid var(--line);margin-bottom:12px;word-break:break-all;font:500 12px ui-monospace,Menlo,Consolas,monospace;color:var(--txt)}
+.toasts{position:fixed;z-index:120;right:16px;bottom:16px;display:grid;gap:10px;max-width:calc(100vw - 32px)}
+.toast{padding:12px 16px;border-radius:12px;background:#06231a;border:1px solid var(--line);color:var(--txt);font-size:13px;box-shadow:0 10px 40px #000;animation:tin .35s var(--ease)}.toast.err{border-color:rgba(255,59,59,.5)}.toast.ok{border-color:rgba(56,224,123,.5)}
+@keyframes tin{from{opacity:0;transform:translateX(30px)}}
+#confetti{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:110}
+
+/* reveal */
+.js .rv{opacity:0;transform:translateY(26px);transition:opacity .8s var(--ease),transform .8s var(--ease)}.js .rv.in,.js .revealed.rv{opacity:1;transform:none}
+
+/* ---------- responsive ---------- */
+@media(max-width:980px){
+  .links{position:fixed;top:60px;left:0;right:0;flex-direction:column;gap:2px;padding:12px 16px 18px;background:rgba(2,12,8,.97);border-bottom:1px solid var(--line);transform:translateY(-130%);transition:transform .35s var(--ease)}
+  .links.open{transform:none}.links a{padding:13px 12px;font-size:13px}.burger{display:block}
+  .about,.tk,.how,.fgrid{grid-template-columns:1fr}.about .txt{grid-row:auto}
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .c1{opacity:.45;left:-40px}.c3,.c4,.c5,.sign{display:none}.c2{opacity:.6;right:-10px}
+}
+@media(max-width:520px){.steps .step span{display:none}.xbtn{display:none}.nav-r .btn{padding:9px 12px}.hero{padding-top:84px}.logo{font-size:21px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}html{scroll-behavior:auto}.rv{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+
+<!-- reusable crate-with-parachute -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <radialGradient id="chute" cx="50%" cy="25%" r="75%"><stop offset="0" stop-color="#cbff4d"/><stop offset=".55" stop-color="#9be000"/><stop offset="1" stop-color="#5f9a00"/></radialGradient>
+    <linearGradient id="wood" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#55603a"/><stop offset="1" stop-color="#2d3620"/></linearGradient>
+    <symbol id="crate" viewBox="0 0 240 300">
+      <path d="M8 118C8 36 62 4 120 4s112 32 112 114c-24-14-48-20-72-6-13-12-27-12-40 0-13-12-27-12-40 0-24-14-48-8-72 6z" fill="url(#chute)" stroke="#1d2d06" stroke-width="4" stroke-linejoin="round"/>
+      <path d="M62 14c-18 28-26 62-24 100M120 6v108M178 14c18 28 26 62 24 100" fill="none" stroke="#6aa500" stroke-width="3" opacity=".7"/>
+      <path d="M12 118L82 214M60 112L96 214M120 112V214M180 112L144 214M228 118L158 214" stroke="#a9e000" stroke-width="2" opacity=".85"/>
+      <g transform="translate(78 208)"><path d="M0 8L84 8 84 74 0 74z" fill="url(#wood)" stroke="#161f0b" stroke-width="4"/>
+        <path d="M0 8L12 0 96 0 84 8M84 8L96 0 96 66 84 74" fill="#3b4629" stroke="#161f0b" stroke-width="3"/>
+        <path d="M6 30H78M6 52H78" stroke="#1a230d" stroke-width="2"/>
+        <text x="42" y="48" text-anchor="middle" font-family="Lilita One,Impact,sans-serif" font-size="22" fill="#b4ff1a" stroke="#0b1405" stroke-width="1">CHOMP</text></g>
+    </symbol>
+    <symbol id="chompmark" viewBox="0 0 32 32"><circle cx="16" cy="16" r="15" fill="#06240f" stroke="#aaff00" stroke-width="2"/><path d="M5 17c3-8 19-8 22 0-3 5-6 3-8 5-1-2-4-2-6 0-2-2-5 0-8-5z" fill="#aaff00"/><circle cx="12" cy="13" r="2.3" fill="#06240f"/><circle cx="20" cy="13" r="2.3" fill="#06240f"/></symbol>
+  </defs>
+</svg>
+
+<canvas id="confetti" aria-hidden="true"></canvas>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<nav id="nav">
+  <a class="logo" href="#home" aria-label="CHOMP home"><img src="assets/logo.png" alt="" onload="this.style.display='block';this.nextElementSibling.style.display='none';this.nextElementSibling.nextElementSibling.style.display='none'"><svg aria-hidden="true"><use href="#chompmark"/></svg><span>CHOMP</span></a>
+  <div class="links" id="links">
+    <a href="#home">Home</a><a href="#about">About</a><a href="#how">How it works</a><a href="#tokenomics">Tokenomics</a><a href="#whitepaper">Whitepaper</a><a href="#gallery">Gallery</a><a href="#faq">FAQ</a>
+  </div>
+  <div class="nav-r">
+    <span class="chip" id="netChip"><i></i><span id="netName"></span></span>
+    <a class="xbtn" href="https://x.com/Chomponhood" target="_blank" rel="noopener" aria-label="CHOMP on X">𝕏</a>
+    <button class="btn" id="navConnect">Connect Wallet</button>
+    <button class="burger" id="burger" aria-label="Menu" aria-expanded="false"><i></i></button>
+  </div>
 </nav>
 
 <header class="hero" id="home">
-  <div class="crate c1"><svg viewBox="0 0 200 230"><defs><radialGradient id="p"><stop offset="0" stop-color="#b6ff1a"/><stop offset="1" stop-color="#6fa800"/></radialGradient></defs><path d="M10 80C10 20 60 0 100 0s90 20 90 80c-30-20-60-14-90 0-30-14-60-20-90 0z" fill="url(#p)" stroke="#1b2a05" stroke-width="3"/><g stroke="#8fd100" stroke-width="1.5"><path d="M10 80L70 175M60 70L80 175M100 78L100 175M140 70L120 175M190 80L130 175"/></g><rect x="66" y="170" width="68" height="52" rx="3" fill="#3f4a2c" stroke="#1b2a05" stroke-width="3"/><text x="100" y="204" font-family="Lilita One" font-size="20" fill="#aaff00" text-anchor="middle">CHOMP</text></svg></div>
-  <div class="crate c2"><svg viewBox="0 0 200 230"><path d="M10 80C10 20 60 0 100 0s90 20 90 80c-30-20-60-14-90 0-30-14-60-20-90 0z" fill="url(#p)" stroke="#1b2a05" stroke-width="3"/><g stroke="#8fd100" stroke-width="1.5"><path d="M10 80L70 175M100 78L100 175M190 80L130 175"/></g><rect x="66" y="170" width="68" height="52" rx="3" fill="#3f4a2c" stroke="#1b2a05" stroke-width="3"/></svg></div>
-  <div class="crate c3"><svg viewBox="0 0 200 230"><path d="M10 80C10 20 60 0 100 0s90 20 90 80c-30-20-60-14-90 0-30-14-60-20-90 0z" fill="url(#p)"/><rect x="66" y="170" width="68" height="52" fill="#3f4a2c"/></svg></div>
-  <div class="crate c4"><svg viewBox="0 0 200 230"><path d="M10 80C10 20 60 0 100 0s90 20 90 80c-30-20-60-14-90 0-30-14-60-20-90 0z" fill="url(#p)"/><rect x="66" y="170" width="68" height="52" fill="#3f4a2c"/></svg></div>
-  <div class="eyes" style="left:1.5%;top:68%"><i></i><i></i></div><div class="eyes" style="left:38%;top:80%"><i></i><i></i></div><div class="eyes" style="right:9%;top:52%"><i></i><i></i></div>
-  <div class="sign">AIRDROP<br>ZONE</div>
+  <div class="layer bgimg" data-p="6"></div>
+  <div class="layer" data-p="10"><div class="moon"></div></div>
+  <svg class="layer trees" id="treesFar" data-p="14" preserveAspectRatio="none" viewBox="0 0 1600 900" aria-hidden="true"></svg>
+  <div class="layer" data-p="18"><div class="fog f2"></div></div>
+  <svg class="layer trees" id="treesNear" data-p="30" preserveAspectRatio="none" viewBox="0 0 1600 900" aria-hidden="true"></svg>
+  <div class="layer" data-p="22"><div class="fog f1"></div><div class="water"></div></div>
+  <canvas id="fx" aria-hidden="true"></canvas>
 
-  <div class="eyebrow">CHOMP COMMUNITY</div>
-  <h1>CLAIM<br>CHOMP</h1>
-  <p class="sub">Enter your Robinhood wallet address and claim your CHOMP DROP.</p>
-  <div class="panel">
-    <label for="addr">Enter your Robinhood wallet</label>
-    <input id="addr" placeholder="0x... your Robinhood wallet address" autocomplete="off" spellcheck="false">
-    <button class="btn ghost" id="panelConnect" style="margin-bottom:10px">Connect Wallet</button>
-    <button class="btn" id="claim">Claim CHOMP &nbsp;→</button>
-    <div id="result"><small>CLAIMED / CLAIMABLE</small><div class="amt" id="amt"></div></div>
-    <div id="msg" role="status"></div>
+  <div class="crate c1"><svg viewBox="0 0 240 300"><use href="#crate"/></svg></div>
+  <div class="crate c2"><svg viewBox="0 0 240 300"><use href="#crate"/></svg></div>
+  <div class="crate c3"><svg viewBox="0 0 240 300"><use href="#crate"/></svg></div>
+  <div class="crate c4"><svg viewBox="0 0 240 300"><use href="#crate"/></svg></div>
+  <div class="crate c5"><svg viewBox="0 0 240 300"><use href="#crate"/></svg></div>
+  <div class="eyes" style="left:3%;top:64%"><i></i><i></i></div>
+  <div class="eyes" style="left:17%;top:72%"><i></i><i></i></div>
+  <div class="eyes" style="right:5%;top:60%"><i></i><i></i></div>
+  <div class="eyes g" style="left:56%;bottom:7%"><i></i><i></i></div>
+  <div class="sign">AIRDROP<br>ZONE</div>
+  <div class="layer vig"></div>
+
+  <div class="content">
+    <div class="status" id="status"><i></i><span id="statusTxt">CHOMP COMMUNITY</span></div>
+    <h1>CLAIM<br>CHOMP</h1>
+    <p class="sub">Enter your Robinhood Chain wallet, hit claim, and your CHOMP lands straight in it. The table is getting hungry.</p>
+    <div class="count" id="count"></div>
+
+    <div class="card" id="card">
+      <div class="claim-view">
+        <div class="steps" aria-label="Progress">
+          <div class="step on" id="s1"><b>1</b><span>Wallet</span></div><div class="bar" id="b1"></div>
+          <div class="step" id="s2"><b>2</b><span>Connect</span></div><div class="bar" id="b2"></div>
+          <div class="step" id="s3"><b>3</b><span>Claim</span></div>
+        </div>
+        <label class="lbl" for="addr"><span>Your Robinhood wallet</span></label>
+        <div class="field" id="field">
+          <input id="addr" placeholder="0x... paste your wallet address" autocomplete="off" autocapitalize="off" spellcheck="false" inputmode="text" aria-describedby="msg">
+          <span class="vi" id="vi" aria-hidden="true"></span>
+          <button class="tag" id="paste" type="button">PASTE</button>
+        </div>
+        <div class="alloc" id="alloc">
+          <small>YOUR ALLOCATION</small>
+          <div class="amt"><b id="amt">0</b> <span id="sym">CHOMP</span></div>
+          <span class="badge" id="badge"></span>
+        </div>
+        <div class="actions">
+          <button class="btn ghost block" id="panelConnect" type="button">Connect Wallet</button>
+          <button class="btn lg block" id="claim" type="button"><span class="spin"></span><span id="claimTxt">Claim CHOMP →</span></button>
+        </div>
+        <div id="msg" role="status" aria-live="polite"></div>
+        <div class="prog" id="prog" hidden>
+          <div class="row"><span>Community claimed</span><b id="progTxt">0%</b></div>
+          <div class="meter"><i id="meter"></i></div>
+        </div>
+        <p class="safe">🔒 We never ask for your seed phrase or private key.</p>
+      </div>
+
+      <div class="done-view">
+        <div class="croc">🐊</div>
+        <div class="big">CHOMPED!</div>
+        <p id="doneTxt">Your CHOMP has been sent.</p>
+        <div class="actions">
+          <a class="btn block" id="txLink" href="#" target="_blank" rel="noopener" hidden>View transaction ↗</a>
+          <button class="btn ghost block" id="watch" type="button">Add CHOMP to my wallet</button>
+          <button class="btn ghost block" id="another" type="button">Claim for another wallet</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="stats" id="stats">
+      <div class="stat"><small>TOTAL SUPPLY</small><b>100B</b></div>
+      <div class="stat"><small>COMMUNITY AIRDROP</small><b>75%</b></div>
+      <div class="stat"><small>WALLETS CLAIMED</small><b id="stClaimed">–</b></div>
+      <div class="stat"><small>ELIGIBLE WALLETS</small><b id="stElig">–</b></div>
+    </div>
+    <div class="scroll"><span>Scroll</span><i></i></div>
   </div>
 </header>
 
-<section class="s" id="about"><div class="wrap">
+<div class="ticker" aria-hidden="true"><div id="tick"></div></div>
+
+<section class="s" id="about"><div class="bgimg2"></div><div class="wrap">
+  <div class="sec-h rv"><h2>ABOUT CHOMP</h2></div>
   <div class="about">
-    <div class="txt"><h2>ABOUT CHOMP</h2>
+    <div class="glass txt rv"><h2>BORN IN THE SWAMP</h2>
       <p>Robinhood Chain is opening the door to a new generation of traders, creators, collectors, and degens — and CHOMP is here to welcome them.</p>
       <p>CHOMP is a community-powered meme built around the simplest thing in crypto: show up, have fun, and make something worth remembering.</p>
       <p>From the OGs who know the culture to the newcomers discovering it for the first time, there's a place at the table.</p>
       <p>And the table is getting hungry.</p><p>CHOMP is here.</p></div>
-    <div class="stat"><small>SUPPLY</small><b>100,000,000,000<br>CHOMP</b></div>
-    <div class="stat"><small>AIRDROP</small><b>75% COMMUNITY<br>AIRDROP</b></div>
-    <div class="stat"><small>DROP DATE</small><b>TBA<br>SOON</b></div>
-    <div class="stat"><small>BUILT ON</small><b style="font:600 26px Inter;color:#fff">Robinhood</b></div>
+    <div class="glass tile rv"><small>SUPPLY</small><b>100,000,000,000<br>CHOMP</b></div>
+    <div class="glass tile rv"><small>AIRDROP</small><b>75% COMMUNITY<br>AIRDROP</b></div>
+    <div class="glass tile rv"><small>DROP DATE</small><b id="dropDate">TBA<br>SOON</b></div>
+    <div class="glass tile rv"><small>BUILT ON</small><b style="font:600 28px var(--body);letter-spacing:-.5px">Robinhood</b></div>
   </div>
 </div></section>
 
-<section class="s" id="tokenomics"><div class="wrap">
-  <h2>TOKENOMICS</h2>
-  <div class="total"><small>TOTAL SUPPLY</small><b>100,000,000,000</b></div>
-  <div class="tk">
+<section class="s alt" id="how"><div class="wrap">
+  <div class="sec-h rv"><h2>HOW TO CLAIM</h2><p>Three steps. Under a minute.</p></div>
+  <div class="how">
+    <div class="glass it rv"><h3>Paste your wallet</h3><p>Enter the Robinhood Chain address you were eligible with. You will instantly see your allocation.</p></div>
+    <div class="glass it rv"><h3>Connect a wallet</h3><p>MetaMask, Rabby, Coinbase Wallet, Trust, OKX, or any WalletConnect wallet. We switch you to Robinhood Chain.</p></div>
+    <div class="glass it rv"><h3>Press claim</h3><p>Confirm in your wallet. Your CHOMP is sent straight to the address you entered.</p></div>
+  </div>
+</div></section>
+
+<section class="s" id="tokenomics"><div class="bgimg2"></div><div class="wrap">
+  <div class="sec-h rv"><h2>TOKENOMICS</h2></div>
+  <div class="glass tk rv" id="tkBox">
     <div>
-      <div class="row"><span>Community Airdrop</span><span>75%</span><i style="width:75%"></i></div>
-      <div class="row"><span>Ecosystem &amp; Future Development</span><span>10%</span></div>
-      <div class="row"><span>Team</span><span>5%</span></div>
-      <div class="row"><span>Liquidity</span><span>5%</span></div>
-      <div class="row"><span>Marketing</span><span>5%</span></div>
+      <div class="total"><small>TOTAL SUPPLY</small><b>100,000,000,000</b></div>
+      <div id="trows"></div>
     </div>
-    <div class="donut"><div><b>CHOMP</b><small>TOKENOMICS</small></div></div>
+    <div class="donut"><svg viewBox="0 0 200 200" id="donut"></svg><div class="mid"><b>CHOMP</b><small>TOKENOMICS</small></div></div>
   </div>
 </div></section>
 
-<section class="s" id="whitepaper"><div class="wrap" style="text-align:center"><h2>WHITEPAPER</h2><p style="color:var(--mut);margin-bottom:20px">Coming soon.</p><a class="btn" href="#" aria-disabled="true">Read Whitepaper</a></div></section>
-
-<section class="s" id="gallery"><div class="wrap"><h2>MEME GALLERY</h2>
-  <div class="gal"><div>meme 1</div><div>meme 2</div><div>meme 3</div><div>meme 4</div></div></div></section>
-
-<section class="s faq" id="faq"><div class="wrap"><h2>FAQ</h2>
-  <details><summary>How do I claim?</summary><p>Paste your Robinhood Chain wallet address, press Claim, and confirm in your connected wallet. Each claim costs a small fee of about $0.10 (shown on the page) plus network gas. Tokens go straight to the address you entered.</p></details>
-  <details><summary>When can I trade?</summary><p>Trading opens at launch after the date is announced on X. Claimed tokens stay in your wallet until then.</p></details>
-  <details><summary>Which network?</summary><p>Robinhood Chain. Your wallet will be asked to switch to it.</p></details>
+<section class="s alt" id="whitepaper"><div class="wrap" style="text-align:center">
+  <div class="sec-h rv"><h2>WHITEPAPER</h2><p>The full story, the plan and the numbers. Coming soon.</p></div>
+  <a class="btn lg ghost rv" href="#" aria-disabled="true" onclick="return false">Read whitepaper — soon</a>
 </div></section>
 
-<div class="cta"><h2>READY TO JOIN THE PACK?</h2><p>Claim your CHOMP now.</p><a class="btn" href="#home" style="padding:16px 32px;font-size:15px">Claim Now →</a></div>
+<section class="s" id="gallery"><div class="bgimg2"></div><div class="wrap">
+  <div class="sec-h rv"><h2>MEME GALLERY</h2><p>Drop your memes in <code>web/assets/gallery/</code> and list them in config.js.</p></div>
+  <div class="gal rv" id="gal"></div>
+</div></section>
+
+<section class="s alt" id="faq"><div class="wrap">
+  <div class="sec-h rv"><h2>FAQ</h2></div>
+  <div class="faq rv">
+    <details class="glass"><summary>How do I claim?</summary><p>Paste your Robinhood Chain wallet address, press <b>Claim</b>, connect a wallet and confirm. Tokens go straight to the address you entered.</p></details>
+    <details class="glass"><summary>Is there a fee?</summary><p>Each claim includes a small claim fee (about <b>$0.10</b>) plus normal network gas. Your wallet shows the exact amount before you confirm anything.</p></details>
+    <details class="glass"><summary>When can I trade?</summary><p>Claimed CHOMP stays in your wallet until trading opens at launch. The date will be announced on X first.</p></details>
+    <details class="glass"><summary>Which network?</summary><p>Robinhood Chain. When you connect, your wallet is asked to add or switch to it.</p></details>
+    <details class="glass"><summary>Is this safe?</summary><p>We will <b>never</b> ask for your seed phrase or private key. The claim only needs one wallet confirmation. Always check you are on the official site and the contract address shown below.</p></details>
+    <details class="glass"><summary>Can I claim for a friend's wallet?</summary><p>Yes. Anyone can submit the claim, but CHOMP always goes to the wallet that is eligible, never to the sender.</p></details>
+  </div>
+</div></section>
+
+<section class="cta" id="join">
+  <h2 class="rv">READY TO JOIN THE PACK?</h2>
+  <p class="rv">Your CHOMP is waiting. Claim it now.</p>
+  <a class="btn lg rv" href="#home">Claim now →</a><br>
+  <div class="ca rv" id="caBox" hidden>Claim contract <code id="caTxt"></code><button id="caCopy" type="button">COPY</button></div>
+</section>
 
 <footer>
-  <div><div class="logo disp" style="font-size:28px">CHOMP</div><p style="color:var(--mut);margin-top:6px">For the ones who were here. For the ones coming next.</p></div>
-  <div><h4>ECOSYSTEM</h4><a href="#">Buy $CHOMP</a><a href="#home">Token Claim</a></div>
-  <div><h4>COMMUNITY</h4><a href="https://x.com/Chomponhood" target="_blank" rel="noopener">Twitter / X</a><a href="#">Telegram</a></div>
-  <div><h4>RESOURCES</h4><a href="#tokenomics">Tokenomics</a><a href="#whitepaper">WhitePaper</a><a href="#faq">FAQ &amp; Help</a></div>
-  <div><a class="btn" href="#home" style="text-align:center">Join the Pack</a><small>POWERED BY Robinhood<br>© 2026 CHOMP. All rights reserved.</small></div>
+  <div class="fgrid">
+    <div><a class="logo" href="#home" style="margin-bottom:10px"><svg aria-hidden="true"><use href="#chompmark"/></svg><span>CHOMP</span></a><p style="color:var(--mut)">For the ones who were here. For the ones coming next.</p></div>
+    <div><h4>ECOSYSTEM</h4><a href="#">Buy $CHOMP</a><a href="#home">Token Claim</a></div>
+    <div><h4>COMMUNITY</h4><a href="https://x.com/Chomponhood" target="_blank" rel="noopener">Twitter / X</a><a href="#">Telegram</a></div>
+    <div><h4>RESOURCES</h4><a href="#tokenomics">Tokenomics</a><a href="#whitepaper">WhitePaper</a><a href="#faq">FAQ &amp; Help</a></div>
+    <div><a class="btn" href="#home" style="margin-bottom:14px">Join the pack</a><small style="color:#5c7867">POWERED BY Robinhood Chain</small></div>
+  </div>
+  <p class="risk">CHOMP is a community meme token with no intrinsic value or promise of financial return. Crypto is volatile and you can lose everything. Only use funds you can afford to lose. Nothing here is financial advice.</p>
+  <div class="fbot"><span>© 2026 CHOMP. All rights reserved.</span><span>Never share your seed phrase.</span></div>
 </footer>
 
-
-<div class="modal" id="modal" role="dialog" aria-modal="true" aria-label="Connect wallet">
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="mt">
   <div class="mbox"><button class="mclose" id="mclose" aria-label="Close">×</button>
-    <h3>CONNECT WALLET</h3><p>Choose a wallet. Any EVM wallet works.</p>
+    <h3 id="mt">CONNECT WALLET</h3><p id="ms">Choose a wallet. Any EVM wallet works.</p>
     <div id="wlist"></div>
   </div>
 </div>
+
 <script src="vendor/ethers.umd.min.js"></script>
+<script>
+/* ===== scene, effects and page chrome (no wallet logic here) ===== */
+(function(){
+  const $=id=>document.getElementById(id);
+  const reduce=matchMedia('(prefers-reduced-motion:reduce)').matches;
+
+  // seeded random so the scene is the same every load
+  let seed=7;const rnd=()=>{seed=(seed*16807)%2147483647;return (seed-1)/2147483646};
+
+  // twisted swamp trees (silhouettes)
+  function trees(el,{count,color,min,max,vines}){
+    let d='';const W=1600,H=900;
+    for(let i=0;i<count;i++){
+      const x=(i+.2+rnd()*.6)*(W/count), h=H*(min+rnd()*(max-min)), w=18+rnd()*34, lean=(rnd()-.5)*70, y=H;
+      d+=`M${x-w},${y} C${x-w*.5+lean*.2},${y-h*.4} ${x-w*.3+lean},${y-h*.75} ${x+lean*1.3-w*.15},${y-h} L${x+lean*1.3+w*.15},${y-h} C${x+w*.3+lean},${y-h*.75} ${x+w*.5+lean*.2},${y-h*.4} ${x+w},${y}Z `;
+      for(let b=0;b<2+Math.floor(rnd()*3);b++){
+        const by=y-h*(.45+rnd()*.5),dir=rnd()>.5?1:-1,bl=60+rnd()*140;
+        d+=`M${x+lean*.9},${by} q${dir*bl*.5},${-30-rnd()*40} ${dir*bl},${-10-rnd()*60} l${dir*-bl*.9},${35+rnd()*10} z `;
+      }
+      if(vines){const vx=x+lean+(rnd()-.5)*60,vy=y-h*(.7+rnd()*.25),vl=90+rnd()*220;d+=`M${vx},${vy} l3,0 l-2,${vl} z `}
+    }
+    el.innerHTML=`<path d="${d}" fill="${color}" fill-rule="nonzero"/>`;
+  }
+  trees($('treesFar'),{count:14,color:'#04170f',min:.45,max:.8,vines:false});
+  trees($('treesNear'),{count:7,color:'#010a06',min:.62,max:.98,vines:true});
+
+  // ticker
+  const t='CHOMP <span>•</span> AIRDROP ZONE <span>•</span> ROBINHOOD CHAIN <span>•</span> THE TABLE IS GETTING HUNGRY <span>•</span> ';
+  $('tick').innerHTML=(t+t).repeat(2).replace(/<span>/g,'<span>');
+
+  // fireflies
+  const cv=$('fx'),cx=cv.getContext('2d');let W,H,ff=[];
+  const size=()=>{const r=cv.getBoundingClientRect();W=cv.width=r.width*devicePixelRatio;H=cv.height=r.height*devicePixelRatio};
+  size();addEventListener('resize',size);
+  for(let i=0;i<46;i++)ff.push({x:Math.random(),y:Math.random(),r:.8+Math.random()*2,s:.00008+Math.random()*.0002,a:Math.random()*6.28,p:Math.random()*6.28});
+  let vis=true;new IntersectionObserver(e=>vis=e[0].isIntersecting).observe($('home'));
+  (function loop(t){
+    if(vis&&!reduce){cx.clearRect(0,0,W,H);
+      for(const f of ff){f.a+=.003;f.x+=Math.cos(f.a)*f.s*16;f.y+=Math.sin(f.a*1.3)*f.s*12;
+        if(f.x<0)f.x=1;if(f.x>1)f.x=0;if(f.y<0)f.y=1;if(f.y>1)f.y=0;
+        const al=.35+.65*Math.abs(Math.sin(t*.0014+f.p)),px=f.x*W,py=f.y*H,r=f.r*devicePixelRatio;
+        const g=cx.createRadialGradient(px,py,0,px,py,r*7);g.addColorStop(0,`rgba(190,255,40,${al})`);g.addColorStop(1,'rgba(190,255,40,0)');
+        cx.fillStyle=g;cx.beginPath();cx.arc(px,py,r*7,0,6.28);cx.fill();}
+    }requestAnimationFrame(loop)})(0);
+
+  // mouse parallax
+  const layers=[...document.querySelectorAll('.layer[data-p]')];
+  if(!reduce&&matchMedia('(pointer:fine)').matches)addEventListener('mousemove',e=>{
+    const x=(e.clientX/innerWidth-.5),y=(e.clientY/innerHeight-.5);
+    layers.forEach(l=>{const p=+l.dataset.p;l.style.transform=`translate(${-x*p}px,${-y*p*.6}px)`});
+  });
+
+  // nav: stuck + burger + active section
+  const nav=$('nav'),links=$('links'),burger=$('burger');
+  const onScroll=()=>nav.classList.toggle('stuck',scrollY>20);onScroll();addEventListener('scroll',onScroll,{passive:true});
+  burger.onclick=()=>{const o=links.classList.toggle('open');burger.classList.toggle('open',o);burger.setAttribute('aria-expanded',o)};
+  links.addEventListener('click',e=>{if(e.target.tagName==='A'){links.classList.remove('open');burger.classList.remove('open')}});
+  const secs=['home','about','how','tokenomics','whitepaper','gallery','faq'].map(id=>$(id));
+  const so=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){links.querySelectorAll('a').forEach(a=>a.classList.toggle('on',a.getAttribute('href')==='#'+e.target.id))}}),{rootMargin:'-45% 0px -50% 0px'});
+  secs.forEach(s=>s&&so.observe(s));
+
+  // reveal on scroll
+  const ro=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in','revealed');ro.unobserve(e.target)}}),{threshold:.12});
+  document.querySelectorAll('.rv').forEach((el,i)=>{el.style.transitionDelay=(i%4)*70+'ms';ro.observe(el)});
+
+  // tokenomics (data -> rows + donut)
+  const TK=[['Community Airdrop',75,'#aaff00'],['Ecosystem & Future Development',10,'#2fbf71'],['Team',5,'#8a948e'],['Liquidity',5,'#c9cfcb'],['Marketing',5,'#ffffff']];
+  const tot=100e9,R=78,C=2*Math.PI*R;let off=0,rows='',segs='';
+  TK.forEach(([n,p,c],i)=>{
+    rows+=`<div class="trow" data-i="${i}" style="--c:${c};--w:${p}%"><span class="dot"></span><span class="nm">${n}</span><span class="tok">${(tot*p/100).toLocaleString('en-US')}</span><span class="pc">${p}%</span><i></i></div>`;
+    segs+=`<circle data-i="${i}" cx="100" cy="100" r="${R}" stroke="${c}" stroke-dasharray="0 ${C}" stroke-dashoffset="${-off}" data-len="${C*p/100-2}" data-full="${C}"/>`;
+    off+=C*p/100;
+  });
+  $('trows').innerHTML=rows;$('donut').innerHTML='<circle cx="100" cy="100" r="78" stroke="#0a2a1d" stroke-width="22" fill="none"/>'+segs;
+  const hl=(i,on)=>{document.querySelectorAll(`[data-i="${i}"]`).forEach(e=>e.classList.toggle(e.tagName==='circle'?'hl':'hl',on))};
+  document.querySelectorAll('.trow,.donut circle[data-i]').forEach(e=>{e.addEventListener('mouseenter',()=>hl(e.dataset.i,true));e.addEventListener('mouseleave',()=>hl(e.dataset.i,false))});
+  new IntersectionObserver((es,o)=>es.forEach(e=>{if(e.isIntersecting){document.querySelectorAll('.donut circle[data-len]').forEach(c=>c.setAttribute('stroke-dasharray',`${c.dataset.len} ${c.dataset.full}`));o.disconnect()}}),{threshold:.3}).observe($('tkBox'));
+
+  // gallery: uses CHOMP_CONFIG.gallery (list of image paths) or placeholders
+  const gal=(window.CHOMP_CONFIG&&window.CHOMP_CONFIG.gallery)||[];
+  $('gal').innerHTML=gal.length?gal.map(s=>`<div class="g"><img loading="lazy" src="${s}" alt="CHOMP meme"></div>`).join(''):[1,2,3,4].map(n=>`<div class="g"><div><b>#${n}</b><br>meme coming soon</div></div>`).join('');
+
+  // confetti (exposed for the claim flow)
+  const cc=$('confetti'),ctx=cc.getContext('2d');
+  window.confetti=function(){
+    if(reduce)return;cc.width=innerWidth;cc.height=innerHeight;
+    const cols=['#aaff00','#ffffff','#38e07b','#ffcc33','#7ad000'];
+    const ps=Array.from({length:150},()=>({x:innerWidth/2,y:innerHeight*.55,vx:(Math.random()-.5)*16,vy:-8-Math.random()*12,s:5+Math.random()*7,c:cols[Math.random()*cols.length|0],r:Math.random()*6,vr:(Math.random()-.5)*.4,l:0}));
+    (function f(){ctx.clearRect(0,0,cc.width,cc.height);let live=0;
+      for(const p of ps){p.vy+=.38;p.x+=p.vx;p.y+=p.vy;p.vx*=.992;p.r+=p.vr;p.l++;if(p.y<cc.height+20){live++;ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.r);ctx.fillStyle=p.c;ctx.globalAlpha=Math.max(0,1-p.l/170);ctx.fillRect(-p.s/2,-p.s/4,p.s,p.s/2);ctx.restore()}}
+      if(live&&ps[0].l<200)requestAnimationFrame(f);else ctx.clearRect(0,0,cc.width,cc.height)})();
+  };
+})();
+</script>
+
 <script type="module">
+/* ===== wallet + claim logic ===== */
 const {BrowserProvider,JsonRpcProvider,Contract,formatUnits,getAddress}=window.ethers;
 const CONFIG=window.CHOMP_CONFIG;
-const ABI=['function claim(uint256 index,address account,uint256 amount,bytes32[] proof) payable','function claimed(uint256) view returns (bool)','function claimFee() view returns (uint256)','function claimOpen() view returns (bool)'];
+const ABI=[
+ 'function claim(uint256 index,address account,uint256 amount,bytes32[] proof) payable',
+ 'function claimed(uint256) view returns (bool)','function claimFee() view returns (uint256)',
+ 'function claimOpen() view returns (bool)','function claimDeadline() view returns (uint256)',
+ 'function totalClaimed() view returns (uint256)','function claimedCount() view returns (uint256)'];
 const live=!CONFIG.claimAddress.endsWith('0000');
 const $=id=>document.getElementById(id);
-let merkle=null,active=null,signer=null,account=null;
-const say=(t,c='')=>{$('msg').textContent=t;$('msg').className=c};
 const short=a=>a.slice(0,6)+'...'+a.slice(-4);
-fetch('merkle.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.json()).then(j=>merkle=j).catch(err=>console.error('merkle.json failed to load',err));
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt=(raw,d=0)=>Number(formatUnits(raw,18)).toLocaleString('en-US',{maximumFractionDigits:d});
 
-/* ---------- wallet discovery (EIP-6963: MetaMask, Rabby, Coinbase, Trust, OKX, Phantom, Brave, ...) ---------- */
+let merkle=null,entry=null,addr=null,account=null,signer=null,active=null,busy=false,isClaimed=false,openFlag=null,deadline=0;
+let readProv=CONFIG.rpcUrl?new JsonRpcProvider(CONFIG.rpcUrl):null;
+const readC=()=>live&&(readProv||(active&&new BrowserProvider(active)))?new Contract(CONFIG.claimAddress,ABI,readProv||new BrowserProvider(active)):null;
+
+/* ---------- ui helpers ---------- */
+const say=(t,c='',html=false)=>{const m=$('msg');m[html?'innerHTML':'textContent']=t;m.className=c};
+function toast(t,c=''){const d=document.createElement('div');d.className='toast '+c;d.textContent=t;$('toasts').appendChild(d);setTimeout(()=>d.remove(),4500)}
+function countUp(el,to){const s=performance.now(),D=900,end=Number(to);const f=n=>{const p=Math.min(1,(n-s)/D),e=1-Math.pow(1-p,3);el.textContent=Math.round(end*e).toLocaleString('en-US');if(p<1)requestAnimationFrame(f)};requestAnimationFrame(f)}
+function setSteps(){
+  const s1=!!(entry),s2=!!account,s3=$('card').classList.contains('claimed');
+  const set=(id,done,on)=>{const e=$(id);e.classList.toggle('done',done);e.classList.toggle('on',!done&&on)};
+  set('s1',s1,!s1);set('s2',s2,s1&&!s2);set('s3',s3,s1&&s2&&!s3);
+  $('b1').classList.toggle('on',s1);$('b2').classList.toggle('on',s2);
+}
+function setBusy(b,txt){busy=b;$('claim').classList.toggle('loading',b);$('claim').disabled=b||$('claim').dataset.off==='1';if(txt)$('claimTxt').textContent=txt}
+function renderButton(){
+  const b=$('claim'),t=$('claimTxt');let off=false,label='Claim CHOMP →';
+  if(!addr){off=true;label='Enter your wallet'}
+  else if(!entry){off=true;label='Not eligible'}
+  else if(isClaimed){off=true;label='Already claimed'}
+  else if(live&&openFlag===false){off=true;label=deadline&&deadline*1000<Date.now()?'Claim ended':'Claim opens soon'}
+  else if(!account)label='Connect & claim →';
+  else label='Claim '+fmt(entry.amount)+' CHOMP →';
+  b.dataset.off=off?'1':'';b.disabled=busy||off;if(!busy)t.textContent=label;
+  $('panelConnect').style.display=account?'none':'';
+  setSteps();
+}
+
+/* ---------- merkle list + live chain stats ---------- */
+fetch('merkle.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.json()).then(j=>{
+  merkle=j;$('stElig').textContent=Object.keys(j.claims).length.toLocaleString('en-US');
+  validate();stats();
+}).catch(err=>console.error('merkle.json failed to load',err));
+$('sym').textContent=CONFIG.symbol||'CHOMP';
+
+async function stats(){
+  const st=$('status'),tx=$('statusTxt');
+  if(!live){st.className='status';tx.textContent='CLAIM OPENS SOON';renderButton();return}
+  const c=readC();if(!c){return}
+  try{
+    const [open,dl,tc,cnt]=await Promise.all([c.claimOpen(),c.claimDeadline(),c.totalClaimed(),c.claimedCount()]);
+    openFlag=open;deadline=Number(dl);
+    const ended=deadline&&deadline*1000<Date.now();
+    st.className='status '+(open&&!ended?'live':'off');tx.textContent=ended?'CLAIM ENDED':open?'CLAIM IS LIVE':'CLAIM OPENS SOON';
+    $('stClaimed').textContent=Number(cnt).toLocaleString('en-US');
+    if(merkle&&merkle.total&&BigInt(merkle.total)>0n){
+      const pct=Number(tc*10000n/BigInt(merkle.total))/100;
+      $('prog').hidden=false;$('progTxt').textContent=pct.toFixed(pct<10?2:1)+'%  ·  '+fmt(tc)+' CHOMP';$('meter').style.width=Math.max(pct,pct>0?1.5:0)+'%';
+    }
+    tick();renderButton();
+  }catch(e){console.warn('stats failed',e)}
+}
+let cdTimer;function tick(){
+  clearInterval(cdTimer);const el=$('count');
+  if(!deadline||openFlag===false||deadline*1000<Date.now()){el.textContent=deadline&&deadline*1000<Date.now()?'The claim period has ended.':'';return}
+  const u=()=>{let s=Math.max(0,Math.floor(deadline-Date.now()/1000));const d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60);
+    el.textContent='CLAIM CLOSES IN '+(d?d+'d ':'')+h+'h '+m+'m '+(s%60)+'s'};u();cdTimer=setInterval(u,1000)}
+setInterval(()=>{if(live)stats()},20000);
+stats();
+
+/* ---------- address input ---------- */
+async function validate(){
+  const raw=$('addr').value.trim(),f=$('field'),vi=$('vi');
+  entry=null;addr=null;isClaimed=false;$('alloc').classList.remove('show');
+  f.classList.remove('ok','bad');vi.textContent='';say('');
+  if(!raw){renderButton();return}
+  let a;try{a=getAddress(raw)}catch{f.classList.add('bad');vi.textContent='✕';vi.style.color='var(--red)';say('That is not a valid 0x wallet address.','err');renderButton();return}
+  addr=a;f.classList.add('ok');vi.textContent='✓';vi.style.color='var(--ok)';
+  if(!merkle){renderButton();return}
+  entry=Object.entries(merkle.claims).find(([w])=>w.toLowerCase()===a.toLowerCase())?.[1]||null;
+  const al=$('alloc'),bd=$('badge');al.classList.add('show');
+  if(!entry){$('amt').textContent='0';bd.className='badge no';bd.textContent='Not eligible';console.warn('not in list',a,'list size',Object.keys(merkle.claims).length);say('This wallet has nothing to claim.','err');renderButton();return}
+  countUp($('amt'),formatUnits(entry.amount,18));
+  bd.className='badge ok';bd.textContent='Eligible';
+  renderButton();
+  const c=readC();
+  if(c){try{if(await c.claimed(entry.index)&&addr===a){isClaimed=true;bd.className='badge done';bd.textContent='Already claimed';say('This wallet has already claimed.','');renderButton()}}catch(e){console.warn(e)}}
+}
+$('addr').addEventListener('input',validate);
+$('paste').onclick=async()=>{try{const t=(await navigator.clipboard.readText()).trim();$('addr').value=t;validate()}catch{toast('Paste with Ctrl+V — browser blocked clipboard access','err');$('addr').focus()}};
+
+/* ---------- wallet discovery (EIP-6963) ---------- */
 const found=new Map();
-function esc(t){return String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
-addEventListener('eip6963:announceProvider',e=>{found.set(e.detail.info.uuid,e.detail);renderList()});
+addEventListener('eip6963:announceProvider',e=>{found.set(e.detail.info.uuid,e.detail);if($('modal').classList.contains('open'))renderList();eager(e.detail)});
 dispatchEvent(new Event('eip6963:requestProvider'));
 function renderList(){
+  $('mt').textContent='CONNECT WALLET';$('ms').textContent='Choose a wallet. Any EVM wallet works.';
   const rows=[...found.values()].map(w=>`<button class="w" data-uuid="${esc(w.info.uuid)}"><img src="${esc(w.info.icon)}" alt="">${esc(w.info.name)}</button>`);
-  // old wallets that only inject window.ethereum (and no 6963 announcement)
   if(window.ethereum&&!found.size)rows.push('<button class="w" data-legacy="1"><span class="ic">◆</span>Browser wallet</button>');
-  rows.push('<button class="w" data-wc="1"><span class="ic">⌁</span>WalletConnect (mobile &amp; other wallets)</button>');
+  rows.push('<button class="w" data-wc="1"><span class="ic">⌁</span><span>WalletConnect<small>Mobile &amp; other wallets (QR)</small></span></button>');
   $('wlist').innerHTML=rows.join('');
 }
-$('wlist').addEventListener('click',async e=>{
-  const b=e.target.closest('.w');if(!b)return;
-  try{
-    if(b.dataset.uuid)await connect(found.get(b.dataset.uuid).provider);
-    else if(b.dataset.legacy)await connect(window.ethereum);
-    else if(b.dataset.wc)await connect(await walletConnectProvider());
-    closeModal();
-  }catch(err){say(err.shortMessage||err.message||'Connection cancelled','err');closeModal()}
-});
-const openModal=()=>{renderList();$('modal').classList.add('open')};
+function renderAccount(){
+  $('mt').textContent='CONNECTED';$('ms').textContent='Your wallet is connected.';
+  $('wlist').innerHTML=`<div class="acct">${esc(account)}</div><button class="btn ghost block" id="cpAcct" style="margin-bottom:10px">Copy address</button><button class="btn block" id="disc">Disconnect</button>`;
+  $('cpAcct').onclick=()=>{navigator.clipboard?.writeText(account);toast('Address copied','ok')};
+  $('disc').onclick=()=>{disconnect();closeModal()};
+}
+const openModal=()=>{account?renderAccount():renderList();$('modal').classList.add('open')};
 const closeModal=()=>$('modal').classList.remove('open');
 $('mclose').onclick=closeModal;$('modal').onclick=e=>{if(e.target.id==='modal')closeModal()};
 addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
+$('wlist').addEventListener('click',async e=>{
+  const b=e.target.closest('.w');if(!b)return;
+  try{
+    if(b.dataset.uuid){const w=found.get(b.dataset.uuid);await connect(w.provider,{key:w.info.rdns||w.info.name})}
+    else if(b.dataset.legacy)await connect(window.ethereum,{key:'legacy'});
+    else if(b.dataset.wc)await connect(await walletConnectProvider(),{key:'walletconnect'});
+    closeModal();afterConnect();
+  }catch(err){closeModal();say(err.shortMessage||err.message||'Connection cancelled','err')}
+});
 
-/* ---------- WalletConnect (lazy-loaded, needs walletConnectProjectId in config.js) ---------- */
+/* ---------- WalletConnect (lazy; needs walletConnectProjectId) ---------- */
 async function walletConnectProvider(){
   if(!CONFIG.walletConnectProjectId)throw new Error('WalletConnect is not configured yet (add walletConnectProjectId in config.js).');
   if(!window.WCEthereumProvider)await new Promise((ok,no)=>{const sc=document.createElement('script');sc.src='vendor/walletconnect.bundle.js';sc.onload=ok;sc.onerror=()=>no(new Error('Could not load WalletConnect'));document.head.appendChild(sc)});
@@ -212,44 +667,73 @@ async function walletConnectProvider(){
 }
 
 /* ---------- connect / network ---------- */
-async function ensureChain(provider){
+async function ensureChain(p){
   if(!CONFIG.chainId)return;
-  try{await provider.request({method:'wallet_switchEthereumChain',params:[{chainId:CONFIG.chainIdHex}]})}
+  try{await p.request({method:'wallet_switchEthereumChain',params:[{chainId:CONFIG.chainIdHex}]})}
   catch(e){
-    if(e.code===4902||e.code===-32603)await provider.request({method:'wallet_addEthereumChain',params:[{chainId:CONFIG.chainIdHex,chainName:CONFIG.chainName,rpcUrls:[CONFIG.rpcUrl],blockExplorerUrls:CONFIG.explorer?[CONFIG.explorer]:undefined,nativeCurrency:{name:CONFIG.nativeSymbol,symbol:CONFIG.nativeSymbol,decimals:18}}]});
+    if(e.code===4902||e.code===-32603)await p.request({method:'wallet_addEthereumChain',params:[{chainId:CONFIG.chainIdHex,chainName:CONFIG.chainName,rpcUrls:[CONFIG.rpcUrl],blockExplorerUrls:CONFIG.explorer?[CONFIG.explorer]:undefined,nativeCurrency:{name:CONFIG.nativeSymbol,symbol:CONFIG.nativeSymbol,decimals:18}}]});
     else throw e}
 }
-async function connect(provider){
-  await provider.request({method:'eth_requestAccounts'});
-  await ensureChain(provider);
-  active=provider;signer=await new BrowserProvider(provider).getSigner();account=await signer.getAddress();
-  $('navConnect').textContent=short(account);$('panelConnect').textContent='Connected: '+short(account);
-  if(!$('addr').value.trim())$('addr').value=account;
-  provider.on?.('accountsChanged',()=>location.reload());
-  provider.on?.('chainChanged',()=>location.reload());
-  say('');
+async function connect(p,{key,silent}={}){
+  if(!silent){await p.request({method:'eth_requestAccounts'});await ensureChain(p)}
+  active=p;signer=await new BrowserProvider(p).getSigner();account=await signer.getAddress();
+  try{localStorage.setItem('chomp.wallet',key||'')}catch{}
+  $('navConnect').textContent=short(account);
+  $('netName').textContent=CONFIG.chainName||'Connected';$('netChip').classList.add('show');
+  if(!$('addr').value.trim()){$('addr').value=account;validate()}
+  p.on?.('accountsChanged',async a=>{if(!a.length)return disconnect();signer=await new BrowserProvider(p).getSigner();account=await signer.getAddress();$('navConnect').textContent=short(account);renderButton()});
+  p.on?.('chainChanged',()=>location.reload());
+  renderButton();
 }
-$('navConnect').onclick=$('panelConnect').onclick=()=>account?say('Connected: '+account):openModal();
+function afterConnect(){toast('Wallet connected','ok');if(entry&&!isClaimed&&(!live||openFlag!==false))say('Wallet connected. Press Claim to continue.','ok')}
+function disconnect(){account=null;signer=null;active=null;try{localStorage.removeItem('chomp.wallet')}catch{}$('navConnect').textContent='Connect Wallet';$('netChip').classList.remove('show');renderButton()}
+async function eager(w){ // silently restore the last wallet, no popup
+  let k;try{k=localStorage.getItem('chomp.wallet')}catch{}
+  if(!k||account||k!==(w.info.rdns||w.info.name))return;
+  try{const a=await w.provider.request({method:'eth_accounts'});if(a&&a.length)await connect(w.provider,{key:k,silent:true})}catch{}
+}
+$('navConnect').onclick=openModal;$('panelConnect').onclick=openModal;
 
 /* ---------- claim ---------- */
-$('claim').onclick=async()=>{
-  $('result').style.display='none';
-  let a;try{a=getAddress($('addr').value.trim())}catch{return say('Enter a valid 0x wallet address.','err')}
-  if(!merkle)return say('Claim list not loaded. Open the site through `npm run serve` (not the file directly) and run `npm run deploy:local` first.','err');
-  const e=Object.entries(merkle.claims).find(([w])=>w.toLowerCase()===a.toLowerCase())?.[1];
-  if(!e){console.warn('not in list',a,'list size',Object.keys(merkle.claims).length,'root',merkle.root);return say('This wallet has nothing to claim.','err')}
-  $('amt').textContent=Number(formatUnits(e.amount,18)).toLocaleString()+' '+CONFIG.symbol;$('result').style.display='block';
+async function doClaim(){
+  if(!entry||!addr)return;
   if(!live)return say('Claim opens soon.','err');
-  if(!account){say('Connect a wallet to confirm the claim.');return openModal()}
+  setBusy(true,'Preparing…');say('Confirm in your wallet…');
   try{
-    $('claim').disabled=true;say('Confirm in your wallet...');
     const c=new Contract(CONFIG.claimAddress,ABI,signer);
     if(!(await c.claimOpen())){say('Claim is not open yet.','err');return}
-    if(await c.claimed(e.index)){say('Already claimed.','err');return}
-    const value=await c.claimFee(); // the wallet shows this amount in its confirmation
-    const tx=await c.claim(e.index,a,e.amount,e.proof,{value});say('Claiming...');await tx.wait();
-    say('Claimed! Tokens sent to '+short(a)+' 🐊','ok');
-  }catch(err){say(err.reason||err.shortMessage||err.message,'err')}
-  finally{$('claim').disabled=false}
+    if(await c.claimed(entry.index)){isClaimed=true;say('Already claimed.','err');return}
+    const value=await c.claimFee();
+    const bal=await signer.provider.getBalance(account);
+    if(bal<value)throw new Error('Not enough '+CONFIG.nativeSymbol+' in your wallet to cover the claim fee and gas.');
+    setBusy(true,'Confirm in wallet…');
+    const tx=await c.claim(entry.index,addr,entry.amount,entry.proof,{value});
+    setBusy(true,'Claiming…');say('Transaction sent. Waiting for confirmation…');
+    await tx.wait();
+    success(addr,tx.hash);
+  }catch(err){
+    const m=err.code==='ACTION_REJECTED'||err.code===4001?'You cancelled the transaction.':(err.reason||err.shortMessage||err.message||'Something went wrong');
+    say(m,'err');toast(m,'err');
+  }finally{setBusy(false);renderButton()}
+}
+function success(a,hash){
+  $('card').classList.add('claimed');setSteps();window.confetti();
+  $('doneTxt').textContent='Sent '+fmt(entry.amount)+' CHOMP to '+short(a)+'.';
+  const l=$('txLink');if(CONFIG.explorer){l.href=CONFIG.explorer.replace(/\/$/,'')+'/tx/'+hash;l.hidden=false}else l.hidden=true;
+  $('watch').hidden=!CONFIG.tokenAddress;stats();
+}
+$('claim').onclick=()=>{
+  if(!addr||!entry||busy)return;
+  if(!account){return openModal()}
+  doClaim();
 };
-</script></body></html>
+$('watch').onclick=async()=>{try{await active.request({method:'wallet_watchAsset',params:{type:'ERC20',options:{address:CONFIG.tokenAddress,symbol:CONFIG.symbol||'CHOMP',decimals:18}}});toast('Token added','ok')}catch(e){toast(e.message||'Could not add token','err')}};
+$('another').onclick=()=>{$('card').classList.remove('claimed');$('addr').value='';validate();$('addr').focus()};
+
+/* ---------- contract address box ---------- */
+if(live){$('caBox').hidden=false;$('caTxt').textContent=CONFIG.claimAddress;
+  $('caCopy').onclick=()=>{navigator.clipboard?.writeText(CONFIG.claimAddress);toast('Contract address copied','ok')}}
+renderButton();
+</script>
+</body>
+</html>

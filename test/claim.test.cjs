@@ -86,4 +86,24 @@ describe('MerkleClaim', () => {
     await claim.recoverTokens(owner.address, 1000n * E18);
     expect(await token.balanceOf(owner.address)).to.equal(25_000_000_000n * E18 + 1000n * E18);
   });
+  it('tracks totalClaimed and claimedCount', async () => {
+    const { claim, a, b, tree } = await setup();
+    await claim.connect(a).claim(0, a.address, 1000n * E18, tree.getProof(0), { value: FEE });
+    await claim.connect(b).claim(1, b.address, 2500n * E18, tree.getProof(1), { value: FEE });
+    expect(await claim.totalClaimed()).to.equal(3500n * E18);
+    expect(await claim.claimedCount()).to.equal(2n);
+  });
+  it('enforces the claim deadline and lets owner extend/remove it', async () => {
+    const { claim, a, tree } = await setup();
+    const now = (await ethers.provider.getBlock('latest')).timestamp;
+    await claim.setClaimDeadline(now + 100);
+    await ethers.provider.send('evm_increaseTime', [200]); await ethers.provider.send('evm_mine', []);
+    await expect(claim.connect(a).claim(0, a.address, 1000n * E18, tree.getProof(0), { value: FEE })).to.be.revertedWith('Claim period ended');
+    await claim.setClaimDeadline(0);
+    await claim.connect(a).claim(0, a.address, 1000n * E18, tree.getProof(0), { value: FEE });
+  });
+  it('only owner can set the deadline', async () => {
+    const { claim, stranger } = await setup();
+    await expect(claim.connect(stranger).setClaimDeadline(1)).to.be.reverted;
+  });
 });
